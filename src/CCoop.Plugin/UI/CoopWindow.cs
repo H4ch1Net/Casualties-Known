@@ -357,6 +357,18 @@ namespace CCoop.Plugin.UI
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
+            GUILayout.Label("Loot", GUILayout.Width(90));
+            int loot = GUILayout.Toolbar(Mathf.Clamp(cfg.LootScale.Value, 0, 1), HostRules.LootNames);
+            if (loot != cfg.LootScale.Value) cfg.LootScale.Value = loot;
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Enemies", GUILayout.Width(90));
+            int danger = GUILayout.Toolbar(Mathf.Clamp(cfg.DangerScale.Value, 0, 2), HostRules.DangerNames);
+            if (danger != cfg.DangerScale.Value) cfg.DangerScale.Value = danger;
+            GUILayout.EndHorizontal();
+            GUILayout.Label("Scales with the number of players, on top of the game's own run settings.", _small);
+
+            GUILayout.BeginHorizontal();
             GUILayout.Label("Speed-up", GUILayout.Width(90));
             cfg.AllowSpeedUp.Value = GUILayout.Toggle(cfg.AllowSpeedUp.Value, cfg.AllowSpeedUp.Value ? " Anyone may fast-forward time" : " Time always runs at normal speed (sleep still fast-forwards)");
             GUILayout.EndHorizontal();

@@ -50,6 +50,10 @@ namespace CCoop.Plugin.Dev
         /// <summary>CCOOP_EXITSHARE=0..100: the host's exit rule, without touching the config.</summary>
         internal static readonly int ExitShareOverride = int.TryParse(Env("CCOOP_EXITSHARE"), out var share) ? share : -1;
 
+        /// <summary>Loot and danger rules for tests, without touching the player's config.</summary>
+        internal static readonly int LootOverride = int.TryParse(Env("CCOOP_LOOT"), out var loot) ? loot : -1;
+        internal static readonly int DangerOverride = int.TryParse(Env("CCOOP_DANGER"), out var danger) ? danger : -1;
+
         /// <summary>Seconds between desync checks (tests use a short one).</summary>
         internal static readonly float CheckEveryOverride = float.TryParse(Env("CCOOP_CHECKEVERY"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var every) ? every : -1f;
 
@@ -1134,6 +1138,8 @@ namespace CCoop.Plugin.Dev
                      (ex != null ? ex.Authored + "/" + ex.Replayed + "/" + ex.Deduped : "-") +
                      " vanished " + (es != null ? es.Vanished : 0) + " gravity " + Physics2D.gravity.y.ToString("F1") +
                      " temp " + WorldGeneration.world.ambientTemperature.ToString("F1"));
+            if (tag == "team") Log.Info("VERIFY " + tag + " scaling enemy strength " + SpiderHandler.strengthMult.ToString("F2") + " (run setting " +
+                                         (WorldGeneration.runSettings != null && WorldGeneration.runSettings.TryGetValue("enemystrength", out var es0) ? es0 : "-") + ")");
             if (tag == "team" && WorldGeneration.runSettings != null)
                 Log.Info("VERIFY " + tag + " runsettings " + string.Join(" | ", UI.RunSettingsReadout.Lines(WorldGeneration.runSettings).ToArray()));
             var we = Coop.Get<WorldEvents>();

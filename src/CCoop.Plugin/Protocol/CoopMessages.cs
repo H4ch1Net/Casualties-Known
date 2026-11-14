@@ -1238,6 +1238,8 @@ namespace CCoop.Plugin.Protocol
         public bool SpawnApart;
         public byte VoicePercent = 100;
         public bool FriendlyFire;
+        public byte LootScale;
+        public byte DangerScale;
 
         public void Write(PacketWriter w)
         {
@@ -1251,6 +1253,8 @@ namespace CCoop.Plugin.Protocol
             w.WriteBool(SpawnApart);
             w.WriteByte(VoicePercent);
             w.WriteBool(FriendlyFire);
+            w.WriteByte(LootScale);
+            w.WriteByte(DangerScale);
         }
 
         public void Read(ref PacketReader r)
@@ -1265,6 +1269,8 @@ namespace CCoop.Plugin.Protocol
             SpawnApart = r.ReadBool();
             VoicePercent = r.ReadByte();
             FriendlyFire = r.ReadBool();
+            LootScale = r.ReadByte();
+            DangerScale = r.ReadByte();
         }
     }
 

@@ -345,8 +345,8 @@ Small things that make four people in a cave feel like a squad.
 
 The base game is balanced for one. Four players trivialise some layers and starve on others.
 
-- [ ] **M** **Loot rule.** Shared (today: one set of loot for the team) or scaled: the host's generation raises `lootRarityMultiplier` and spawn counts with player count, before the snapshot is taken, so every machine still sees the same world.
-- [ ] **M** **Danger rule.** Creature count and strength scale with players (spawn multiplier, `SpiderHandler.strengthMult`). Host rule with Off / Light / Full presets.
+- [x] **M** **Loot rule.** Shared (today: one set of loot for the team) or scaled: the host's generation raises `lootRarityMultiplier` and spawn counts with player count, before the snapshot is taken, so every machine still sees the same world. (Built as a host rule: "More for more players" raises the `baselootdensity` the game reads by 35% per extra player, through a postfix on `GetRunSettingFloat`, so the run settings and saves stay the game's.)
+- [x] **M** **Danger rule.** Creature count and strength scale with players (spawn multiplier, `SpiderHandler.strengthMult`). Host rule with Off / Light / Full presets. (Built as "As set / Tougher / Much tougher": +10% or +25% `enemystrength` per extra player, on every machine. Creature *count* isn't scaled: the game has no run setting for it. Friendly gets more loot, Hard gets tougher enemies, and Brutal gets much tougher ones.)
 - [x] **M** **Corpse looting.** *(Built in M4: lootable bodies.)* A dead player's inventory becomes a lootable bag at the corpse, or the puppet itself becomes lootable after M4's clickable teammates. Optional host rule, "Respawn with nothing", so dying costs something under Quick respawn.
 - [x] **M** **Co-op difficulty presets.** These sit on top of the game's own difficulty (its run settings) and only set the co-op rules:
 

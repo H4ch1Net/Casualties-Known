@@ -24,6 +24,22 @@ namespace CCoop.Plugin.Sync
         /// <summary>Players' guns hurt teammates (in the game itself a player's shot never hits a body).</summary>
         public bool FriendlyFire;
 
+        /// <summary>0: one set of loot for the team; 1: more loot for more players.</summary>
+        public byte LootScale;
+
+        /// <summary>0: enemies as the run settings say; 1: tougher with more players; 2: much tougher.</summary>
+        public byte DangerScale;
+
+        internal static readonly string[] LootNames = { "Shared", "More for more players" };
+        internal static readonly string[] DangerNames = { "As set", "Tougher", "Much tougher" };
+
+        /// <summary>Layer loot density multiplier for this many players.</summary>
+        internal float LootFactor(int players) => LootScale == 0 ? 1f : 1f + 0.35f * Mathf.Max(0, players - 1);
+
+        /// <summary>Enemy strength multiplier for this many players.</summary>
+        internal float DangerFactor(int players) =>
+            DangerScale == 0 ? 1f : 1f + (DangerScale == 1 ? 0.1f : 0.25f) * Mathf.Max(0, players - 1);
+
         internal static HostRules Current = new HostRules();
 
         // ---- difficulty presets: they set the co-op rules only (the game's own run
@@ -33,10 +49,10 @@ namespace CCoop.Plugin.Sync
 
         private static readonly HostRules[] Presets =
         {
-            new HostRules { Respawn = RespawnRule.Quick, ExitShare = 0, Arrows = true, NameTags = true, SpawnApart = false, VoicePercent = 100 },
+            new HostRules { Respawn = RespawnRule.Quick, ExitShare = 0, Arrows = true, NameTags = true, SpawnApart = false, VoicePercent = 100, LootScale = 1 },
             new HostRules { Respawn = RespawnRule.NextLayer, ExitShare = 50, Arrows = true, NameTags = true, SpawnApart = false, VoicePercent = 100 },
-            new HostRules { Respawn = RespawnRule.NextLayer, ExitShare = 100, Arrows = false, NameTags = true, SpawnApart = true, VoicePercent = 100, FriendlyFire = true },
-            new HostRules { Respawn = RespawnRule.Permadeath, ExitShare = 100, Arrows = false, NameTags = false, SpawnApart = true, VoicePercent = 50, FriendlyFire = true },
+            new HostRules { Respawn = RespawnRule.NextLayer, ExitShare = 100, Arrows = false, NameTags = true, SpawnApart = true, VoicePercent = 100, FriendlyFire = true, DangerScale = 1 },
+            new HostRules { Respawn = RespawnRule.Permadeath, ExitShare = 100, Arrows = false, NameTags = false, SpawnApart = true, VoicePercent = 50, FriendlyFire = true, DangerScale = 2 },
         };
 
         /// <summary>Which preset these rules match, or -1 for custom.</summary>
@@ -48,7 +64,8 @@ namespace CCoop.Plugin.Sync
                 {
                     var p = Presets[i];
                     if (p.Respawn == Respawn && p.ExitShare == ExitShare && p.Arrows == Arrows && p.NameTags == NameTags &&
-                        p.SpawnApart == SpawnApart && p.VoicePercent == VoicePercent && p.FriendlyFire == FriendlyFire) return i;
+                        p.SpawnApart == SpawnApart && p.VoicePercent == VoicePercent && p.FriendlyFire == FriendlyFire &&
+                        p.LootScale == LootScale && p.DangerScale == DangerScale) return i;
                 }
                 return -1;
             }
@@ -69,6 +86,8 @@ namespace CCoop.Plugin.Sync
             c.SpawnApart.Value = p.SpawnApart;
             c.VoiceRangePercent.Value = p.VoicePercent;
             c.FriendlyFire.Value = p.FriendlyFire;
+            c.LootScale.Value = p.LootScale;
+            c.DangerScale.Value = p.DangerScale;
         }
 
         internal static HostRules FromConfig()
@@ -86,13 +105,16 @@ namespace CCoop.Plugin.Sync
                 SpawnApart = c.SpawnApart.Value,
                 VoicePercent = (byte)Mathf.Clamp(c.VoiceRangePercent.Value, 25, 100),
                 FriendlyFire = c.FriendlyFire.Value,
+                LootScale = (byte)Mathf.Clamp(Dev.DevHarness.LootOverride >= 0 ? Dev.DevHarness.LootOverride : c.LootScale.Value, 0, 1),
+                DangerScale = (byte)Mathf.Clamp(Dev.DevHarness.DangerOverride >= 0 ? Dev.DevHarness.DangerOverride : c.DangerScale.Value, 0, 2),
             };
         }
 
         internal bool SameAs(HostRules o) =>
             o != null && o.Respawn == Respawn && o.ExitShare == ExitShare && o.SpeedUp == SpeedUp &&
             o.MaxPlayers == MaxPlayers && o.Locked == Locked && o.Arrows == Arrows && o.NameTags == NameTags &&
-            o.SpawnApart == SpawnApart && o.VoicePercent == VoicePercent && o.FriendlyFire == FriendlyFire;
+            o.SpawnApart == SpawnApart && o.VoicePercent == VoicePercent && o.FriendlyFire == FriendlyFire &&
+            o.LootScale == LootScale && o.DangerScale == DangerScale;
 
         internal string RespawnText =>
             Respawn == RespawnRule.Permadeath ? "permadeath"
@@ -109,11 +131,12 @@ namespace CCoop.Plugin.Sync
         internal string Describe() =>
             PresetName + ": dead players " + RespawnText + " · " + ExitText + (SpeedUp ? "" : " · no speed-up") +
             (Arrows ? "" : " · no arrows") + (NameTags ? "" : " · no name tags") + (SpawnApart ? " · spawn apart" : "") +
-            (VoicePercent < 100 ? " · voices carry " + VoicePercent + "%" : "") + (FriendlyFire ? " · friendly fire" : "");
+            (VoicePercent < 100 ? " · voices carry " + VoicePercent + "%" : "") + (FriendlyFire ? " · friendly fire" : "") +
+            (LootScale > 0 ? " · more loot for more players" : "") + (DangerScale > 0 ? " · enemies " + DangerNames[DangerScale].ToLowerInvariant() + " with more players" : "");
 
         /// <summary>Compact form for the lobby advert: "r0e50s1".</summary>
         internal string Encode() => "r" + (int)Respawn + "e" + ExitShare + "s" + (SpeedUp ? 1 : 0) + "a" + (Arrows ? 1 : 0) +
-                                       "n" + (NameTags ? 1 : 0) + "p" + (SpawnApart ? 1 : 0) + "v" + VoicePercent + "f" + (FriendlyFire ? 1 : 0);
+                                       "n" + (NameTags ? 1 : 0) + "p" + (SpawnApart ? 1 : 0) + "v" + VoicePercent + "f" + (FriendlyFire ? 1 : 0) + "l" + LootScale + "d" + DangerScale;
 
         internal static HostRules Decode(string s)
         {
@@ -136,6 +159,8 @@ namespace CCoop.Plugin.Sync
                     else if (k == 'p') r.SpawnApart = v != 0;
                     else if (k == 'v') r.VoicePercent = (byte)Mathf.Clamp(v, 25, 100);
                     else if (k == 'f') r.FriendlyFire = v != 0;
+                    else if (k == 'l') r.LootScale = (byte)Mathf.Clamp(v, 0, 1);
+                    else if (k == 'd') r.DangerScale = (byte)Mathf.Clamp(v, 0, 2);
                 }
                 return r;
             }
@@ -154,6 +179,8 @@ namespace CCoop.Plugin.Sync
             SpawnApart = SpawnApart,
             VoicePercent = VoicePercent,
             FriendlyFire = FriendlyFire,
+            LootScale = LootScale,
+            DangerScale = DangerScale,
         };
 
         internal static HostRules FromMessage(RulesMessage m) => new HostRules
@@ -168,6 +195,8 @@ namespace CCoop.Plugin.Sync
             SpawnApart = m.SpawnApart,
             VoicePercent = (byte)Mathf.Clamp(m.VoicePercent, 25, 100),
             FriendlyFire = m.FriendlyFire,
+            LootScale = (byte)Mathf.Clamp(m.LootScale, 0, 1),
+            DangerScale = (byte)Mathf.Clamp(m.DangerScale, 0, 2),
         };
     }
 

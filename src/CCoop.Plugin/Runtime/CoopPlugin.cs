@@ -29,6 +29,8 @@ namespace CCoop.Plugin.Runtime
         internal ConfigEntry<bool> HostNameTags;
         internal ConfigEntry<bool> SpawnApart;
         internal ConfigEntry<bool> FriendlyFire;
+        internal ConfigEntry<int> LootScale;
+        internal ConfigEntry<int> DangerScale;
         internal ConfigEntry<int> VoiceRangePercent;
         internal ConfigEntry<bool> ShowArrows;
         internal ConfigEntry<bool> ReduceFlashes;
@@ -80,6 +82,12 @@ namespace CCoop.Plugin.Runtime
                 "From layer 2 on, players arrive spread out across the layer (same depth, sideways) and have to find each other.");
             FriendlyFire = Config.Bind("Host", "FriendlyFire", false,
                 "Players' guns hurt teammates. In the game itself a player's shot never hits a body, so this is a co-op rule.");
+            LootScale = Config.Bind("Host", "LootScale", 0,
+                new ConfigDescription("0: one set of loot for the team, as in single-player. 1: layers carry more loot with more players (+35% per extra player).",
+                                      new AcceptableValueRange<int>(0, 1)));
+            DangerScale = Config.Bind("Host", "DangerScale", 0,
+                new ConfigDescription("0: enemies as the run settings say. 1: +10% enemy strength per extra player. 2: +25% per extra player.",
+                                      new AcceptableValueRange<int>(0, 2)));
             VoiceRangePercent = Config.Bind("Host", "VoiceRangePercent", 100,
                 new ConfigDescription("How far voices carry, as a percent of each player's own voice range.", new AcceptableValueRange<int>(25, 100)));
             Port = Config.Bind("Host", "Port", 7777, "UDP port for LAN/IP hosting.");
