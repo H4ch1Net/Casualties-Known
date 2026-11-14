@@ -38,6 +38,9 @@ namespace CCoop.Plugin.Dev
         private readonly string _autostart = Env("CCOOP_AUTOSTART");
         private readonly bool _autorun = Env("CCOOP_AUTORUN") == "1";
         private readonly bool _selftest = Env("CCOOP_SELFTEST") == "1";
+
+        /// <summary>A self-test is running in this instance (it must not write the player's own files).</summary>
+        internal static readonly bool SelfTestActive = Env("CCOOP_SELFTEST") == "1";
         private readonly bool _dump = Env("CCOOP_DUMP") == "1";
 
         /// <summary>Host: force this layer modifier (its modifierIndex), or -1.</summary>
@@ -419,6 +422,7 @@ namespace CCoop.Plugin.Dev
                 _stageAt = Time.unscaledTime + 3f;
                 _waitUntil = Time.unscaledTime + 25f;
                 Verify("reconnected");
+                Steady();
                 M4Setup();
                 return;
             }
@@ -485,6 +489,17 @@ namespace CCoop.Plugin.Dev
                 changed++;
             }
             Log.Info("DEV client corrupts " + changed + " blocks in chunk " + cx + "," + cy + " (as a desync would)");
+        }
+
+        /// <summary>Awake and on its feet, whatever the random layer did (a trap, a fall).</summary>
+        private static void Steady()
+        {
+            var b = GameInfo.LocalBody;
+            if (b == null || !b.alive) return;
+            b.consciousness = 100f;
+            b.shock = 0f;
+            b.Stand(true);
+            Log.Info("DEV " + (Coop.IsHost ? "host" : "client") + " steadies itself before the care tests");
         }
 
         private static byte OtherPlayer()
@@ -724,8 +739,11 @@ namespace CCoop.Plugin.Dev
                     if (Coop.IsClient) GameInfo.LocalBody?.StopClimbing();
                     if (Coop.IsHost) { WalkOver(); _catchReadyUntil = now + 10f; Log.Info("DEV host gets ready to catch"); }
                     _stage = 229; _stageAt = now + 2.5f;
+                    _waitUntil = now + 20f;
                     break;
                 case 229:
+                    // The two sides' stage clocks drift: fall only once the host is ready.
+                    if (Coop.IsClient && !Coop.Get<TeamMotion>().ReadyToCatch(NetSession.HostId) && now < _waitUntil) return;
                     if (Coop.IsClient)
                     {
                         // On its feet and awake whatever the layer did to it (a coil, a fall).
@@ -1147,7 +1165,10 @@ namespace CCoop.Plugin.Dev
             Log.Info("VERIFY " + tag + " world events sent/applied " + (we != null ? we.Sent + "/" + we.Applied : "-") +
                      " shots sent/replayed/deduped " + (ss != null ? ss.Sent + "/" + ss.Replayed + "/" + ss.Deduped : "-") +
                      " spawned/destroyed " + (es != null ? es.Spawned + "/" + es.Destroyed : "-") +
-                     " desync checks/mismatched/repaired " + (Coop.Get<WorldCheck>() is WorldCheck wc ? wc.Checks + "/" + wc.Mismatched + "/" + wc.Repaired : "-"));
+                     " desync checks/mismatched/repaired " + (Coop.Get<WorldCheck>() is WorldCheck wc ? wc.Checks + "/" + wc.Mismatched + "/" + wc.Repaired : "-") +
+                     " milestones " + Milestones.Reached + " (carry " + Milestones.Count("carry").ToString("F0") + " catch " + Milestones.Count("catch") +
+                     " legup " + Milestones.Count("legup") + " hug " + Milestones.Count("hug") + " treat " + Milestones.Count("treat") +
+                     " revived " + Milestones.Count("revived") + " layer " + Milestones.Count("layer") + ")");
             var body = GameInfo.LocalBody;
             var ps = Coop.Get<PlayerSync>();
             if (ps != null && body != null)

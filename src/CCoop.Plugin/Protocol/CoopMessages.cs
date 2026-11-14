@@ -1447,11 +1447,15 @@ namespace CCoop.Plugin.Protocol
         public bool RadiationActive;
         public float RadiationTime;
 
+        /// <summary>The host's time on this layer: a shared clock for things that cycle (pistons).</summary>
+        public float LayerTime;
+
         public void Write(PacketWriter w)
         {
             w.WriteSingle(AmbientTemperature);
             w.WriteBool(RadiationActive);
             w.WriteSingle(RadiationTime);
+            w.WriteSingle(LayerTime);
         }
 
         public void Read(ref PacketReader r)
@@ -1459,6 +1463,7 @@ namespace CCoop.Plugin.Protocol
             AmbientTemperature = r.ReadSingle();
             RadiationActive = r.ReadBool();
             RadiationTime = r.ReadSingle();
+            LayerTime = r.ReadSingle();
         }
     }
 

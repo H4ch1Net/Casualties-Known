@@ -86,6 +86,7 @@ namespace CCoop.Plugin.Sync
                 // unconscious, so it drifts apart.
                 RadiationActive = line != null && line.active,
                 RadiationTime = line != null ? RadTime(line) : 0f,
+                LayerTime = w.layerTimeSpent,
             });
         }
 
@@ -94,6 +95,9 @@ namespace CCoop.Plugin.Sync
             if (Coop.IsHost) return;
             HostAmbient = m.AmbientTemperature;
             HostAmbientAt = Time.unscaledTime;
+            // Keep this layer's clock within a quarter second of the host's (pistons run on it).
+            var world = WorldGeneration.world;
+            if (world != null && Mathf.Abs(world.layerTimeSpent - m.LayerTime) > 0.25f) world.layerTimeSpent = m.LayerTime;
             var line = RadiationLine.line;
             if (line == null) return;
             if (m.RadiationActive)

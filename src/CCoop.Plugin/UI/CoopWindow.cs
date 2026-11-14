@@ -33,6 +33,7 @@ namespace CCoop.Plugin.UI
         private static bool _showBans;
         private static bool _showRules;
         private static bool _showRunSettings;
+        private static bool _showMilestones;
 
         private static string _lastFocus = "";
         private static readonly Dictionary<string, Rect> FieldRects = new Dictionary<string, Rect>();
@@ -565,6 +566,7 @@ namespace CCoop.Plugin.UI
 
             VoiceRow();
             ComfortRow();
+            MilestoneList();
 
             GUILayout.Space(6);
             GUILayout.Label("Players (" + s.PeerCount + "/" + HostRules.Current.MaxPlayers + ")");
@@ -622,6 +624,25 @@ namespace CCoop.Plugin.UI
                             cfg.ChatKey.Value + ".", _small);
             if (HostRules.Current.Arrows)
                 cfg.ShowArrows.Value = GUILayout.Toggle(cfg.ShowArrows.Value, " Show arrows to teammates who are off screen");
+        }
+
+        private static void MilestoneList()
+        {
+            _showMilestones = GUILayout.Toggle(_showMilestones, " Co-op milestones (" + Milestones.Reached + "/" + Milestones.All.Length + ")");
+            if (!_showMilestones) return;
+            GUILayout.BeginVertical(_box);
+            foreach (var d in Milestones.All)
+            {
+                float n = Milestones.Count(d.Key);
+                bool done = n >= d.Goal;
+                GUILayout.BeginHorizontal();
+                GUILayout.Label((done ? "✓ " : "   ") + d.Title, GUILayout.Width(150));
+                GUILayout.Label(d.Text, _small);
+                GUILayout.FlexibleSpace();
+                GUILayout.Label(done ? "done" : Mathf.FloorToInt(n) + "/" + d.Goal + (d.Unit ?? ""), _small, GUILayout.Width(70));
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.EndVertical();
         }
 
         /// <summary>Personal display options: these never change anything for anyone else.</summary>

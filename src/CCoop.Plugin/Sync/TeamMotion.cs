@@ -109,6 +109,7 @@ namespace CCoop.Plugin.Sync
         {
             if (DistanceTo(target) > LegUpReach) { CoopRuntime.Notice("Stand right next to them."); return; }
             Session.Broadcast(new TeamMove { Kind = MoveKind.LegUp, Target = target, F = LegUpWindow });
+            Milestones.Add("legup");
             Say("*cups hands for a leg-up*");
             Log.Info("[move] leg-up for " + Coop.Player(target).Name);
         }
@@ -274,6 +275,9 @@ namespace CCoop.Plugin.Sync
             _rope = null;
         }
 
+        /// <summary>Whether this teammate is holding the catch key right now.</summary>
+        internal bool ReadyToCatch(byte id) => _readyUntil.TryGetValue(id, out var until) && Time.unscaledTime < until;
+
         /// <summary>The game's own hard-landing speed for this body (it ragdolls and takes damage above it).</summary>
         internal static float HardLanding(Body b) => Mathf.Max(b.actualJumpSpeed * 2f, b.jumpSpeed * 1.5f);
 
@@ -284,6 +288,7 @@ namespace CCoop.Plugin.Sync
             if (caught)
             {
                 CoopRuntime.Notice("You caught " + who);
+                Milestones.Add("catch");
                 Log.Info("[move] caught " + who + " falling at " + speed.ToString("F1") + " (hard landing " + hard.ToString("F0") + ")");
                 if (speed < hard * 1.4f) return;  // a clean catch
                 // A very long fall lands hard in the arms: the game's own impact damage, scaled by the excess.

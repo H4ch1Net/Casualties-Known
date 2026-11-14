@@ -123,6 +123,7 @@ namespace CCoop.Plugin.Sync
             if (s.StandIn != null) s.Saved.Restore(s.StandIn);
             Coop.Session?.Broadcast(new TreatStep { Session = s.Id, Peer = s.Patient, Op = TreatOp.End, Limb = (byte)s.LimbIndex });
             if (why != null) CoopRuntime.Notice(why);
+            else Milestones.Add("treat");
             Log.Info("[medic] treatment of " + Coop.Player(s.Patient).Name + " ended" + (why != null ? ": " + why : ""));
         }
 

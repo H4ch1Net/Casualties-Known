@@ -114,6 +114,7 @@ namespace CCoop.Plugin.Sync
 
         internal void PutDown(string why = "put down")
         {
+            Milestones.NotCarrying();
             if (_carrying < 0) return;
             byte target = (byte)_carrying;
             Log.Info("[carry] letting go of " + Coop.Player(target).Name + ": " + why);
@@ -166,6 +167,7 @@ namespace CCoop.Plugin.Sync
             if (gap > MaxGap) { PutDown("too far (" + gap.ToString("F1") + " m)"); return; }
             if (!Downed((byte)_carrying)) { PutDown("they're up"); return; }
             if (CantCarry(_mode) != null) { PutDown("hands or back no longer free"); return; }
+            Milestones.Carrying(me.transform.position);
 
             // The cost, on our own body.
             switch (_mode)

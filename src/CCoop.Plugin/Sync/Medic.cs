@@ -547,6 +547,7 @@ namespace CCoop.Plugin.Sync
                     // shocked back (the shock below, or the next one).
                     body.brainHealth = 3f;
                     Log.Info("[medic] revived by " + who + " after " + deadFor.ToString("F0") + " s");
+                    Milestones.Add("revived");
                 }
                 else
                 {

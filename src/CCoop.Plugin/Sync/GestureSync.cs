@@ -164,6 +164,7 @@ namespace CCoop.Plugin.Sync
             if (_lastHug.TryGetValue(other, out var last) && now - last < HugCooldown) return;
             _lastHug[other] = now;
             body.happiness += HugMood;
+            Milestones.Add("hug");
             if (body.temperature < 37f) body.temperature = Mathf.Lerp(body.temperature, 37f, 0.2f);
         }
 
