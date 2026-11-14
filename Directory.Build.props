@@ -1,0 +1,34 @@
+<Project>
+
+  <!-- Machine-specific game location. Copy GamePath.Local.props.example to
+       GamePath.Local.props and edit it. That file is gitignored. -->
+  <Import Project="$(MSBuildThisFileDirectory)GamePath.Local.props"
+          Condition="Exists('$(MSBuildThisFileDirectory)GamePath.Local.props')" />
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
+    <Version>2.0.0</Version>
+    <Authors>CasualtiesCoop contributors</Authors>
+
+    <!-- Deterministic, reproducible builds -->
+    <Deterministic>true</Deterministic>
+
+    <!-- The game ships no XML docs and Unity assemblies trip a lot of analyzer
+         noise; keep warnings meaningful rather than drowning them. -->
+    <NoWarn>$(NoWarn);CS1591;MSB3277</NoWarn>
+
+    <!-- Unity/Mono assemblies are not strong-name-verified reference assemblies. -->
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+
+  <!-- Derived paths used by game-facing projects (net472). -->
+  <PropertyGroup Condition="'$(GamePath)' != ''">
+    <GameManagedPath>$(GamePath)\CasualtiesUnknown_Data\Managed</GameManagedPath>
+    <GameBepInExPluginPath>$(GamePath)\BepInEx\plugins</GameBepInExPluginPath>
+  </PropertyGroup>
+
+</Project>

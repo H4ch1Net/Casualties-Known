@@ -1,0 +1,478 @@
+using System;
+using System.Collections.Generic;
+using CCoop.Net.Session;
+using CCoop.Net.Transport;
+using CCoop.Plugin.Dev;
+using CCoop.Plugin.Net;
+using CCoop.Plugin.Protocol;
+using CCoop.Plugin.Sync;
+using CCoop.Plugin.UI;
+using UnityEngine;
+
+namespace CCoop.Plugin.Runtime
+{
+    /// <summary>
+    /// The persistent driver. Owns the session and the Steam lobby, pumps the network
+    /// on the main thread, and fans lifecycle events out to the sync modules.
+    /// </summary>
+    public sealed class CoopRuntime : MonoBehaviour
+    {
+        private readonly List<CoopModule> _modules = new List<CoopModule>();
+        private readonly Dictionary<Type, CoopModule> _byType = new Dictionary<Type, CoopModule>();
+
+        internal SteamLobby Lobby { get; } = new SteamLobby();
+        internal string LastMessage = "";
+        internal string TransportKind = "";
+        internal bool Connecting;
+        private ulong _pendingLaunchLobby;
+        private ulong _pendingJoinLobby;
+        private string _joinPassword = "";
+        private LobbyInfo _joiningLobby;
+        private float _nextAdvert;
+
+        /// <summary>A locked lobby the player is being asked the password for.</summary>
+        internal LobbyInfo PasswordPrompt;
+
+        private void Awake()
+        {
+            Coop.Runtime = this;
+            Add(new RunFlow());
+            Add(new LayerSync());
+            Add(new PlayerSync());
+            Add(new LifeSync());
+            Add(new RulesSync());
+            Add(new VoiceSync());
+            Add(new Chat());
+            Add(new ExitVote());
+            Add(new PingSync());
+            Add(new CreatureHunt());
+            Add(new TeamSense());
+            Add(new VitalsSync());
+            Add(new Medic());
+            Add(new GiveSync());
+            Add(new CarrySync());
+            Add(new LootSync());
+            Add(new SpawnSpread());
+            Add(new TeammateArrows());
+            Add(new GestureSync());
+            Add(new TeamMotion());
+            Add(new TeammatePanel());
+            Add(new TerrainSync());
+            Add(new EntitySync());
+            Add(new ItemSync());
+            Add(new CreatureSync());
+            Add(new ClockSync());
+            Add(new PropSync());
+            Add(new ExplosionSync());
+            Add(new SteamMoments());
+            Add(new DevHarness());
+
+            _pendingLaunchLobby = SteamLobby.LaunchLobby();
+            if (_pendingLaunchLobby != 0) Log.Info("[steam] launched to join lobby " + _pendingLaunchLobby);
+            Lobby.JoinRequested += id =>
+            {
+                Log.Info("[steam] join requested for lobby " + id);
+                _pendingJoinLobby = id;
+            };
+        }
+
+        private void Add(CoopModule m)
+        {
+            _modules.Add(m);
+            _byType[m.GetType()] = m;
+        }
+
+        internal T Get<T>() where T : CoopModule => _byType.TryGetValue(typeof(T), out var m) ? (T)m : null;
+
+        // ------------------------------------------------------------------ starting
+
+        /// <summary>Host: the live session config, so password and player cap can change mid-session.</summary>
+        internal SessionConfig HostConfig { get; private set; }
+
+        private SessionConfig Config(bool host)
+        {
+            var c = NewConfig(host);
+            HostConfig = host ? c : null;
+            return c;
+        }
+
+        private SessionConfig NewConfig(bool host) => new SessionConfig
+        {
+            ModVersion = CoopPlugin.Version,
+            GameBuild = GameInfo.GameBuild,
+            PlayerName = GameInfo.PlayerName,
+            MaxPlayers = CoopPlugin.Instance != null ? CoopPlugin.Instance.MaxPlayers.Value : 4,
+            Password = host ? (CoopPlugin.Instance.HostPassword.Value ?? "") : (_joinPassword ?? ""),
+            ExtraAdmission = host ? Admission : (Func<Hello, string, string>)null,
+        };
+
+        /// <summary>Host: last word on who gets in, with the transport-verified address.</summary>
+        private static string Admission(Hello hello, string address)
+        {
+            if (BanList.IsBanned(address)) return "You are banned from this host's sessions.";
+            return null;
+        }
+
+        /// <param name="lobbyType">Overrides the configured visibility without saving it (dev harness).</param>
+        internal void HostSteam(string lobbyType = null)
+        {
+            if (Coop.Session != null || Connecting) return;
+            if (!GameInfo.SteamReady) { LastMessage = "Steam is not running. Start the game from Steam, or use LAN/IP."; return; }
+            Connecting = true;
+            LastMessage = "Creating Steam lobby...";
+            int max = CoopPlugin.Instance.MaxPlayers.Value;
+            bool locked = !string.IsNullOrEmpty(CoopPlugin.Instance.HostPassword.Value);
+            Lobby.Create(lobbyType ?? CoopPlugin.Instance.LobbyType.Value, max, locked, (ok, error) =>
+            {
+                Connecting = false;
+                if (!ok) { LastMessage = error; Log.Warn("[steam] " + error); return; }
+                try
+                {
+                    var t = new SteamTransport();
+                    t.StartHost(NetSession.MaxPeers + 1);
+                    Begin(NetSession.CreateHost(t, CoopProtocol.Build(), Config(true)), "Steam");
+                    _nextAdvert = 0;
+                    LastMessage = "Hosting. Invite friends from the co-op menu or the Steam overlay.";
+                }
+                catch (Exception e)
+                {
+                    Lobby.Leave();
+                    LastMessage = "Could not host: " + e.Message;
+                    Log.Error(LastMessage);
+                }
+            });
+        }
+
+        internal void HostLan()
+        {
+            if (Coop.Session != null || Connecting) return;
+            try
+            {
+                var t = new LiteNetTransport();
+                int port = CoopPlugin.Instance.Port.Value;
+                t.StartHost(port, NetSession.MaxPeers + 1);
+                Begin(NetSession.CreateHost(t, CoopProtocol.Build(), Config(true)), "LAN/IP");
+                LastMessage = "Hosting on UDP port " + port + ". Others join with your IP address.";
+            }
+            catch (Exception e)
+            {
+                LastMessage = "Could not host: " + e.Message;
+                Log.Error(LastMessage);
+            }
+        }
+
+        internal void JoinLan(string address, string password = "")
+        {
+            if (Coop.Session != null || Connecting) return;
+            _joinPassword = password ?? "";
+            _joiningLobby = null;
+            string host = (address ?? "").Trim();
+            int port = CoopPlugin.Instance.Port.Value;
+            int colon = host.LastIndexOf(':');
+            if (colon > 0 && int.TryParse(host.Substring(colon + 1), out var p)) { port = p; host = host.Substring(0, colon); }
+            if (host.Length == 0) { LastMessage = "Enter the host's address."; return; }
+            try
+            {
+                CoopPlugin.Instance.LastAddress.Value = address.Trim();
+                var t = new LiteNetTransport();
+                t.StartClient(host, port);
+                Begin(NetSession.CreateClient(t, CoopProtocol.Build(), Config(false)), "LAN/IP");
+                LastMessage = "Connecting to " + host + ":" + port + "...";
+            }
+            catch (Exception e)
+            {
+                LastMessage = "Could not join: " + e.Message;
+                Log.Error(LastMessage);
+            }
+        }
+
+        /// <summary>
+        /// Joins through a Steam lobby. A locked lobby without a password turns into a
+        /// password prompt in the co-op window instead of a doomed connection attempt.
+        /// </summary>
+        internal void JoinSteamLobby(ulong lobby, string password = null)
+        {
+            if (Coop.Session != null || Connecting) return;
+            Connecting = true;
+            PasswordPrompt = null;
+            LastMessage = "Joining Steam lobby...";
+            Lobby.Join(lobby, (ok, info, error) =>
+            {
+                Connecting = false;
+                if (!ok) { LastMessage = "Could not join: " + error; Log.Warn("[steam] " + LastMessage); return; }
+                ulong owner = info.HostId;
+                if (owner == GameInfo.SteamId) { Lobby.Leave(); LastMessage = "That is your own lobby."; return; }
+                if (info.Locked && password == null)
+                {
+                    Lobby.Leave();
+                    PasswordPrompt = info;
+                    LastMessage = info.Host + "'s session needs a password.";
+                    CoopWindow.Show();
+                    return;
+                }
+                _joinPassword = password ?? "";
+                _joiningLobby = info;
+                try
+                {
+                    var t = new SteamTransport();
+                    t.Connect(owner);
+                    Begin(NetSession.CreateClient(t, CoopProtocol.Build(), Config(false)), "Steam");
+                    LastMessage = "Connecting to the host...";
+                }
+                catch (Exception e)
+                {
+                    Lobby.Leave();
+                    LastMessage = "Could not join: " + e.Message;
+                    Log.Error(LastMessage);
+                }
+            });
+        }
+
+        private void Begin(NetSession session, string kind)
+        {
+            Coop.Reset();
+            Coop.Session = session;
+            TransportKind = kind;
+            session.Log += s => Log.Info("[net] " + s);
+            session.Established += OnEstablished;
+            session.Ended += OnEnded;
+            session.PeerJoinedEvent += OnPeerJoined;
+            session.PeerLeftEvent += OnPeerLeft;
+
+            foreach (var m in _modules) Safe(() => m.Attach(session), m, "attach");
+
+            if (session.IsHost)
+            {
+                var me = Coop.Player(session.LocalId);
+                me.Name = session.LocalPeer?.Name ?? GameInfo.PlayerName;
+                OnEstablished();
+            }
+            Log.Info("[session] " + (session.IsHost ? "hosting" : "joining") + " over " + kind);
+        }
+
+        private void OnEstablished()
+        {
+            var s = Coop.Session;
+            if (s == null) return;
+            var me = Coop.Player(s.LocalId);
+            me.Name = s.LocalPeer?.Name ?? GameInfo.PlayerName;
+            if (!s.IsHost) LastMessage = "Connected as " + me.Name + ".";
+            Log.Info("[session] established; local peer " + s.LocalId);
+        }
+
+        private void OnPeerJoined(PeerInfo p)
+        {
+            var rec = Coop.Player(p.Id);
+            rec.Name = p.Name;
+            Log.Info("[session] " + p.Name + " joined");
+            Notice(p.Name + " joined");
+            foreach (var m in _modules) Safe(() => m.OnPeerJoined(p), m, "join");
+        }
+
+        private void OnPeerLeft(PeerInfo p, string reason)
+        {
+            Log.Info("[session] " + p.Name + " left (" + reason + ")");
+            Notice(p.Name + " left");
+            foreach (var m in _modules) Safe(() => m.OnPeerLeft(p), m, "leave");
+            Coop.Players.Remove(p.Id);
+        }
+
+        private void OnEnded(string reason)
+        {
+            Log.Info("[session] ended: " + reason);
+            LastMessage = reason;
+            bool wrongPassword = reason != null && reason.IndexOf("Wrong password", StringComparison.OrdinalIgnoreCase) >= 0;
+            var retry = _joiningLobby;
+            Teardown();
+            if (wrongPassword && retry != null)
+            {
+                PasswordPrompt = retry;
+                CoopWindow.Show();
+            }
+        }
+
+        /// <summary>Host: bans the player's verified Steam id or IP, then removes them.</summary>
+        internal void Ban(byte peer)
+        {
+            var s = Coop.Session;
+            if (s == null || !s.IsHost || !s.TryGetPeer(peer, out var p)) return;
+            if (string.IsNullOrEmpty(p.Address)) { Notice("Cannot ban " + p.Name + ": no verified address."); return; }
+            BanList.Ban(p.Address, p.Name);
+            s.Kick(peer, "Banned by the host.");
+            Notice(p.Name + " was banned");
+        }
+
+        internal void Leave()
+        {
+            if (Coop.Session == null) return;
+            Coop.Session.Leave();
+        }
+
+        private bool _tearingDown;
+
+        private void Teardown()
+        {
+            if (_tearingDown) return;
+            _tearingDown = true;
+            try
+            {
+                if (Coop.WorldLive) Coop.SetWorldLive(false);
+                foreach (var m in _modules) Safe(() => m.Detach(), m, "detach");
+                Lobby.Leave();
+                WorldNet.Clear();
+                Coop.Reset();
+                TransportKind = "";
+                _joiningLobby = null;
+            }
+            finally
+            {
+                _tearingDown = false;
+            }
+        }
+
+        internal void NotifyWorld(bool live)
+        {
+            foreach (var m in _modules)
+            {
+                if (live) Safe(() => m.OnWorldLive(), m, "world-live");
+                else Safe(() => m.OnWorldLost(), m, "world-lost");
+            }
+        }
+
+        // ------------------------------------------------------------------ loop
+
+        private void Update()
+        {
+            try
+            {
+                EnsureGuiHost();
+                Lobby.EnsureInitialized();
+                HandlePendingJoins();
+                CoopWindow.HandleHotkeys(this);
+                Get<DevHarness>()?.Pump();
+
+                var s = Coop.Session;
+                if (s == null) return;
+                s.Poll();
+                if (Coop.Session == null) return;  // ended during poll
+                foreach (var m in _modules) Safe(m.Tick, m, "tick");
+                UpdateAdvert(s);
+            }
+            catch (Exception e)
+            {
+                Log.Error("runtime: " + e);
+            }
+        }
+
+        private void FixedUpdate()
+        {
+            if (Coop.Session == null) return;
+            try
+            {
+                Get<CarrySync>()?.FixedTick();
+                Get<TeamMotion>()?.FixedTick();
+            }
+            catch (Exception e) { Log.Debug("fixed tick: " + e.Message); }
+        }
+
+        private void LateUpdate()
+        {
+            if (Coop.Session == null) return;
+            foreach (var m in _modules) Safe(m.LateTick, m, "late-tick");
+        }
+
+        /// <summary>Host: keeps the Steam lobby's advert (browser row, friends list) current.</summary>
+        private void UpdateAdvert(NetSession s)
+        {
+            if (!s.IsHost || !Lobby.InLobby || !Lobby.IsOwner) return;
+            float now = Time.unscaledTime;
+            if (now < _nextAdvert) return;
+            _nextAdvert = now + 2f;
+            var w = WorldGeneration.world;
+            bool inRun = GameInfo.InRunScene && w != null;
+            string layer = inRun ? "Layer " + (w.biomeDepth + 1) : "";
+            try { Lobby.UpdateAdvert(s.PeerCount, CoopPlugin.Instance.MaxPlayers.Value, inRun, layer, HostRules.Current.Encode()); }
+            catch (Exception e) { Log.Debug("advert: " + e.Message); }
+        }
+
+        private void HandlePendingJoins()
+        {
+            if (!Lobby.Initialized || Connecting) return;
+            if (_pendingLaunchLobby != 0 && GameInfo.OnMainMenu && Coop.Session == null)
+            {
+                _pendingJoinLobby = _pendingLaunchLobby;
+                _pendingLaunchLobby = 0;
+            }
+            if (_pendingJoinLobby == 0) return;
+            ulong id = _pendingJoinLobby;
+            _pendingJoinLobby = 0;
+            if (Coop.Session != null)
+            {
+                Notice("Leave your current session before joining another.");
+                return;
+            }
+            JoinSteamLobby(id);
+        }
+
+        private bool _guiSeen;
+        private GameObject _guiHost;
+
+        /// <summary>
+        /// Unity does not call OnGUI on our HideAndDontSave runtime object, and an
+        /// ordinary object made at plugin load is destroyed with the first scene. So the
+        /// overlay lives on its own object, created once a scene is up and re-created if
+        /// anything ever destroys it.
+        /// </summary>
+        private void EnsureGuiHost()
+        {
+            if (_guiHost != null) return;
+            _guiHost = new GameObject("CasualtiesCoop.UI");
+            DontDestroyOnLoad(_guiHost);
+            _guiHost.AddComponent<CoopGui>().Runtime = this;
+        }
+
+        internal void DrawGui()
+        {
+            if (!_guiSeen)
+            {
+                _guiSeen = true;
+                Log.Info("[ui] overlay is drawing");
+            }
+            try
+            {
+                if (Coop.Session != null)
+                    foreach (var m in _modules) Safe(m.Gui, m, "gui");
+                ConditionFx.DrawFlash();
+                CoopWindow.Draw(this);
+                ConnectionBadge.Draw();
+                Notices.Draw();
+            }
+            catch (Exception e)
+            {
+                Log.Error("gui: " + e.Message);
+            }
+        }
+
+        private void OnApplicationQuit() => Leave();
+
+        internal sealed class CoopGui : MonoBehaviour
+        {
+            internal CoopRuntime Runtime;
+            private void OnGUI() => Runtime?.DrawGui();
+        }
+
+        internal static void Notice(string text) => Notices.Push(text);
+
+        private static readonly HashSet<string> Reported = new HashSet<string>();
+
+        private static void Safe(Action a, CoopModule m, string phase)
+        {
+            try { a(); }
+            catch (Exception e)
+            {
+                string key = m.GetType().Name + phase + e.GetType().Name;
+                if (Reported.Add(key)) Log.Error(m.GetType().Name + " " + phase + ": " + e);
+            }
+        }
+    }
+}

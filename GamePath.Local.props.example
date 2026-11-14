@@ -1,0 +1,17 @@
+<Project>
+
+  <!--
+    Copy this file to GamePath.Local.props (gitignored) and point GamePath at your
+    Casualties: Unknown install (the full game, Steam app 4576490) with BepInEx 5
+    installed. Only the plugin needs it; CCoop.Net and its tests build without a game.
+
+    Never copy game DLLs into the repository.
+  -->
+  <PropertyGroup>
+    <GamePath>C:\Program Files (x86)\Steam\steamapps\common\Casualties Unknown</GamePath>
+
+    <!-- true copies the build into BepInEx\plugins\CasualtiesCoop. -->
+    <DeployToGame>false</DeployToGame>
+  </PropertyGroup>
+
+</Project>

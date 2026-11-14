@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>CCoop.Core</RootNamespace>
+    <AssemblyName>CCoop.Core</AssemblyName>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CCoop.Protocol\CCoop.Protocol.csproj" />
+    <ProjectReference Include="..\CCoop.Transport\CCoop.Transport.csproj" />
+  </ItemGroup>
+
+</Project>

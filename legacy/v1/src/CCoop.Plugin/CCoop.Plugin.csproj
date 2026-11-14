@@ -1,0 +1,94 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>CCoop.Plugin</AssemblyName>
+    <RootNamespace>CCoop.Plugin</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <Target Name="CCoopCheckGamePath" BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(GameManagedPath)' == '' Or !Exists('$(GameManagedPath)')">
+    <Error Text="GamePath is not set or invalid. Copy GamePath.Local.props.example to GamePath.Local.props. (Resolved GameManagedPath='$(GameManagedPath)')" />
+  </Target>
+
+  <!-- Our own libraries: netstandard2.0, so net472 can consume them. These DO get
+       copied next to the plugin, because BepInEx resolves plugin dependencies from
+       the plugins folder. -->
+  <ItemGroup>
+    <ProjectReference Include="..\CCoop.Protocol\CCoop.Protocol.csproj" />
+    <ProjectReference Include="..\CCoop.Transport\CCoop.Transport.csproj" />
+    <ProjectReference Include="..\CCoop.Transport.LiteNetLib\CCoop.Transport.LiteNetLib.csproj" />
+    <ProjectReference Include="..\CCoop.Core\CCoop.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Game and loader assemblies are referenced in place, never copied. -->
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(GameManagedPath)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameManagedPath)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.Physics2DModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.Physics2DModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- The world is a grid of Tilemap chunks, and rebuilding a client's backdrop
+         means handing those chunks to WorldGeneration.CreateBackground. -->
+    <Reference Include="UnityEngine.TilemapModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.TilemapModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Tilemap derives from GridLayout, so its base type must resolve too. -->
+    <Reference Include="UnityEngine.GridModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.GridModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>$(GamePath)\BepInEx\core\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GamePath)\BepInEx\core\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Deploy the plugin plus its managed dependencies (including LiteNetLib). -->
+  <Target Name="DeployPlugin" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true'">
+    <ItemGroup>
+      <CCoopDeploy Include="$(TargetDir)CCoop.*.dll" />
+      <CCoopDeploy Include="$(TargetDir)LiteNetLib.dll" />
+    </ItemGroup>
+    <MakeDir Directories="$(GameBepInExPluginPath)\CCoop" />
+    <Copy SourceFiles="@(CCoopDeploy)" DestinationFolder="$(GameBepInExPluginPath)\CCoop" />
+    <Message Importance="high" Text="Deployed @(CCoopDeploy->'%(Filename)%(Extension)', ', ') -> $(GameBepInExPluginPath)\CCoop" />
+  </Target>
+
+</Project>

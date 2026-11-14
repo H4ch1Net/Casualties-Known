@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CCoop.Core/CCoop.Core.csproj" />
+    <Project Path="src/CCoop.Protocol/CCoop.Protocol.csproj" />
+    <Project Path="src/CCoop.Transport.LiteNetLib/CCoop.Transport.LiteNetLib.csproj" />
+    <Project Path="src/CCoop.Transport/CCoop.Transport.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CCoop.Protocol.Tests/CCoop.Protocol.Tests.csproj" />
+    <Project Path="tests/CCoop.Transport.Tests/CCoop.Transport.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,64 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>CCoop.Probe</AssemblyName>
+    <RootNamespace>CCoop.Probe</RootNamespace>
+    <!-- Unity/Mono loads plain assemblies; no deps.json or ref assemblies wanted. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <Target Name="CCoopCheckGamePath" BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(GameManagedPath)' == '' Or !Exists('$(GameManagedPath)')">
+    <Error Text="GamePath is not set or invalid. Copy GamePath.Local.props.example to GamePath.Local.props and point GamePath at your install. (Resolved GameManagedPath='$(GameManagedPath)')" />
+  </Target>
+
+  <!-- Game and loader assemblies are referenced in place and never copied into
+       the repo or the build output. -->
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(GameManagedPath)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameManagedPath)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Needed by the Body structural report: singleton census over cameras,
+         audio listeners, canvases and event systems. -->
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(GameManagedPath)\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>$(GamePath)\BepInEx\core\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GamePath)\BepInEx\core\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="DeployPlugin" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true'">
+    <MakeDir Directories="$(GameBepInExPluginPath)\CCoop" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameBepInExPluginPath)\CCoop" />
+    <Message Importance="high" Text="Deployed $(TargetFileName) -> $(GameBepInExPluginPath)\CCoop" />
+  </Target>
+
+</Project>

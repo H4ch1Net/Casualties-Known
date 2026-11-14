@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CCoop.Net/CCoop.Net.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CCoop.Net.Tests/CCoop.Net.Tests.csproj" />
+  </Folder>
+</Solution>

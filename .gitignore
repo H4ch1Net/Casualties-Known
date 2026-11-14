@@ -1,0 +1,35 @@
+# Build output
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Local machine-specific game path (never committed)
+GamePath.Local.props
+
+# Game files and derived artifacts MUST NEVER be committed.
+# The game assembly and any decompiled source are the developer's copyrighted
+# property. Keep them entirely outside this repository.
+Assembly-CSharp.dll
+UnityEngine*.dll
+UnityPlayer.dll
+*.decompiled.cs
+decomp/
+lib/game/
+*_Data/
+
+# Game saves
+*.savedata
+CoopSaves/
+
+# NuGet
+packages/
+*.nupkg
+
+# Test results
+TestResults/
+*.trx
+
+# Packaged releases
+dist/

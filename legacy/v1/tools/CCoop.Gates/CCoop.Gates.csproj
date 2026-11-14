@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>CCoop.Gates</AssemblyName>
+    <RootNamespace>CCoop.Gates</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <Target Name="CCoopCheckGamePath" BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(GameManagedPath)' == '' Or !Exists('$(GameManagedPath)')">
+    <Error Text="GamePath is not set or invalid. Copy GamePath.Local.props.example to GamePath.Local.props. (Resolved GameManagedPath='$(GameManagedPath)')" />
+  </Target>
+
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(GameManagedPath)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameManagedPath)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- The game is 2D: Rigidbody2D/Collider2D/Joint2D/Physics2D live here. -->
+    <Reference Include="UnityEngine.Physics2DModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.Physics2DModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>$(GamePath)\BepInEx\core\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GamePath)\BepInEx\core\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="DeployPlugin" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true'">
+    <MakeDir Directories="$(GameBepInExPluginPath)\CCoop" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameBepInExPluginPath)\CCoop" />
+    <Message Importance="high" Text="Deployed $(TargetFileName) -> $(GameBepInExPluginPath)\CCoop" />
+  </Target>
+
+</Project>

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- netstandard2.0 so the same assembly loads under Unity's Mono (net472)
+         and under net8.0 test hosts. Deliberately dependency-free: this project
+         must build in CI with no game install and no NuGet packages. -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>CCoop.Protocol</RootNamespace>
+    <AssemblyName>CCoop.Protocol</AssemblyName>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>
