@@ -139,7 +139,7 @@ namespace CCoop.Plugin.Runtime
         /// <summary>Host: last word on who gets in, with the transport-verified address.</summary>
         private static string Admission(Hello hello, string address)
         {
-            if (BanList.IsBanned(address)) return "You are banned from this host's sessions.";
+            if (BanList.IsBanned(address)) return Lang.N("You are banned from this host's sessions.");
             return null;
         }
 
@@ -371,9 +371,16 @@ namespace CCoop.Plugin.Runtime
             if (s == null || !s.IsHost || !s.TryGetPeer(peer, out var p)) return;
             if (string.IsNullOrEmpty(p.Address)) { Notice(Lang.F("Cannot ban {0}: no verified address.", p.Name)); return; }
             BanList.Ban(p.Address, p.Name);
-            s.Kick(peer, "Banned by the host.");
+            s.Kick(peer, Lang.N("Banned by the host."));
             Notice(Lang.F("{0} was banned", p.Name));
         }
+
+        /// <summary>The session layer's refusals, English on the wire, translated where shown (they're listed here for the translation template).</summary>
+        private static readonly string[] SessionReasons =
+        {
+            Lang.N("Wrong password."), Lang.N("The session is full."), Lang.N("left the session"),
+            Lang.N("Your game version differs from the host's. Both players must be on the same Steam build."),
+        };
 
         internal void Leave()
         {
@@ -494,7 +501,7 @@ namespace CCoop.Plugin.Runtime
             _nextAdvert = now + 2f;
             var w = WorldGeneration.world;
             bool inRun = GameInfo.InRunScene && w != null;
-            string layer = inRun ? "Layer " + (w.biomeDepth + 1) : "";
+            string layer = inRun ? (w.biomeDepth + 1).ToString() : "";  // a number: each browser words it in its own language
             try { Lobby.UpdateAdvert(s.PeerCount, CoopPlugin.Instance.MaxPlayers.Value, inRun, layer, HostRules.Current.Encode()); }
             catch (Exception e) { Log.Debug("advert: " + e.Message); }
         }

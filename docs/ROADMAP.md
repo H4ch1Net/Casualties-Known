@@ -310,7 +310,7 @@ The game saves only the player: inventory, `[Saveable]` body state, recipes and 
   - Creatures now go through the host too, which passes each player only the creatures within 120 m of them (the dead get all, since they may be watching anyone).
   - Each player's frame rate is shown in the player list (sent with the profile). Clients see a warning when the host's game drops below 20 fps, and the host sees one about its own, since everyone's world goes through it.
   - Items in flight likewise go only to players within 80 m; where an item comes to rest is still sent to everyone.
-  - Still open: the host doing less (fewer creatures simulated, slower streams) when it is the slow one.
+  - A machine running below 20 fps counts as 15 m farther from every creature when the host hands creatures out, so a teammate nearby takes them over and a slow host does less.
 - [x] **S** **Linux / Proton / Steam Deck notes.** Document `WINEDLLOVERRIDES="winhttp=n,b" %command%`.
 - [x] **S** **Unicode Steam names** (CJK) in the IMGUI font.
 - [~] **S** Ask Orsoniks for permission, Workshop support and rich-presence tokens. (Permission given in November 2026, on the condition that the mod is never sold. Workshop and rich-presence tokens not asked yet.)

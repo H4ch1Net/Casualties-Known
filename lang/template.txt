@@ -6,6 +6,8 @@
 # or in the game's data folder under CasualtiesCoop/lang/.
 
 # Runtime/CoopRuntime.cs
+You are banned from this host's sessions.
+= 
 Steam is not running. Start the game from Steam, or use LAN/IP.
 = 
 Creating Steam lobby...
@@ -38,11 +40,23 @@ Connected as {0}.
 = 
 {0} left
 = 
+The host ended the session
+= 
 Lost the host. Reconnecting...
 = 
 Cannot ban {0}: no verified address.
 = 
+Banned by the host.
+= 
 {0} was banned
+= 
+Wrong password.
+= 
+The session is full.
+= 
+left the session
+= 
+Your game version differs from the host's. Both players must be on the same Steam build.
 = 
 Could not reach the host again
 = 
@@ -108,6 +122,8 @@ Time speeds up only once every living player is asleep or out cold.
 = 
 
 # Sync/CoopSaves.cs
+Your character is saved. To carry on together, host from the co-op window: this run is picked, and the others get their own characters back.
+= 
 That save is gone.
 = 
 
@@ -398,6 +414,8 @@ Co-op milestone: {0}
 = 
 
 # Sync/PlayerSync.cs
+Your Steam identity did not match your connection.
+= 
 {0} has reached an ending; the run goes on until you finish too
 = 
 {0} has reached an ending
@@ -843,6 +861,8 @@ host
 Check
 = 
 Kick
+= 
+Kicked by the host.
 = 
 Ban
 = 

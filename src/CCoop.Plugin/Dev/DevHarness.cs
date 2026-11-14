@@ -40,6 +40,10 @@ namespace CCoop.Plugin.Dev
         /// <summary>This test instance's starting role (host / join), or empty outside tests.</summary>
         internal static readonly string AutostartRole = Env("CCOOP_AUTOSTART");
 
+        /// <summary>CCOOP_FPS=n: this test instance runs at n frames a second (a slow machine).</summary>
+        private static readonly int FpsCap = int.TryParse(Env("CCOOP_FPS"), out var fps) ? fps : 0;
+        private bool _fpsCapped;
+
         /// <summary>CCOOP_HANDOVER=1: the host ends the session mid-run and the client carries the run on as host.</summary>
         private readonly bool _handover = Env("CCOOP_HANDOVER") == "1";
         private readonly bool _autorun = Env("CCOOP_AUTORUN") == "1";
@@ -136,6 +140,13 @@ namespace CCoop.Plugin.Dev
             }
             PollTrigger();
             if (_handover) HandoverTest();  // here: it carries on between sessions
+            if (FpsCap > 0 && !_fpsCapped && Coop.WorldLive)
+            {
+                _fpsCapped = true;
+                QualitySettings.vSyncCount = 0;
+                Application.targetFrameRate = FpsCap;
+                Log.Info("DEV this instance now runs at " + FpsCap + " fps");
+            }
         }
 
         // CCOOP_SHOTS=<dir>: capture the co-op window's screens for layout review.

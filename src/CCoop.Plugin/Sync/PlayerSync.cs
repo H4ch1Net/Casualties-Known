@@ -96,7 +96,7 @@ namespace CCoop.Plugin.Sync
                 if (m.SteamId != 0 && m.SteamId != verified)
                 {
                     Log.Warn("[identity] " + peer.Name + " claimed Steam id " + m.SteamId + " but connected as " + verified);
-                    Session.Kick(origin, "Your Steam identity did not match your connection.");
+                    Session.Kick(origin, Lang.N("Your Steam identity did not match your connection."));
                     return;
                 }
                 m.SteamId = verified;

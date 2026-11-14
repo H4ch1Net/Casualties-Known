@@ -450,7 +450,8 @@ namespace CCoop.Plugin.UI
             AvatarBox(l.HostId, 36);
             GUILayout.BeginVertical();
             GUILayout.Label(l.Host + (l.Locked ? "  [" + Lang.T("password") + "]" : ""), GUILayout.Width(220));
-            string where = l.InRun ? (string.IsNullOrEmpty(l.Layer) ? Lang.T("In a run") : l.Layer) : Lang.T("In the menu");
+            // The advert carries the layer number (older builds sent "Layer 5").
+            string where = l.InRun ? (string.IsNullOrEmpty(l.Layer) ? Lang.T("In a run") : int.TryParse(l.Layer, out var depth) ? Lang.F("Layer {0}", depth) : l.Layer) : Lang.T("In the menu");
             string sub = where + " · " + Lang.F("{0}/{1} players", l.Players, l.Max);
             if (l.ViaFriend && !string.IsNullOrEmpty(l.FriendName) && l.FriendName != l.Host) sub += " · " + Lang.F("with {0}", l.FriendName);
             GUILayout.Label(sub, _small, GUILayout.Width(220));
@@ -713,7 +714,7 @@ namespace CCoop.Plugin.UI
             if (!me && Coop.WorldLive && rec.HasPosition && GUILayout.Button(Lang.T("Check"), GUILayout.Width(52))) TeammatePanel.Open(p.Id);
             if (s.IsHost && !me)
             {
-                if (GUILayout.Button(Lang.T("Kick"), GUILayout.Width(42))) s.Kick(p.Id, "Kicked by the host.");
+                if (GUILayout.Button(Lang.T("Kick"), GUILayout.Width(42))) s.Kick(p.Id, Lang.N("Kicked by the host."));
                 bool was = GUI.enabled;
                 GUI.enabled = was && !string.IsNullOrEmpty(p.Address);
                 if (GUILayout.Button(Lang.T("Ban"), GUILayout.Width(40))) rt.Ban(p.Id);

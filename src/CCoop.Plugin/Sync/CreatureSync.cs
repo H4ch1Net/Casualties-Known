@@ -139,7 +139,7 @@ namespace CCoop.Plugin.Sync
                 float bestDist = float.MaxValue;
                 foreach (var kv in players)
                 {
-                    float d = Vector2.Distance(p, kv.Value);
+                    float d = Vector2.Distance(p, kv.Value) + Slowness(kv.Key);
                     if (kv.Key == current) currentDist = d;
                     if (d < bestDist) { bestDist = d; best = kv.Key; }
                 }
@@ -154,6 +154,19 @@ namespace CCoop.Plugin.Sync
                 if (changes.Owners.Count >= CreatureOwners.Max) { WorldNet.Publish(changes); changes = new CreatureOwners(); }
             }
             if (changes.Owners.Count > 0) WorldNet.Publish(changes);
+        }
+
+        /// <summary>
+        /// A machine running below 20 fps counts as this much farther from every creature,
+        /// so a teammate nearby takes them over: a slow host does less (M7). Equal for
+        /// everyone when everyone is slow.
+        /// </summary>
+        private const float SlowPenalty = 15f;
+
+        private static float Slowness(byte id)
+        {
+            int fps = id == Coop.LocalId ? Mathf.RoundToInt(PlayerSync.LocalFps) : Coop.Player(id).Fps;
+            return fps > 0 && fps < UI.ConnectionBadge.SlowFps ? SlowPenalty : 0f;
         }
 
         private void SetOwner(uint id, byte owner)
