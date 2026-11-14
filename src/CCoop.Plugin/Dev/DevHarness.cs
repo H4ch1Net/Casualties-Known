@@ -62,6 +62,9 @@ namespace CCoop.Plugin.Dev
 
         internal static readonly int StartLayer = int.TryParse(Env("CCOOP_STARTDEPTH"), out var d) ? d : 0;
 
+        /// <summary>CCOOP_PRESET=&lt;name&gt;: the host applies this co-op run preset on the pre-run screen before the run.</summary>
+        internal static readonly string PresetOverride = Env("CCOOP_PRESET");
+
         private bool _started, _ranRun, _dumped;
         private float _startAt = -1f;
         private int _stage;
@@ -211,6 +214,13 @@ namespace CCoop.Plugin.Dev
             {
                 _ranRun = true;
                 Log.Info("DEV autorun: starting a run");
+                if (!string.IsNullOrEmpty(PresetOverride))
+                {
+                    UI.RunPresets.Preset pick = null;
+                    foreach (var p in UI.RunPresets.All())
+                        if (p.Name.ToLowerInvariant() == PresetOverride) pick = p;
+                    Log.Info("DEV host picks the run preset " + PresetOverride + ": " + (pick != null && UI.RunPresets.Apply(pick) ? "applied, matching " + UI.RunPresets.Matching() : "not applied"));
+                }
                 SaveSystem.loadedRun = false;
                 WorldGeneration.runSettings = PreRunScript.instance.runSettings;
                 PreRunScript.instance.StartCoroutine(PreRunScript.instance.WaitLoad());

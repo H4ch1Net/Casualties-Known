@@ -39,6 +39,8 @@ param(
     [int]$StartLayer = 0,
     # Host forces this layer modifier (its index in the game's list, e.g. 11 = Turbulent).
     [int]$Modifier = -1,
+    # Host applies this co-op run preset (by name, e.g. "Long haul") before the run.
+    [string]$Preset = '',
     [int]$StaggerSeconds = 6
 )
 
@@ -60,6 +62,7 @@ for ($i = 1; $i -le $Count; $i++) {
     $env:CCOOP_DUMP = if ($Dump) { '1' } else { '' }
     $env:CCOOP_STARTDEPTH = if ($StartLayer -gt 0 -and $i -eq 1) { "$StartLayer" } else { '' }
     $env:CCOOP_MODIFIER = if ($Modifier -ge 0 -and $i -eq 1) { "$Modifier" } else { '' }
+    $env:CCOOP_PRESET = if ($Preset -and $i -eq 1) { $Preset } else { '' }
     if ($Steam -and $i -eq 1) {
         $env:CCOOP_AUTOSTART = 'steamhost'
         $env:SteamAppId = '4576490'
@@ -71,7 +74,7 @@ for ($i = 1; $i -le $Count; $i++) {
     Write-Host ("instance {0} ({1}) pid {2}" -f $i, $env:CCOOP_AUTOSTART, $p.Id)
     if ($i -lt $Count) { Start-Sleep -Seconds $StaggerSeconds }
 }
-Remove-Item Env:CCOOP_AUTOSTART, Env:CCOOP_AUTORUN, Env:CCOOP_SELFTEST, Env:CCOOP_DUMP, Env:CCOOP_STARTDEPTH, Env:CCOOP_MODIFIER, Env:SteamAppId, Env:SteamGameId -ErrorAction SilentlyContinue
+Remove-Item Env:CCOOP_AUTOSTART, Env:CCOOP_AUTORUN, Env:CCOOP_SELFTEST, Env:CCOOP_DUMP, Env:CCOOP_STARTDEPTH, Env:CCOOP_MODIFIER, Env:CCOOP_PRESET, Env:SteamAppId, Env:SteamGameId -ErrorAction SilentlyContinue
 
 $logs = Join-Path $env:USERPROFILE 'AppData\LocalLow\Orsoniks\CasualtiesUnknown\CasualtiesCoop'
 Write-Host "Per-instance logs: $logs"
