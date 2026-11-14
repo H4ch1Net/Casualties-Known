@@ -4,6 +4,7 @@ using CCoop.Plugin.Protocol;
 using CCoop.Plugin.Runtime;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -68,7 +69,7 @@ namespace CCoop.Plugin.Sync
         {
             if (!Coop.InSession || SaveGate.Allowed) return true;
             Log.Info("[save] blocked during a co-op session");
-            CoopRuntime.Notice("Saving is disabled during co-op");
+            CoopRuntime.Notice(Lang.T("Saving is disabled during co-op"));
             return false;
         }
     }

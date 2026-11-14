@@ -88,7 +88,7 @@ namespace CCoop.Plugin.Sync
                 return HostEvaluate(true);
             }
             Session.SendToHost(new LayerRequest { Twice = twice });
-            if (fresh) CoopRuntime.Notice(twice ? "Waiting for everyone to get into the drill pod" : "Waiting for the team at the exit");
+            if (fresh) CoopRuntime.Notice(twice ? Lang.T("Waiting for everyone to get into the drill pod") : Lang.T("Waiting for the team at the exit"));
             return false;
         }
 
@@ -274,23 +274,24 @@ namespace CCoop.Plugin.Sync
             string top, bottom;
             if (st.Pod)
             {
-                top = mine ? "In the drill pod: " + st.Inside + " of " + st.Living + " inside" : Names(st.Voters) + " wants to drill down";
-                bottom = "Everyone alive must crouch in the drill pod.";
+                top = mine ? Lang.F("In the drill pod: {0} of {1} inside", st.Inside, st.Living) : Lang.F("{0} wants to drill down", Names(st.Voters));
+                bottom = Lang.T("Everyone alive must crouch in the drill pod.");
             }
             else
             {
-                top = mine ? "Waiting at the exit: " + st.Voters.Count + " of " + st.Needed + " needed"
-                           : Names(st.Voters) + (st.Voters.Count == 1 ? " is" : " are") + " waiting at the exit (" + st.Voters.Count + " of " + st.Needed + " needed)";
-                bottom = mine ? "Walk away from the exit to cancel." : "Head down and continue at the exit to go with them. The rest are brought along.";
+                top = mine ? Lang.F("Waiting at the exit: {0} of {1} needed", st.Voters.Count, st.Needed)
+                           : st.Voters.Count == 1 ? Lang.F("{0} is waiting at the exit ({1} of {2} needed)", Names(st.Voters), st.Voters.Count, st.Needed)
+                           : Lang.F("{0} are waiting at the exit ({1} of {2} needed)", Names(st.Voters), st.Voters.Count, st.Needed);
+                bottom = mine ? Lang.T("Walk away from the exit to cancel.") : Lang.T("Head down and continue at the exit to go with them. The rest are brought along.");
             }
-            if (!string.IsNullOrEmpty(st.Loading)) bottom = "Waiting for " + st.Loading + " to finish loading this layer.";
+            if (!string.IsNullOrEmpty(st.Loading)) bottom = Lang.F("Waiting for {0} to finish loading this layer.", st.Loading);
             Overlay.Bottom(top, bottom, 1);
         }
 
         private static string Names(List<byte> ids)
         {
             var names = new List<string>();
-            foreach (var id in ids) names.Add(id == Coop.LocalId ? "You" : Coop.Player(id).Name);
+            foreach (var id in ids) names.Add(id == Coop.LocalId ? Lang.T("You") : Coop.Player(id).Name);
             return string.Join(", ", names.ToArray());
         }
     }

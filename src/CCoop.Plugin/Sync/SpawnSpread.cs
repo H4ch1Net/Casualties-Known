@@ -3,6 +3,7 @@ using CCoop.Net.Session;
 using CCoop.Plugin.Protocol;
 using CCoop.Plugin.Runtime;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -85,7 +86,7 @@ namespace CCoop.Plugin.Sync
         {
             if (Coop.IsHost || GameInfo.LocalBody == null) return;
             BodyFreeze.PlaceAt(new Vector2(m.X, m.Y));
-            CoopRuntime.Notice("You've come down apart from the others. Find them!");
+            CoopRuntime.Notice(Lang.T("You've come down apart from the others. Find them!"));
             Log.Info("[spawn] starting apart at " + new Vector2(m.X, m.Y).ToString("F0"));
         }
     }

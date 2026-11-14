@@ -7,6 +7,7 @@ using CCoop.Plugin.Runtime;
 using CCoop.Plugin.World;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -68,7 +69,7 @@ namespace CCoop.Plugin.Sync
             var mg = MinigameBase.main;
             var body = GameInfo.LocalBody;
             if (mg == null || body == null || body.limbs == null || limbIndex < 0 || limbIndex >= body.limbs.Length) return;
-            if (_active != null || mg.currentMinigame != null) { CoopRuntime.Notice("Finish what you're doing first."); return; }
+            if (_active != null || mg.currentMinigame != null) { CoopRuntime.Notice(Lang.T("Finish what you're doing first.")); return; }
             var v = Coop.Get<VitalsSync>()?.Of(patient);
             if (v == null || limbIndex >= v.Limbs.Count) return;
 
@@ -167,10 +168,10 @@ namespace CCoop.Plugin.Sync
             {
                 if (m.Text == "minigame") return;
                 MinigameBase.main?.EndMinigame();
-                End(Coop.Player(origin).Name + ": " + m.Text);
+                End(Lang.F("{0}: {1}", Coop.Player(origin).Name, Lang.Unpack(m.Text)));
                 return;
             }
-            if (!string.IsNullOrEmpty(m.Text)) CoopRuntime.Notice(m.Text);
+            if (!string.IsNullOrEmpty(m.Text)) CoopRuntime.Notice(Lang.Unpack(m.Text));
             if (s.Item == null) return;
             if (m.Consumed)
             {

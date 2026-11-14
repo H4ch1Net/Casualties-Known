@@ -7,6 +7,7 @@ using CCoop.Plugin.Protocol;
 using CCoop.Plugin.Runtime;
 using CCoop.Plugin.World;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -344,7 +345,7 @@ namespace CCoop.Plugin.Sync
             if (!ok)
             {
                 Log.Error("[layer] could not apply the host's world: " + detail);
-                CoopRuntime.Notice("Could not load the host's world: " + detail);
+                CoopRuntime.Notice(Lang.F("Could not load the host's world: {0}", detail));
                 BodyFreeze.Set(false);
             }
             else

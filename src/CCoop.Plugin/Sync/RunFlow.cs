@@ -7,6 +7,7 @@ using CCoop.Plugin.Runtime;
 using CCoop.Plugin.World;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -67,16 +68,16 @@ namespace CCoop.Plugin.Sync
             if (Coop.Session == null) return "";
             if (Coop.IsHost)
             {
-                if (!GameInfo.InRunScene) return "In the menu. Start a run when everyone has joined.";
+                if (!GameInfo.InRunScene) return Lang.T("In the menu. Start a run when everyone has joined.");
                 var w = WorldGeneration.world;
-                return Coop.WorldLive ? "Layer " + (w.biomeDepth + 1) + " · players join straight into your run" : "Building the layer...";
+                return Coop.WorldLive ? Lang.F("Layer {0} · players join straight into your run", w.biomeDepth + 1) : Lang.T("Building the layer...");
             }
-            if (!Coop.InSession) return "Handshaking...";
-            if (!HostInRun) return "Waiting for the host to start a run.";
-            if (GameInfo.OnMainMenu) return "The host is in a run.";
-            if (Coop.WorldLive) return "Layer " + (WorldGeneration.world.biomeDepth + 1);
-            if (LayerSync.Applying) return "Receiving the host's world... " + Mathf.RoundToInt(LayerSync.Progress * 100f) + "%";
-            return "Loading the layer...";
+            if (!Coop.InSession) return Lang.T("Handshaking...");
+            if (!HostInRun) return Lang.T("Waiting for the host to start a run.");
+            if (GameInfo.OnMainMenu) return Lang.T("The host is in a run.");
+            if (Coop.WorldLive) return Lang.F("Layer {0}", WorldGeneration.world.biomeDepth + 1);
+            if (LayerSync.Applying) return Lang.F("Receiving the host's world... {0}%", Mathf.RoundToInt(LayerSync.Progress * 100f));
+            return Lang.T("Loading the layer...");
         }
 
         // ------------------------------------------------------------------ host
@@ -152,15 +153,15 @@ namespace CCoop.Plugin.Sync
                     rec.InWorld = false;
                     rec.WorldEpoch = 0;
                     rec.WaitingForEpoch = 0;
-                    rec.Status = "menu";
+                    rec.Status = Lang.N("menu");
                     break;
                 case LayerPhase.Loading:
                     rec.InWorld = false;
-                    rec.Status = "loading";
+                    rec.Status = Lang.N("loading");
                     break;
                 case LayerPhase.Waiting:
                     rec.InWorld = false;
-                    rec.Status = "loading";
+                    rec.Status = Lang.N("loading");
                     if (m.Epoch == Coop.Epoch && Coop.WorldLive) Coop.Get<LayerSync>().SendSnapshot(origin);
                     else rec.WaitingForEpoch = m.Epoch;
                     break;
@@ -173,7 +174,7 @@ namespace CCoop.Plugin.Sync
                     break;
                 case LayerPhase.Failed:
                     rec.InWorld = false;
-                    rec.Status = "failed";
+                    rec.Status = Lang.N("failed");
                     Log.Warn("[run] " + rec.Name + " could not load the layer: " + m.Detail);
                     break;
             }
@@ -192,7 +193,7 @@ namespace CCoop.Plugin.Sync
 
             if (!m.InRun && hostWasInRun && GameInfo.InRunScene)
             {
-                CoopRuntime.Notice("The host left the run");
+                CoopRuntime.Notice(Lang.T("The host left the run"));
                 ReturnToMenu();
             }
         }
@@ -226,7 +227,7 @@ namespace CCoop.Plugin.Sync
                 if (saved >= 0)
                 {
                     PreRunScript.characterSelected = saved;
-                    CoopRuntime.Notice("Welcome back: your character from this run is restored");
+                    CoopRuntime.Notice(Lang.T("Welcome back: your character from this run is restored"));
                 }
                 Log.Info("[run] joining the host's run on layer " + (TargetDepth + 1) + " as " + GameInfo.CharacterName(PreRunScript.characterSelected));
                 pre.StartCoroutine(pre.WaitLoad());
@@ -235,7 +236,7 @@ namespace CCoop.Plugin.Sync
             catch (Exception e)
             {
                 Log.Error("[run] could not start the run: " + e);
-                CoopRuntime.Notice("Could not join the run: " + e.Message);
+                CoopRuntime.Notice(Lang.F("Could not join the run: {0}", e.Message));
             }
         }
 

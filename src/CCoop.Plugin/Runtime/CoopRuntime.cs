@@ -147,9 +147,9 @@ namespace CCoop.Plugin.Runtime
         internal void HostSteam(string lobbyType = null)
         {
             if (Coop.Session != null || Connecting) return;
-            if (!GameInfo.SteamReady) { LastMessage = "Steam is not running. Start the game from Steam, or use LAN/IP."; return; }
+            if (!GameInfo.SteamReady) { LastMessage = Lang.N("Steam is not running. Start the game from Steam, or use LAN/IP."); return; }
             Connecting = true;
-            LastMessage = "Creating Steam lobby...";
+            LastMessage = Lang.N("Creating Steam lobby...");
             int max = CoopPlugin.Instance.MaxPlayers.Value;
             bool locked = !string.IsNullOrEmpty(CoopPlugin.Instance.HostPassword.Value);
             Lobby.Create(lobbyType ?? CoopPlugin.Instance.LobbyType.Value, max, locked, (ok, error) =>
@@ -162,13 +162,13 @@ namespace CCoop.Plugin.Runtime
                     t.StartHost(NetSession.MaxPeers + 1);
                     Begin(NetSession.CreateHost(t, CoopProtocol.Build(), Config(true)), "Steam");
                     _nextAdvert = 0;
-                    LastMessage = "Hosting. Invite friends from the co-op menu or the Steam overlay.";
+                    LastMessage = Lang.N("Hosting. Invite friends from the co-op menu or the Steam overlay.");
                 }
                 catch (Exception e)
                 {
                     Lobby.Leave();
-                    LastMessage = "Could not host: " + e.Message;
-                    Log.Error(LastMessage);
+                    LastMessage = Lang.Pack("Could not host: {0}", e.Message);
+                    Log.Error(Lang.Plain(LastMessage));
                 }
             });
         }
@@ -182,12 +182,12 @@ namespace CCoop.Plugin.Runtime
                 int port = CoopPlugin.Instance.Port.Value;
                 t.StartHost(port, NetSession.MaxPeers + 1);
                 Begin(NetSession.CreateHost(t, CoopProtocol.Build(), Config(true)), "LAN/IP");
-                LastMessage = "Hosting on UDP port " + port + ". Others join with your IP address.";
+                LastMessage = Lang.Pack("Hosting on UDP port {0}. Others join with your IP address.", port);
             }
             catch (Exception e)
             {
-                LastMessage = "Could not host: " + e.Message;
-                Log.Error(LastMessage);
+                LastMessage = Lang.Pack("Could not host: {0}", e.Message);
+                Log.Error(Lang.Plain(LastMessage));
             }
         }
 
@@ -200,7 +200,7 @@ namespace CCoop.Plugin.Runtime
             int port = CoopPlugin.Instance.Port.Value;
             int colon = host.LastIndexOf(':');
             if (colon > 0 && int.TryParse(host.Substring(colon + 1), out var p)) { port = p; host = host.Substring(0, colon); }
-            if (host.Length == 0) { LastMessage = "Enter the host's address."; return; }
+            if (host.Length == 0) { LastMessage = Lang.N("Enter the host's address."); return; }
             _lastLanAddress = address.Trim();
             try
             {
@@ -208,12 +208,12 @@ namespace CCoop.Plugin.Runtime
                 var t = new LiteNetTransport();
                 t.StartClient(host, port);
                 Begin(NetSession.CreateClient(t, CoopProtocol.Build(), Config(false)), "LAN/IP");
-                LastMessage = "Connecting to " + host + ":" + port + "...";
+                LastMessage = Lang.Pack("Connecting to {0}:{1}...", host, port);
             }
             catch (Exception e)
             {
-                LastMessage = "Could not join: " + e.Message;
-                Log.Error(LastMessage);
+                LastMessage = Lang.Pack("Could not join: {0}", e.Message);
+                Log.Error(Lang.Plain(LastMessage));
             }
         }
 
@@ -226,18 +226,18 @@ namespace CCoop.Plugin.Runtime
             if (Coop.Session != null || Connecting) return;
             Connecting = true;
             PasswordPrompt = null;
-            LastMessage = "Joining Steam lobby...";
+            LastMessage = Lang.N("Joining Steam lobby...");
             Lobby.Join(lobby, (ok, info, error) =>
             {
                 Connecting = false;
-                if (!ok) { LastMessage = "Could not join: " + error; Log.Warn("[steam] " + LastMessage); return; }
+                if (!ok) { LastMessage = Lang.Pack("Could not join: {0}", error); Log.Warn("[steam] could not join: " + error); return; }
                 ulong owner = info.HostId;
-                if (owner == GameInfo.SteamId) { Lobby.Leave(); LastMessage = "That is your own lobby."; return; }
+                if (owner == GameInfo.SteamId) { Lobby.Leave(); LastMessage = Lang.N("That is your own lobby."); return; }
                 if (info.Locked && password == null)
                 {
                     Lobby.Leave();
                     PasswordPrompt = info;
-                    LastMessage = info.Host + "'s session needs a password.";
+                    LastMessage = Lang.Pack("{0}'s session needs a password.", info.Host);
                     CoopWindow.Show();
                     return;
                 }
@@ -248,13 +248,13 @@ namespace CCoop.Plugin.Runtime
                     var t = new SteamTransport();
                     t.Connect(owner);
                     Begin(NetSession.CreateClient(t, CoopProtocol.Build(), Config(false)), "Steam");
-                    LastMessage = "Connecting to the host...";
+                    LastMessage = Lang.N("Connecting to the host...");
                 }
                 catch (Exception e)
                 {
                     Lobby.Leave();
-                    LastMessage = "Could not join: " + e.Message;
-                    Log.Error(LastMessage);
+                    LastMessage = Lang.Pack("Could not join: {0}", e.Message);
+                    Log.Error(Lang.Plain(LastMessage));
                 }
             });
         }
@@ -290,12 +290,12 @@ namespace CCoop.Plugin.Runtime
             if (_reconnect != null)
             {
                 Log.Info("[session] reconnected after " + _reconnect.Attempts + " attempt(s)");
-                Notice("Reconnected");
+                Notice(Lang.T("Reconnected"));
                 _reconnect = null;
             }
             var me = Coop.Player(s.LocalId);
             me.Name = s.LocalPeer?.Name ?? GameInfo.PlayerName;
-            if (!s.IsHost) LastMessage = "Connected as " + me.Name + ".";
+            if (!s.IsHost) LastMessage = Lang.Pack("Connected as {0}.", me.Name);
             Log.Info("[session] established; local peer " + s.LocalId);
         }
 
@@ -304,14 +304,14 @@ namespace CCoop.Plugin.Runtime
             var rec = Coop.Player(p.Id);
             rec.Name = p.Name;
             Log.Info("[session] " + p.Name + " joined");
-            Notice(p.Name + " joined");
+            Notice(Lang.F("{0} joined", p.Name));
             foreach (var m in _modules) Safe(() => m.OnPeerJoined(p), m, "join");
         }
 
         private void OnPeerLeft(PeerInfo p, string reason)
         {
             Log.Info("[session] " + p.Name + " left (" + reason + ")");
-            Notice(p.Name + " left");
+            Notice(Lang.F("{0} left", p.Name));
             foreach (var m in _modules) Safe(() => m.OnPeerLeft(p), m, "leave");
             Coop.Players.Remove(p.Id);
         }
@@ -341,7 +341,7 @@ namespace CCoop.Plugin.Runtime
             if (target != null && (target.Address != null || target.Lobby != 0))
             {
                 _reconnect = target;
-                Notice("Lost the host. Reconnecting...");
+                Notice(Lang.T("Lost the host. Reconnecting..."));
                 Log.Info("[session] lost the host; reconnecting for " + (int)ReconnectWindow + " s");
                 if (inRun) RunFlow.ReturnToMenu();
             }
@@ -357,10 +357,10 @@ namespace CCoop.Plugin.Runtime
         {
             var s = Coop.Session;
             if (s == null || !s.IsHost || !s.TryGetPeer(peer, out var p)) return;
-            if (string.IsNullOrEmpty(p.Address)) { Notice("Cannot ban " + p.Name + ": no verified address."); return; }
+            if (string.IsNullOrEmpty(p.Address)) { Notice(Lang.F("Cannot ban {0}: no verified address.", p.Name)); return; }
             BanList.Ban(p.Address, p.Name);
             s.Kick(peer, "Banned by the host.");
-            Notice(p.Name + " was banned");
+            Notice(Lang.F("{0} was banned", p.Name));
         }
 
         internal void Leave()
@@ -440,7 +440,7 @@ namespace CCoop.Plugin.Runtime
             if (now > r.Until)
             {
                 _reconnect = null;
-                Notice("Could not reach the host again");
+                Notice(Lang.T("Could not reach the host again"));
                 Log.Info("[session] gave up reconnecting after " + r.Attempts + " attempt(s)");
                 return;
             }
@@ -499,7 +499,7 @@ namespace CCoop.Plugin.Runtime
             _pendingJoinLobby = 0;
             if (Coop.Session != null)
             {
-                Notice("Leave your current session before joining another.");
+                Notice(Lang.T("Leave your current session before joining another."));
                 return;
             }
             JoinSteamLobby(id);

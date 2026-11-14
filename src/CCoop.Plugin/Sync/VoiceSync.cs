@@ -6,6 +6,7 @@ using CCoop.Plugin.Protocol;
 using CCoop.Plugin.Runtime;
 using Steamworks;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -181,7 +182,7 @@ namespace CCoop.Plugin.Sync
             var old = GUI.color;
             GUI.color = speaking ? new Color(0.6f, 1f, 0.6f) : new Color(1f, 0.6f, 0.5f);
             GUI.Box(new Rect(Screen.width - 230, Screen.height - 120, 220, 26),
-                    speaking ? (Mode == "Open" ? "Open mic" : "Talking") : "You can't speak while unconscious", _mic);
+                    speaking ? (Mode == "Open" ? Lang.T("Open mic") : Lang.T("Talking")) : Lang.T("You can't speak while unconscious"), _mic);
             GUI.color = old;
         }
 

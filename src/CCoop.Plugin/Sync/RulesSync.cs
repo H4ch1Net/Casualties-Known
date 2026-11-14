@@ -2,6 +2,7 @@ using CCoop.Net.Session;
 using CCoop.Plugin.Protocol;
 using CCoop.Plugin.Runtime;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -30,8 +31,8 @@ namespace CCoop.Plugin.Sync
         /// <summary>0: enemies as the run settings say; 1: tougher with more players; 2: much tougher.</summary>
         public byte DangerScale;
 
-        internal static readonly string[] LootNames = { "Shared", "More for more players" };
-        internal static readonly string[] DangerNames = { "As set", "Tougher", "Much tougher" };
+        internal static readonly string[] LootNames = { Lang.N("Shared"), Lang.N("More for more players") };
+        internal static readonly string[] DangerNames = { Lang.N("As set"), Lang.N("Tougher"), Lang.N("Much tougher") };
 
         /// <summary>Layer loot density multiplier for this many players.</summary>
         internal float LootFactor(int players) => LootScale == 0 ? 1f : 1f + 0.35f * Mathf.Max(0, players - 1);
@@ -45,7 +46,7 @@ namespace CCoop.Plugin.Sync
         // ---- difficulty presets: they set the co-op rules only (the game's own run
         // settings stay the game's difficulty)
 
-        internal static readonly string[] PresetNames = { "Friendly", "Standard", "Hard", "Brutal" };
+        internal static readonly string[] PresetNames = { Lang.N("Friendly"), Lang.N("Standard"), Lang.N("Hard"), Lang.N("Brutal") };
 
         private static readonly HostRules[] Presets =
         {
@@ -71,7 +72,7 @@ namespace CCoop.Plugin.Sync
             }
         }
 
-        internal string PresetName => Preset >= 0 ? PresetNames[Preset] : "Custom";
+        internal string PresetName => Preset >= 0 ? PresetNames[Preset] : Lang.N("Custom");
 
         /// <summary>Host: writes a preset's rules into the config (the window and RulesSync pick them up).</summary>
         internal static void ApplyPreset(int index)
@@ -133,6 +134,30 @@ namespace CCoop.Plugin.Sync
             (Arrows ? "" : " · no arrows") + (NameTags ? "" : " · no name tags") + (SpawnApart ? " · spawn apart" : "") +
             (VoicePercent < 100 ? " · voices carry " + VoicePercent + "%" : "") + (FriendlyFire ? " · friendly fire" : "") +
             (LootScale > 0 ? " · more loot for more players" : "") + (DangerScale > 0 ? " · enemies " + DangerNames[DangerScale].ToLowerInvariant() + " with more players" : "");
+
+        /// <summary>The same line in the player's language, for the co-op window and notices.</summary>
+        internal string Shown()
+        {
+            var parts = new System.Collections.Generic.List<string>();
+            string respawn = Respawn == RespawnRule.Permadeath ? Lang.T("permadeath")
+                : Respawn == RespawnRule.Quick ? Lang.F("back after {0} s", (int)LifeSync.QuickDelay)
+                : Lang.T("back on the next layer");
+            parts.Add(Lang.F("{0}: dead players {1}", Lang.T(PresetName), respawn));
+            parts.Add(ExitShare == 0 ? Lang.T("the first at an exit takes everyone")
+                : ExitShare >= 100 ? Lang.T("everyone must be at the exit")
+                : ExitShare == 50 ? Lang.T("half must be at the exit")
+                : Lang.F("{0}% must be at the exit", ExitShare));
+            if (!SpeedUp) parts.Add(Lang.T("no speed-up"));
+            if (!Arrows) parts.Add(Lang.T("no arrows"));
+            if (!NameTags) parts.Add(Lang.T("no name tags"));
+            if (SpawnApart) parts.Add(Lang.T("spawn apart"));
+            if (VoicePercent < 100) parts.Add(Lang.F("voices carry {0}%", VoicePercent));
+            if (FriendlyFire) parts.Add(Lang.T("friendly fire"));
+            if (LootScale > 0) parts.Add(Lang.T("more loot for more players"));
+            if (DangerScale == 1) parts.Add(Lang.T("enemies tougher with more players"));
+            if (DangerScale >= 2) parts.Add(Lang.T("enemies much tougher with more players"));
+            return string.Join(" · ", parts.ToArray());
+        }
 
         /// <summary>Compact form for the lobby advert: "r0e50s1".</summary>
         internal string Encode() => "r" + (int)Respawn + "e" + ExitShare + "s" + (SpeedUp ? 1 : 0) + "a" + (Arrows ? 1 : 0) +
@@ -216,7 +241,7 @@ namespace CCoop.Plugin.Sync
                 var old = HostRules.Current;
                 HostRules.Current = HostRules.FromMessage(m);
                 if (old != null && !old.SameAs(HostRules.Current) && Coop.InSession)
-                    CoopRuntime.Notice("Host rules: " + HostRules.Current.Describe());
+                    CoopRuntime.Notice(Lang.F("Host rules: {0}", HostRules.Current.Shown()));
             });
             if (s.IsHost) HostRules.Current = HostRules.FromConfig();
         }

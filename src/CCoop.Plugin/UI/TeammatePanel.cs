@@ -93,7 +93,7 @@ namespace CCoop.Plugin.UI
                     var m = Event.current.mousePosition;
                     var v = Coop.Get<VitalsSync>()?.Of((byte)_hovered);
                     string state = v == null ? "" : " · " + Status(v);
-                    GUI.Box(new Rect(m.x + 18f, m.y + 10f, 280f, 24f), Coop.Player((byte)_hovered).Name + state + "  (right-click)", _hint);
+                    GUI.Box(new Rect(m.x + 18f, m.y + 10f, 280f, 24f), Coop.Player((byte)_hovered).Name + state + "  (" + Lang.T("right-click") + ")", _hint);
                 }
                 if (_open < 0) return;
                 _rect.x = Screen.width / k - 420f;
@@ -105,12 +105,12 @@ namespace CCoop.Plugin.UI
 
         private static string Status(Vitals v)
         {
-            if ((v.Signs & BodySigns.Alive) == 0) return "dead " + v.DeadFor + " s";
-            if ((v.Signs & BodySigns.Arrest) != 0) return "heart stopped";
-            if ((v.Signs & BodySigns.Dying) != 0) return "dying";
-            if ((v.Signs & BodySigns.Conscious) == 0) return (v.Signs & BodySigns.Sleeping) != 0 ? "asleep" : "out cold";
-            if ((v.Signs & BodySigns.Bleeding) != 0) return "bleeding";
-            return "ok";
+            if ((v.Signs & BodySigns.Alive) == 0) return Lang.F("dead {0} s", v.DeadFor);
+            if ((v.Signs & BodySigns.Arrest) != 0) return Lang.T("heart stopped");
+            if ((v.Signs & BodySigns.Dying) != 0) return Lang.T("dying");
+            if ((v.Signs & BodySigns.Conscious) == 0) return (v.Signs & BodySigns.Sleeping) != 0 ? Lang.T("asleep") : Lang.T("out cold");
+            if ((v.Signs & BodySigns.Bleeding) != 0) return Lang.T("bleeding");
+            return Lang.T("ok");
         }
 
         private void Body(byte id)
@@ -119,16 +119,16 @@ namespace CCoop.Plugin.UI
             var puppet = Coop.Get<PlayerSync>()?.Find(id);
             if (v == null)
             {
-                GUILayout.Label("No reading: they're not on this layer.", _small);
-                if (GUILayout.Button("Close")) _open = -1;
+                GUILayout.Label(Lang.T("No reading: they're not on this layer."), _small);
+                if (GUILayout.Button(Lang.T("Close"))) _open = -1;
                 GUI.DragWindow();
                 return;
             }
 
             bool alive = (v.Signs & BodySigns.Alive) != 0;
             GUILayout.Label(Status(v), _title);
-            GUILayout.Label("Blood " + v.Blood + "% · Oxygen " + v.Oxygen + "% · Pulse " + v.Heart + " · Pressure " + v.Pressure +
-                            " · Temp " + (20f + v.Temperature / 10f).ToString("F1") + "°C · Brain " + v.Brain + "% · Pain " + v.Pain, _small);
+            GUILayout.Label(Lang.F("Blood {0}% · Oxygen {1}% · Pulse {2} · Pressure {3} · Temp {4}°C · Brain {5}% · Pain {6}",
+                                   v.Blood, v.Oxygen, v.Heart, v.Pressure, (20f + v.Temperature / 10f).ToString("F1"), v.Brain, v.Pain), _small);
             foreach (var w in Warnings(v)) GUILayout.Label(w, _warn);
 
             // Limbs: worst first is less useful than body order; mark the troubled ones.
@@ -137,7 +137,7 @@ namespace CCoop.Plugin.UI
             {
                 var l = v.Limbs[i];
                 string issues = LimbIssues(l);
-                string label = (puppet != null ? puppet.LimbName(i) : "Limb " + i) + "  ·  skin " + l.Skin + " · muscle " + l.Muscle +
+                string label = (puppet != null ? puppet.LimbName(i) : Lang.F("Limb {0}", i)) + "  ·  " + Lang.F("skin {0} · muscle {1}", l.Skin, l.Muscle) +
                                (issues.Length > 0 ? "  ·  " + issues : "");
                 var c = GUI.color;
                 if (issues.Length > 0) GUI.color = new Color(1f, 0.8f, 0.7f);
@@ -150,7 +150,7 @@ namespace CCoop.Plugin.UI
             Actions(id, v, alive);
 
             GUILayout.Space(4);
-            if (GUILayout.Button("Close")) _open = -1;
+            if (GUILayout.Button(Lang.T("Close"))) _open = -1;
             GUI.DragWindow();
         }
 
@@ -161,17 +161,17 @@ namespace CCoop.Plugin.UI
             if ((s & BodySigns.Alive) == 0)
             {
                 int left = Mathf.RoundToInt(Medic.ReviveWindow) - v.DeadFor;
-                list.Add(left > 0 ? "Dead. A defibrillator might still bring them back (" + left + " s left)." : "Dead. Too late to bring back on this layer.");
+                list.Add(left > 0 ? Lang.F("Dead. A defibrillator might still bring them back ({0} s left).", left) : Lang.T("Dead. Too late to bring back on this layer."));
                 return list;
             }
-            if ((s & BodySigns.Arrest) != 0) list.Add("Heart stopped: hold CPR to keep the brain alive, and defibrillate.");
-            else if ((s & BodySigns.Fibrillating) != 0) list.Add("Heart fibrillating (" + v.Fibrillation + "%): an AED can reset it.");
-            if ((s & BodySigns.Bleeding) != 0) list.Add("Bleeding.");
-            if ((s & BodySigns.Dying) != 0) list.Add("Dying.");
-            if ((s & BodySigns.Cold) != 0) list.Add("Hypothermic.");
-            if ((s & BodySigns.Fever) != 0) list.Add("Feverish.");
-            if ((s & BodySigns.Thirsty) != 0) list.Add("Thirsty.");
-            if ((s & BodySigns.Hungry) != 0) list.Add("Hungry.");
+            if ((s & BodySigns.Arrest) != 0) list.Add(Lang.T("Heart stopped: hold CPR to keep the brain alive, and defibrillate."));
+            else if ((s & BodySigns.Fibrillating) != 0) list.Add(Lang.F("Heart fibrillating ({0}%): an AED can reset it.", v.Fibrillation));
+            if ((s & BodySigns.Bleeding) != 0) list.Add(Lang.T("Bleeding."));
+            if ((s & BodySigns.Dying) != 0) list.Add(Lang.T("Dying."));
+            if ((s & BodySigns.Cold) != 0) list.Add(Lang.T("Hypothermic."));
+            if ((s & BodySigns.Fever) != 0) list.Add(Lang.T("Feverish."));
+            if ((s & BodySigns.Thirsty) != 0) list.Add(Lang.T("Thirsty."));
+            if ((s & BodySigns.Hungry) != 0) list.Add(Lang.T("Hungry."));
             return list;
         }
 
@@ -179,16 +179,16 @@ namespace CCoop.Plugin.UI
         {
             var parts = new List<string>();
             var s = l.Signs;
-            if ((s & LimbSigns.Missing) != 0) return "missing";
-            if (l.Bleed > 0 && (s & LimbSigns.BleedBlocked) == 0) parts.Add("bleeding");
-            if ((s & LimbSigns.Broken) != 0) parts.Add("broken");
-            if ((s & LimbSigns.Dislocated) != 0) parts.Add("dislocated");
-            if ((s & LimbSigns.Infected) != 0) parts.Add("infected");
-            if ((s & LimbSigns.Shrapnel) != 0) parts.Add("shrapnel");
-            if ((s & LimbSigns.Tourniquet) != 0) parts.Add("tourniquet");
-            if ((s & LimbSigns.Splinted) != 0) parts.Add("splint");
-            if ((s & LimbSigns.Bandaged) != 0) parts.Add("bandaged");
-            if ((s & LimbSigns.Prosthetic) != 0) parts.Add("prosthetic");
+            if ((s & LimbSigns.Missing) != 0) return Lang.T("missing");
+            if (l.Bleed > 0 && (s & LimbSigns.BleedBlocked) == 0) parts.Add(Lang.T("bleeding"));
+            if ((s & LimbSigns.Broken) != 0) parts.Add(Lang.T("broken"));
+            if ((s & LimbSigns.Dislocated) != 0) parts.Add(Lang.T("dislocated"));
+            if ((s & LimbSigns.Infected) != 0) parts.Add(Lang.T("infected"));
+            if ((s & LimbSigns.Shrapnel) != 0) parts.Add(Lang.T("shrapnel"));
+            if ((s & LimbSigns.Tourniquet) != 0) parts.Add(Lang.T("tourniquet"));
+            if ((s & LimbSigns.Splinted) != 0) parts.Add(Lang.T("splint"));
+            if ((s & LimbSigns.Bandaged) != 0) parts.Add(Lang.T("bandaged"));
+            if ((s & LimbSigns.Prosthetic) != 0) parts.Add(Lang.T("prosthetic"));
             return string.Join(", ", parts.ToArray());
         }
 
@@ -202,64 +202,64 @@ namespace CCoop.Plugin.UI
             if (cant != null)
             {
                 GUILayout.Label(cant, _small);
-                if (carry != null && carry.Carrying(id) && GUILayout.Button("Put down")) carry.PutDown();
+                if (carry != null && carry.Carrying(id) && GUILayout.Button(Lang.T("Put down"))) carry.PutDown();
                 // A teammate below a ledge can still be reached for.
                 var me = GameInfo.LocalBody;
                 var rec = Coop.Player(id);
                 if (motion != null && me != null && alive && (v.Signs & BodySigns.Conscious) != 0 && rec.HasPosition &&
                     rec.Position.y < me.transform.position.y - 1f &&
                     Vector2.Distance(me.transform.position, rec.Position) <= TeamMotion.PullReach &&
-                    GUILayout.Button("Reach down and pull them up")) motion.PullUp(id);
+                    GUILayout.Button(Lang.T("Reach down and pull them up"))) motion.PullUp(id);
                 return;
             }
 
             var loot = Coop.Get<LootSync>()?.Of(id);
             if (loot != null)
             {
-                GUILayout.Label(loot.Count == 0 ? "Nothing on them to take." : "On their body (not hands or mouth):", _small);
+                GUILayout.Label(loot.Count == 0 ? Lang.T("Nothing on them to take.") : Lang.T("On their body (not hands or mouth):"), _small);
                 foreach (var e in loot)
                 {
                     GUILayout.BeginHorizontal();
                     GUILayout.Label(Medic.Pretty(e.ItemId), _small);
-                    if (GUILayout.Button("Take", GUILayout.Width(60))) Coop.Get<LootSync>().Take(id, e.Key);
+                    if (GUILayout.Button(Lang.T("Take"), GUILayout.Width(60))) Coop.Get<LootSync>().Take(id, e.Key);
                     GUILayout.EndHorizontal();
                 }
                 GUILayout.Space(4);
             }
 
             var held = Medic.HeldItem(GameInfo.LocalBody);
-            GUILayout.Label("In your hand: " + (held != null ? Medic.Pretty(held.id) : "nothing"), _small);
+            GUILayout.Label(Lang.F("In your hand: {0}", held != null ? Medic.Pretty(held.id) : Lang.T("nothing")), _small);
             bool busy = medic != null && medic.Busy;
             GUI.enabled = !busy;
 
             if (held != null && Medic.IsDefibrillator(held))
             {
-                if (GUILayout.Button(alive ? "Shock their heart with the " + Medic.Pretty(held.id) : "Shock them (try to bring them back)", GUILayout.Height(26)))
+                if (GUILayout.Button(alive ? Lang.F("Shock their heart with the {0}", Medic.Pretty(held.id)) : Lang.T("Shock them (try to bring them back)"), GUILayout.Height(26)))
                     medic.Treat(id, 1, TreatKind.Item);
             }
             else if (_limb >= 0 && _limb < v.Limbs.Count)
             {
                 var l = v.Limbs[_limb];
-                string limbName = Coop.Get<PlayerSync>()?.Find(id)?.LimbName(_limb) ?? "limb";
+                string limbName = Coop.Get<PlayerSync>()?.Find(id)?.LimbName(_limb) ?? Lang.T("limb");
                 string cantUse = Medic.CantUse(held);
                 if (held != null)
                 {
                     GUI.enabled = !busy && cantUse == null && alive;
-                    if (GUILayout.Button("Use " + Medic.Pretty(held.id) + " on " + limbName, GUILayout.Height(26))) medic.Treat(id, _limb, TreatKind.Item);
+                    if (GUILayout.Button(Lang.F("Use {0} on {1}", Medic.Pretty(held.id), limbName), GUILayout.Height(26))) medic.Treat(id, _limb, TreatKind.Item);
                     GUI.enabled = !busy;
                     if (cantUse != null) GUILayout.Label(cantUse, _small);
                 }
-                if ((l.Signs & LimbSigns.Dislocated) != 0 && GUILayout.Button("Set the dislocated " + limbName)) medic.Treat(id, _limb, TreatKind.SetDislocation);
-                if ((l.Signs & LimbSigns.Shrapnel) != 0 && (held == null || held.id != "tweezers") && GUILayout.Button("Pull the shrapnel out by hand"))
+                if ((l.Signs & LimbSigns.Dislocated) != 0 && GUILayout.Button(Lang.F("Set the dislocated {0}", limbName))) medic.Treat(id, _limb, TreatKind.SetDislocation);
+                if ((l.Signs & LimbSigns.Shrapnel) != 0 && (held == null || held.id != "tweezers") && GUILayout.Button(Lang.T("Pull the shrapnel out by hand")))
                     medic.Treat(id, _limb, TreatKind.PullShrapnel);
-                if ((l.Signs & LimbSigns.Tourniquet) != 0 && GUILayout.Button("Take off the tourniquet")) medic.Treat(id, _limb, TreatKind.RemoveTourniquet);
-                if ((l.Signs & LimbSigns.Splinted) != 0 && GUILayout.Button("Take off the splint")) medic.Treat(id, _limb, TreatKind.RemoveSplint);
+                if ((l.Signs & LimbSigns.Tourniquet) != 0 && GUILayout.Button(Lang.T("Take off the tourniquet"))) medic.Treat(id, _limb, TreatKind.RemoveTourniquet);
+                if ((l.Signs & LimbSigns.Splinted) != 0 && GUILayout.Button(Lang.T("Take off the splint"))) medic.Treat(id, _limb, TreatKind.RemoveSplint);
             }
-            else GUILayout.Label("Pick a limb above to treat it.", _small);
+            else GUILayout.Label(Lang.T("Pick a limb above to treat it."), _small);
 
             if (alive && ((v.Signs & BodySigns.Arrest) != 0 || v.Pressure < 30))
             {
-                if (GUILayout.RepeatButton("Hold for CPR", GUILayout.Height(28)) && Time.unscaledTime >= _nextCpr)
+                if (GUILayout.RepeatButton(Lang.T("Hold for CPR"), GUILayout.Height(28)) && Time.unscaledTime >= _nextCpr)
                 {
                     _nextCpr = Time.unscaledTime + 0.5f;
                     medic.Cpr(id);
@@ -267,7 +267,7 @@ namespace CCoop.Plugin.UI
             }
 
             GUI.enabled = true;
-            if (held != null && give != null && alive && GUILayout.Button("Give " + Medic.Pretty(held.id))) give.Offer(id);
+            if (held != null && give != null && alive && GUILayout.Button(Lang.F("Give {0}", Medic.Pretty(held.id)))) give.Offer(id);
             AskRow(id, give, alive && (v.Signs & BodySigns.Conscious) != 0);
 
             // Carrying the downed: three ways, each with its own cost.
@@ -275,15 +275,15 @@ namespace CCoop.Plugin.UI
             {
                 if (carry.Carrying(id))
                 {
-                    if (GUILayout.Button("Put them down", GUILayout.Height(26))) carry.PutDown();
+                    if (GUILayout.Button(Lang.T("Put them down"), GUILayout.Height(26))) carry.PutDown();
                 }
                 else if (CarrySync.Downed(id))
                 {
-                    GUILayout.Label("Carry them:", _small);
+                    GUILayout.Label(Lang.T("Carry them:"), _small);
                     GUILayout.BeginHorizontal();
-                    CarryButton(carry, id, CarryMode.Drag, "Drag");
-                    CarryButton(carry, id, CarryMode.Back, "On your back");
-                    CarryButton(carry, id, CarryMode.Arms, "In your arms");
+                    CarryButton(carry, id, CarryMode.Drag, Lang.T("Drag"));
+                    CarryButton(carry, id, CarryMode.Back, Lang.T("On your back"));
+                    CarryButton(carry, id, CarryMode.Arms, Lang.T("In your arms"));
                     GUILayout.EndHorizontal();
                 }
             }
@@ -292,27 +292,27 @@ namespace CCoop.Plugin.UI
             if (motion != null && alive && (v.Signs & BodySigns.Conscious) != 0)
             {
                 GUILayout.BeginHorizontal();
-                if ((v.Signs & BodySigns.Standing) != 0 && GUILayout.Button("Give a leg-up")) motion.GiveLegUp(id);
+                if ((v.Signs & BodySigns.Standing) != 0 && GUILayout.Button(Lang.T("Give a leg-up"))) motion.GiveLegUp(id);
                 var me = GameInfo.LocalBody;
                 var rec = Coop.Player(id);
-                if (me != null && rec.Position.y < me.transform.position.y - 1f && GUILayout.Button("Pull them up")) motion.PullUp(id);
+                if (me != null && rec.Position.y < me.transform.position.y - 1f && GUILayout.Button(Lang.T("Pull them up"))) motion.PullUp(id);
                 GUILayout.EndHorizontal();
 
                 if (v.Mood <= -50)
                 {
                     string snapWhy = motion.CantSnap(id);
                     GUI.enabled = snapWhy == null;
-                    if (GUILayout.Button("Snap them out of it (mood " + v.Mood + ")")) motion.Snap(id);
+                    if (GUILayout.Button(Lang.F("Snap them out of it (mood {0})", v.Mood))) motion.Snap(id);
                     GUI.enabled = true;
-                    GUILayout.Label(snapWhy ?? "Lifts them for a few minutes. It won't fix what's wrong.", _small);
+                    GUILayout.Label(snapWhy ?? Lang.T("Lifts them for a few minutes. It won't fix what's wrong."), _small);
                 }
 
                 string heavy = TeamMotion.HeavyHeld(id, out var weight);
                 if (motion.LiftingFor(id))
                 {
-                    if (GUILayout.Button("Stop helping carry")) motion.StopLifting(true);
+                    if (GUILayout.Button(Lang.T("Stop helping carry"))) motion.StopLifting(true);
                 }
-                else if (heavy != null && GUILayout.Button("Help carry their " + Medic.Pretty(heavy) + " (" + weight.ToString("0") + " u)"))
+                else if (heavy != null && GUILayout.Button(Lang.F("Help carry their {0} ({1} u)", Medic.Pretty(heavy), weight.ToString("0"))))
                     motion.StartLifting(id);
             }
         }
@@ -329,10 +329,10 @@ namespace CCoop.Plugin.UI
             if (!any) return;
             if (give.Asking(id))
             {
-                GUILayout.Label("Waiting for them to answer…", _small);
+                GUILayout.Label(Lang.T("Waiting for them to answer…"), _small);
                 return;
             }
-            _showAsk = GUILayout.Toggle(_showAsk, " Ask them for…");
+            _showAsk = GUILayout.Toggle(_showAsk, " " + Lang.T("Ask them for…"));
             if (!_showAsk) return;
             for (int slot = 0; slot < kit.Length; slot++)
             {

@@ -18,6 +18,7 @@ namespace CCoop.Plugin.Runtime
         internal static CoopPlugin Instance { get; private set; }
 
         internal ConfigEntry<string> PlayerName;
+        internal ConfigEntry<string> Language;
         internal ConfigEntry<int> MaxPlayers;
         internal ConfigEntry<int> Port;
         internal ConfigEntry<string> LastAddress;
@@ -105,6 +106,8 @@ namespace CCoop.Plugin.Runtime
             ShowArrows = Config.Bind("UI", "TeammateArrows", true, "Arrows at the screen edge pointing to teammates who are off screen (when the host allows them).");
             ReduceFlashes = Config.Bind("UI", "ReduceFlashes", false,
                 "Softer co-op screen effects: no screen flashes or shakes from the mod (a teammate dying nearby, a revival), no pulsing in the spectator view, and still ping markers.");
+            Language = Config.Bind("UI", "Language", "auto",
+                "The mod's language: auto follows the game's language; or a code such as EN or zh-CN. Translations are lang/<code>.txt beside the mod.");
             ColorBlindColors = Config.Bind("UI", "ColorBlindColors", false,
                 "Player colours (pings, arrows, gestures) from a palette that stays distinct with common colour blindness.");
             VoiceMode = Config.Bind("Voice", "Mode", "PushToTalk",

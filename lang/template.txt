@@ -1,0 +1,1048 @@
+# CasualtiesCoop: every English line the mod shows.
+# To translate: copy this file to lang/<the game's language code>.txt (EN, zh-CN, ...),
+# write each translation after "= ", and leave {0}, {1}... where they make sense.
+# Keep button words short (Join, Kick, Check, Take...): the co-op window gives them little room.
+# Untranslated lines show in English. Put the file beside the mod (BepInEx/plugins/CasualtiesCoop/lang/)
+# or in the game's data folder under CasualtiesCoop/lang/.
+
+# Runtime/CoopRuntime.cs
+Steam is not running. Start the game from Steam, or use LAN/IP.
+= 
+Creating Steam lobby...
+= 
+Hosting. Invite friends from the co-op menu or the Steam overlay.
+= 
+Could not host: {0}
+= 
+Hosting on UDP port {0}. Others join with your IP address.
+= 
+Enter the host's address.
+= 
+Connecting to {0}:{1}...
+= 
+Could not join: {0}
+= 
+Joining Steam lobby...
+= 
+That is your own lobby.
+= 
+{0}'s session needs a password.
+= 
+Connecting to the host...
+= 
+Reconnected
+= 
+Connected as {0}.
+= 
+{0} joined
+= 
+{0} left
+= 
+Lost the host. Reconnecting...
+= 
+Cannot ban {0}: no verified address.
+= 
+{0} was banned
+= 
+Could not reach the host again
+= 
+Leave your current session before joining another.
+= 
+
+# Runtime/UpdateCheck.cs
+CasualtiesCoop {0} is out (you have {1}): {2}
+= 
+
+# Sync/AuditFixes.cs
+Saving is off in co-op. Press Continue to descend together, or leave from the co-op menu (F1).
+= 
+
+# Sync/CarrySync.cs
+You need to be in the layer.
+= 
+Empty your hand to drag them.
+= 
+Take off your backpack to carry them on your back.
+= 
+Empty both hands to carry them in your arms.
+= 
+{0} can walk.
+= 
+Dragging
+= 
+Carrying on your back:
+= 
+Carrying in your arms:
+= 
+Put {0} down
+= 
+{0} is dragging you
+= 
+{0} is carrying you
+= 
+{0} got down
+= 
+Slow going, and no jumping.
+= 
+They weigh on you: you can't jump as high.
+= 
+Both arms full: slower, and only small hops.
+= 
+Right-click them to put them down.
+= 
+
+# Sync/Chat.cs
+You can't speak while unconscious.
+= 
+dead
+= 
+Say:
+= 
+
+# Sync/ClockSync.cs
+Sleeping
+= 
+Out cold
+= 
+Time speeds up only once every living player is asleep or out cold.
+= 
+
+# Sync/CoopSaves.cs
+That save is gone.
+= 
+
+# Sync/CraftSync.cs
+The host didn't answer; try crafting again
+= 
+A teammate is crafting with that
+= 
+A teammate got to it first
+= 
+
+# Sync/EndLabTeam.cs
+A teammate is still playing. Leaving now ends the run for everyone: do it again within 8 s to leave anyway.
+= 
+{0} teammates are still playing. Leaving now ends the run for everyone: do it again within 8 s to leave anyway.
+= 
+
+# Sync/ExitVote.cs
+Waiting for everyone to get into the drill pod
+= 
+Waiting for the team at the exit
+= 
+In the drill pod: {0} of {1} inside
+= 
+{0} wants to drill down
+= 
+Everyone alive must crouch in the drill pod.
+= 
+Waiting at the exit: {0} of {1} needed
+= 
+{0} is waiting at the exit ({1} of {2} needed)
+= 
+{0} are waiting at the exit ({1} of {2} needed)
+= 
+Walk away from the exit to cancel.
+= 
+Head down and continue at the exit to go with them. The rest are brought along.
+= 
+Waiting for {0} to finish loading this layer.
+= 
+You
+= 
+
+# Sync/GestureSync.cs
+Wave
+= 
+*waves*
+= 
+Come here
+= 
+*beckons you over*
+= 
+Point
+= 
+*points*
+= 
+Help!
+= 
+*calls for help!*
+= 
+Hug
+= 
+No
+= 
+*shakes head*
+= 
+Wait
+= 
+*holds up a hand: wait*
+= 
+Thumbs up
+= 
+*gives a thumbs up*
+= 
+You can't do that right now.
+= 
+No one close enough to hug.
+= 
+*hugs {0}*
+= 
+{0} hugged you
+= 
+
+# Sync/GiveSync.cs
+Hold the item you want to give.
+= 
+Offered {0} to {1}
+= 
+{0} said no thanks
+= 
+Gave {0} to {1}
+= 
+You no longer have what you offered {0}
+= 
+{0} can't hand anything over
+= 
+Asked {0} for their {1}
+= 
+{0} is keeping their {1}
+= 
+You no longer have the {0}
+= 
+can't take it right now
+= 
+has no free hand or slot
+= 
+You have no free hand or slot
+= 
+You can't take it right now
+= 
+{0} no longer has it
+= 
+You took {0} from {1}
+= 
+{0} gave you {1}
+= 
+{0} offers you {1}
+= 
+Take it
+= 
+No thanks
+= 
+{0} asks for your {1}
+= 
+Give it
+= 
+Keep it
+= 
+
+# Sync/LayerSync.cs
+Could not load the host's world: {0}
+= 
+
+# Sync/LifeSync.cs
+Permadeath: you're spectating for the rest of the run
+= 
+You're back for the new layer
+= 
+*gasps*
+= 
+You're back!
+= 
+Back on your feet
+= 
+You died
+= 
+{0} is back
+= 
+{0} died
+= 
+Everyone is dead. The run is over
+= 
+You were dead when you left, so you're spectating
+= 
+Back where you left off
+= 
+You died · watching {0}
+= 
+(A / D to switch)
+= 
+Permadeath: you're out for the rest of this run.
+= 
+Back beside a teammate in {0} s.
+= 
+You'll be back when the team goes down to the next layer.
+= 
+
+# Sync/LootSync.cs
+{0} took your {1}
+= 
+You have no free hand or slot.
+= 
+
+# Sync/Medic.cs
+You're dead.
+= 
+You're not conscious.
+= 
+They're not here.
+= 
+Get closer ({0} m away).
+= 
+Hold a medical item in your hand.
+= 
+That isn't used on a limb.
+= 
+You can't bring yourself to do it right now.
+= 
+Treated {0}
+= 
+{0} is giving you CPR
+= 
+{0} is treating your {1}
+= 
+{0} set your {1} back in place
+= 
+not in the layer
+= 
+that limb is gone
+= 
+that joint isn't dislocated
+= 
+too much pain to set it
+= 
+there's nothing to pull out
+= 
+couldn't make sense of the item
+= 
+they're dead
+= 
+that won't work on a prosthetic
+= 
+no such limb
+= 
+You set {0}'s {1} back in place
+= 
+no tourniquet there
+= 
+You took off {0}'s tourniquet
+= 
+no splint there
+= 
+You took off {0}'s splint
+= 
+the treatment failed
+= 
+{0} treated your {1}
+= 
+you can't bandage a prosthetic
+= 
+you can't inject into a prosthetic
+= 
+that can't be used there
+= 
+You used {0} on {1}
+= 
+You applied {0} to {1}
+= 
+that isn't a treatment
+= 
+the battery is flat
+= 
+too late: dead for {0} s
+= 
+Your shock didn't bring {0} back
+= 
+You shocked {0} back to life
+= 
+You shocked {0}'s heart
+= 
+limb
+= 
+
+# Sync/MedicSession.cs
+Finish what you're doing first.
+= 
+
+# Sync/Milestones.cs
+Pack mule
+= 
+Carry teammates 100 m in all.
+= 
+Safe hands
+= 
+Catch a falling teammate.
+= 
+Stepping stone
+= 
+Give 5 leg-ups.
+= 
+Warm company
+= 
+Hug teammates 10 times.
+= 
+Field medic
+= 
+Treat teammates' wounds 10 times.
+= 
+Second chance
+= 
+Be brought back from death by a teammate.
+= 
+Deeper together
+= 
+Reach 10 new layers with a teammate alive beside you.
+= 
+Co-op milestone: {0}
+= 
+
+# Sync/PlayerSync.cs
+{0} has reached an ending; the run goes on until you finish too
+= 
+{0} has reached an ending
+= 
+menu
+= 
+in game
+= 
+asleep
+= 
+out cold
+= 
+
+# Sync/PropSync.cs
+Saving is disabled during co-op
+= 
+
+# Sync/RemotePlayer.cs
+Limb {0}
+= 
+
+# Sync/RulesSync.cs
+Shared
+= 
+More for more players
+= 
+As set
+= 
+Tougher
+= 
+Much tougher
+= 
+Friendly
+= 
+Standard
+= 
+Hard
+= 
+Brutal
+= 
+Custom
+= 
+permadeath
+= 
+back after {0} s
+= 
+back on the next layer
+= 
+{0}: dead players {1}
+= 
+the first at an exit takes everyone
+= 
+everyone must be at the exit
+= 
+half must be at the exit
+= 
+{0}% must be at the exit
+= 
+no speed-up
+= 
+no arrows
+= 
+no name tags
+= 
+spawn apart
+= 
+voices carry {0}%
+= 
+friendly fire
+= 
+more loot for more players
+= 
+enemies tougher with more players
+= 
+enemies much tougher with more players
+= 
+Host rules: {0}
+= 
+
+# Sync/RunFlow.cs
+In the menu. Start a run when everyone has joined.
+= 
+Layer {0} · players join straight into your run
+= 
+Building the layer...
+= 
+Handshaking...
+= 
+Waiting for the host to start a run.
+= 
+The host is in a run.
+= 
+Layer {0}
+= 
+Receiving the host's world... {0}%
+= 
+Loading the layer...
+= 
+loading
+= 
+failed
+= 
+The host left the run
+= 
+Welcome back: your character from this run is restored
+= 
+Could not join the run: {0}
+= 
+
+# Sync/ShotSync.cs
+{0} shot you
+= 
+
+# Sync/SpawnSpread.cs
+You've come down apart from the others. Find them!
+= 
+
+# Sync/SteamMoments.cs
+Co-op with 1 player
+= 
+Co-op with {0} players
+= 
+
+# Sync/TeamMotion.cs
+Stand right next to them.
+= 
+*cups hands for a leg-up*
+= 
+They're too far to reach.
+= 
+*reaches down*
+= 
+Give them a minute ({0} s).
+= 
+*shakes {0} by the shoulders*
+= 
+They're not holding anything heavy.
+= 
+Empty your hand to help carry it.
+= 
+Get closer to help carry it.
+= 
+Helping {0} carry the {1}
+= 
+{0} is giving you a leg-up: jump!
+= 
+{0} snapped you out of it. For now.
+= 
+{0} is helping you carry the {1}
+= 
+{0} let go of your load
+= 
+{0} is pulling you up
+= 
+You caught {0}
+= 
+{0} landed on you
+= 
+{0} caught you
+= 
+You landed on {0}
+= 
+{0} is giving you a leg-up
+= 
+Jump next to them to go higher.
+= 
+Helping {0} carry
+= 
+You take half the weight. Stay close and keep your hand free.
+= 
+
+# Sync/TraderSync.cs
+A teammate just bought that
+= 
+
+# Sync/VoiceSync.cs
+Open mic
+= 
+Talking
+= 
+You can't speak while unconscious
+= 
+
+# Sync/WorldEvents.cs
+The Blue Heart is rising
+= 
+
+# UI/ConnectionBadge.cs
+Connection to host: {0} ms, {1}% lost
+= 
+Connection to host: {0} ms
+= 
+The host's game is running slowly ({0} fps)
+= 
+Your game is running slowly ({0} fps); everyone's world goes through yours
+= 
+
+# UI/CoopWindow.cs
+Co-op · 1 player  (F1)
+= 
+Co-op · {0} players  (F1)
+= 
+Co-op  (F1)
+= 
+Some hooks failed to install ({0}). The game was probably updated; parts of co-op may not sync.
+= 
+The game changed under these features: {0}. They may not work until the mod is updated.
+= 
+Log: {0}
+= 
+Bug report
+= 
+Saves your co-op logs and session details to a folder on your desktop.
+= 
+Saved to {0}. Attach the folder's files to your report.
+= 
+Couldn't save the report: {0}
+= 
+Close
+= 
+Lost the host. Reconnecting (your character is saved)...
+= 
+Stop
+= 
+Play a run together
+= 
+Name
+= 
+Using {0}
+= 
+Host
+= 
+Find games
+= 
+LAN / IP
+= 
+Steam is not available. Launch the game through Steam to host with invites, or use LAN / IP.
+= 
+Host with Steam and continue
+= 
+Host with Steam
+= 
+Host from the main menu, then start a run. Players who join are brought into your run with the character they picked on the character screen.
+= 
+Banned players ({0})
+= 
+Unban
+= 
+Difficulty
+= 
+Custom rules.
+= 
+Co-op rules only; the game's own difficulty is the run settings you pick when starting a run.
+= 
+Who can join
+= 
+Friends
+= 
+Public
+= 
+Invite only
+= 
+Listed for everyone under Find games. Add a password to keep strangers out.
+= 
+Only people you invite through Steam can join.
+= 
+Steam friends can join from Find games, your profile ("Join Game") or an invite.
+= 
+Players
+= 
+Password
+= 
+Joiners will be asked for the password (players already here stay).
+= 
+Joiners will be asked for the password.
+= 
+When you die
+= 
+Next layer
+= 
+Permadeath
+= 
+Quick
+= 
+The dead spectate for the rest of the run.
+= 
+The dead spectate, then come back beside a teammate after {0} s.
+= 
+The dead spectate, then come back healed when the team reaches the next layer.
+= 
+Descend when
+= 
+First arrives
+= 
+Half are there
+= 
+All are there
+= 
+Counts living players at an exit or in the drill pod. The rest are brought along.
+= 
+(Set to {0}% in the config.)
+= 
+Help
+= 
+Teammate arrows
+= 
+Name tags
+= 
+Spawn apart
+= 
+Danger
+= 
+Friendly fire (guns hurt teammates)
+= 
+Voices carry
+= 
+Loot
+= 
+Enemies
+= 
+Scales with the number of players, on top of the game's own run settings.
+= 
+Speed-up
+= 
+Anyone may fast-forward time
+= 
+Time always runs at normal speed (sleep still fast-forwards)
+= 
+Continue a co-op run ({0})
+= 
+Picked
+= 
+Continue
+= 
+Delete
+= 
+Host, then press "Start the saved run" when your friends are in.
+= 
+Steam is not available. Launch the game through Steam to find games, or use LAN / IP.
+= 
+Searching...
+= 
+Refresh
+= 
+Looking for sessions...
+= 
+None of your Steam friends is hosting right now.
+= 
+No public sessions found. Hosts choose Public to be listed here.
+= 
+Ping is Steam's estimate from relay locations; the real figure shows once connected.
+= 
+password
+= 
+In a run
+= 
+In the menu
+= 
+{0}/{1} players
+= 
+with {0}
+= 
+Dead: {0} · {1}
+= 
+Can't join: {0}
+= 
+Full
+= 
+Join
+= 
+Direct connection over your LAN or a VPN (Tailscale, ZeroTier, Radmin). Over the internet the host must forward UDP port {0}.
+= 
+Host on port {0}
+= 
+The Host tab's password and respawn rule apply here too.
+= 
+Address
+= 
+Leave the password empty if the host has none.
+= 
+Password needed
+= 
+{0}'s session is locked. Ask them for the password.
+= 
+Cancel
+= 
+Hosting
+= 
+Connected
+= 
+Connecting
+= 
+Invite Steam friends
+= 
+Rules (change them any time)
+= 
+Run settings
+= 
+Run settings (the host's)
+= 
+Players ({0}/{1})
+= 
+Ping is each player's round trip to the host.
+= 
+Start the saved run
+= 
+Players who join get their own characters back from this run; newcomers start fresh.
+= 
+Join the host's run
+= 
+End session
+= 
+Leave session
+= 
+Voice chat needs Steam. Text chat: press {0}.
+= 
+Voice
+= 
+Hold {0}
+= 
+Off
+= 
+Send above
+= 
+everything
+= 
+Nearby players hear you, quieter with distance; the dead hear only each other. Text chat: press {0}.
+= 
+Show arrows to teammates who are off screen
+= 
+Co-op milestones ({0}/{1})
+= 
+done
+= 
+Reduce flashes and shaking
+= 
+Colour-blind safe colours
+= 
+you
+= 
+host
+= 
+Check
+= 
+Kick
+= 
+Ban
+= 
+
+# UI/RunPresets.cs
+Cold snap
+= 
+Twenty degrees colder, and clothes hold less heat. Stay close: teammates warm each other.
+= 
+Glass bones
+= 
+Breaks hurt more, wounds bleed faster and heal slowly. Bring a medic.
+= 
+Field hospital
+= 
+Infections take hold faster, but everyone starts fully supplied and heals quicker.
+= 
+Lean pickings
+= 
+Half the loot and more traders: share what you find and trade together.
+= 
+Long haul
+= 
+Twice the time per layer, slower hunger and slower rot, for long sessions.
+= 
+Run settings: {0}
+= 
+Saved run preset: {0}
+= 
+Co-op run presets
+= 
+These set the game's run settings for the next run. Open the game's run settings to check or change them.
+= 
+Save the current settings as
+= 
+Copy as text
+= 
+Copied the run settings: paste them to a friend
+= 
+Use text from the clipboard
+= 
+The clipboard has no co-op run preset (it starts with {0})
+= 
+The game's normal settings.
+= 
+Changes {0} and {1} more.
+= 
+Changes {0}.
+= 
+
+# UI/RunSettingsReadout.cs
+The game's {0} settings.
+= 
+Changed from normal:
+= 
+on
+= 
+off
+= 
+
+# UI/TeamReceipt.cs
+Your teammates are still playing. Stay on this screen until they finish: leaving ends the run for everyone.
+= 
+froze
+= 
+overheated
+= 
+bled out
+= 
+ran out of air
+= 
+heart stopped
+= 
+died on layer {0}
+= 
+alive on layer {0}
+= 
+CasualtiesCoop run · team of {0}
+= 
+Your team
+= 
+Copy run summary
+= 
+
+# UI/TeammateArrows.cs
+down
+= 
+
+# UI/TeammatePanel.cs
+right-click
+= 
+dead {0} s
+= 
+dying
+= 
+bleeding
+= 
+ok
+= 
+No reading: they're not on this layer.
+= 
+Blood {0}% · Oxygen {1}% · Pulse {2} · Pressure {3} · Temp {4}°C · Brain {5}% · Pain {6}
+= 
+skin {0} · muscle {1}
+= 
+Dead. A defibrillator might still bring them back ({0} s left).
+= 
+Dead. Too late to bring back on this layer.
+= 
+Heart stopped: hold CPR to keep the brain alive, and defibrillate.
+= 
+Heart fibrillating ({0}%): an AED can reset it.
+= 
+Bleeding.
+= 
+Dying.
+= 
+Hypothermic.
+= 
+Feverish.
+= 
+Thirsty.
+= 
+Hungry.
+= 
+missing
+= 
+broken
+= 
+dislocated
+= 
+infected
+= 
+shrapnel
+= 
+tourniquet
+= 
+splint
+= 
+bandaged
+= 
+prosthetic
+= 
+Put down
+= 
+Reach down and pull them up
+= 
+Nothing on them to take.
+= 
+On their body (not hands or mouth):
+= 
+Take
+= 
+In your hand: {0}
+= 
+nothing
+= 
+Shock their heart with the {0}
+= 
+Shock them (try to bring them back)
+= 
+Use {0} on {1}
+= 
+Set the dislocated {0}
+= 
+Pull the shrapnel out by hand
+= 
+Take off the tourniquet
+= 
+Take off the splint
+= 
+Pick a limb above to treat it.
+= 
+Hold for CPR
+= 
+Give {0}
+= 
+Put them down
+= 
+Carry them:
+= 
+Drag
+= 
+On your back
+= 
+In your arms
+= 
+Give a leg-up
+= 
+Pull them up
+= 
+Snap them out of it (mood {0})
+= 
+Lifts them for a few minutes. It won't fix what's wrong.
+= 
+Stop helping carry
+= 
+Help carry their {0} ({1} u)
+= 
+Waiting for them to answer…
+= 
+Ask them for…
+= 

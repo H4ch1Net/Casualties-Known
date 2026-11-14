@@ -4,6 +4,7 @@ using CCoop.Plugin.Protocol;
 using CCoop.Plugin.Runtime;
 using CCoop.Plugin.World;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -79,12 +80,12 @@ namespace CCoop.Plugin.Sync
         {
             string why = Medic.CantTreat(to);
             var item = what != null ? what : Medic.HeldItem(GameInfo.LocalBody);
-            if (why == null && item == null) why = "Hold the item you want to give.";
+            if (why == null && item == null) why = Lang.T("Hold the item you want to give.");
             if (why != null) { CoopRuntime.Notice(why); return; }
             uint token = _nextToken++;
             _outgoing[token] = item;
             Session.Broadcast(new GiveOffer { Token = token, To = to, ItemId = item.id });
-            CoopRuntime.Notice("Offered " + Medic.Pretty(item.id) + " to " + Coop.Player(to).Name);
+            CoopRuntime.Notice(Lang.F("Offered {0} to {1}", Medic.Pretty(item.id), Coop.Player(to).Name));
             Log.Info("[give] offering " + item.id + " to " + Coop.Player(to).Name);
         }
 
@@ -95,7 +96,7 @@ namespace CCoop.Plugin.Sync
             string who = Coop.Player(origin).Name;
             if (!m.Accept)
             {
-                CoopRuntime.Notice(who + (string.IsNullOrEmpty(m.Reason) ? " said no thanks" : ": " + m.Reason));
+                CoopRuntime.Notice(string.IsNullOrEmpty(m.Reason) ? Lang.F("{0} said no thanks", who) : Lang.F("{0}: {1}", who, Lang.Unpack(m.Reason)));
                 return;
             }
             var body = GameInfo.LocalBody;
@@ -105,9 +106,9 @@ namespace CCoop.Plugin.Sync
             {
                 done.Item = ItemCodec.Encode(item);
                 Object.Destroy(item.gameObject);
-                CoopRuntime.Notice("Gave " + Medic.Pretty(item.id) + " to " + who);
+                CoopRuntime.Notice(Lang.F("Gave {0} to {1}", Medic.Pretty(item.id), who));
             }
-            else CoopRuntime.Notice("You no longer have what you offered " + who);
+            else CoopRuntime.Notice(Lang.F("You no longer have what you offered {0}", who));
             Session.Broadcast(done);
         }
 
@@ -131,11 +132,11 @@ namespace CCoop.Plugin.Sync
         {
             if (string.IsNullOrEmpty(itemId) || from == Coop.LocalId) return;
             var rec = Coop.Player(from);
-            if (!rec.Alive) { CoopRuntime.Notice(rec.Name + " can't hand anything over"); return; }
+            if (!rec.Alive) { CoopRuntime.Notice(Lang.F("{0} can't hand anything over", rec.Name)); return; }
             _asked[from] = new KeyValuePair<string, float>(itemId, Time.unscaledTime);
             Session.Broadcast(new GiveAsk { To = from, Slot = (byte)Mathf.Clamp(slot, 0, 255), ItemId = itemId });
             AsksSent++;
-            CoopRuntime.Notice("Asked " + rec.Name + " for their " + Medic.Pretty(itemId));
+            CoopRuntime.Notice(Lang.F("Asked {0} for their {1}", rec.Name, Medic.Pretty(itemId)));
             Log.Info("[give] asked " + rec.Name + " for " + itemId);
         }
 
@@ -147,7 +148,7 @@ namespace CCoop.Plugin.Sync
             if (m.To != Coop.LocalId || origin == Coop.LocalId) return;
             if (m.Refused)
             {
-                if (_asked.Remove(origin)) CoopRuntime.Notice(Coop.Player(origin).Name + " is keeping their " + Medic.Pretty(m.ItemId));
+                if (_asked.Remove(origin)) CoopRuntime.Notice(Lang.F("{0} is keeping their {1}", Coop.Player(origin).Name, Medic.Pretty(m.ItemId)));
                 return;
             }
             _asks.RemoveAll(a => a.From == origin);
@@ -161,7 +162,7 @@ namespace CCoop.Plugin.Sync
             var item = FindOwn(a.Slot, a.ItemId);
             if (item == null)
             {
-                CoopRuntime.Notice("You no longer have the " + Medic.Pretty(a.ItemId));
+                CoopRuntime.Notice(Lang.F("You no longer have the {0}", Medic.Pretty(a.ItemId)));
                 Refuse(a);
                 return;
             }
@@ -196,10 +197,11 @@ namespace CCoop.Plugin.Sync
             _incoming.RemoveAll(i => i.Token == offer.Token && i.From == offer.From);
             var body = GameInfo.LocalBody;
             string reason = "";
-            if (accept && (body == null || !body.alive)) { accept = false; reason = "can't take it right now"; }
-            else if (accept && body.FirstEmptySlot() < 0) { accept = false; reason = "has no free hand or slot"; }
+            if (accept && (body == null || !body.alive)) { accept = false; reason = Lang.N("can't take it right now"); }
+            else if (accept && body.FirstEmptySlot() < 0) { accept = false; reason = Lang.N("has no free hand or slot"); }
             Session.Broadcast(new GiveAnswer { Token = offer.Token, Giver = offer.From, Accept = accept, Reason = reason });
-            if (!accept && reason.Length > 0) CoopRuntime.Notice("You " + reason.Replace("has ", "have "));
+            if (!accept && reason.Length > 0)
+                CoopRuntime.Notice(reason.StartsWith("has ", System.StringComparison.Ordinal) ? Lang.T("You have no free hand or slot") : Lang.T("You can't take it right now"));
         }
 
         private void OnDone(byte origin, GiveDone m)
@@ -209,7 +211,7 @@ namespace CCoop.Plugin.Sync
             var body = GameInfo.LocalBody;
             if (spec == null || string.IsNullOrEmpty(spec.Id) || body == null)
             {
-                CoopRuntime.Notice(Coop.Player(origin).Name + " no longer has it");
+                CoopRuntime.Notice(Lang.F("{0} no longer has it", Coop.Player(origin).Name));
                 return;
             }
             var prefab = Resources.Load(spec.Id) as GameObject;
@@ -224,8 +226,8 @@ namespace CCoop.Plugin.Sync
                 body.AutoPickUpItem(item);
             });
             CoopRuntime.Notice(m.Token == 0
-                ? "You took " + Medic.Pretty(spec.Id) + " from " + Coop.Player(origin).Name
-                : Coop.Player(origin).Name + " gave you " + Medic.Pretty(spec.Id));
+                ? Lang.F("You took {0} from {1}", Medic.Pretty(spec.Id), Coop.Player(origin).Name)
+                : Lang.F("{0} gave you {1}", Coop.Player(origin).Name, Medic.Pretty(spec.Id)));
             Log.Info("[give] received " + spec.Id + " from " + Coop.Player(origin).Name);
         }
 
@@ -251,17 +253,17 @@ namespace CCoop.Plugin.Sync
                 foreach (var o in _incoming.ToArray())
                 {
                     var r = new Rect(w / 2f - 190f, y, 380f, 66f);
-                    GUI.Box(r, Coop.Player(o.From).Name + " offers you " + Medic.Pretty(o.ItemId), _box);
-                    if (GUI.Button(new Rect(r.x + 40f, r.y + 32f, 140f, 26f), "Take it")) Answer(o, true);
-                    if (GUI.Button(new Rect(r.x + 200f, r.y + 32f, 140f, 26f), "No thanks")) Answer(o, false);
+                    GUI.Box(r, Lang.F("{0} offers you {1}", Coop.Player(o.From).Name, Medic.Pretty(o.ItemId)), _box);
+                    if (GUI.Button(new Rect(r.x + 40f, r.y + 32f, 140f, 26f), Lang.T("Take it"))) Answer(o, true);
+                    if (GUI.Button(new Rect(r.x + 200f, r.y + 32f, 140f, 26f), Lang.T("No thanks"))) Answer(o, false);
                     y += 74f;
                 }
                 foreach (var a in _asks.ToArray())
                 {
                     var r = new Rect(w / 2f - 190f, y, 380f, 66f);
-                    GUI.Box(r, Coop.Player(a.From).Name + " asks for your " + Medic.Pretty(a.ItemId), _box);
-                    if (GUI.Button(new Rect(r.x + 40f, r.y + 32f, 140f, 26f), "Give it")) GiveAsked(a);
-                    if (GUI.Button(new Rect(r.x + 200f, r.y + 32f, 140f, 26f), "Keep it")) Refuse(a);
+                    GUI.Box(r, Lang.F("{0} asks for your {1}", Coop.Player(a.From).Name, Medic.Pretty(a.ItemId)), _box);
+                    if (GUI.Button(new Rect(r.x + 40f, r.y + 32f, 140f, 26f), Lang.T("Give it"))) GiveAsked(a);
+                    if (GUI.Button(new Rect(r.x + 200f, r.y + 32f, 140f, 26f), Lang.T("Keep it"))) Refuse(a);
                     y += 74f;
                 }
             }

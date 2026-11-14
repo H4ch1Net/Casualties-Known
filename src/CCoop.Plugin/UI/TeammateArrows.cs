@@ -56,7 +56,7 @@ namespace CCoop.Plugin.UI
                 GUI.color = oldColor;
 
                 int dist = Mathf.RoundToInt(Vector2.Distance(eye, rec.Position));
-                string state = !rec.Alive ? " (dead)" : !rec.Conscious ? " (down)" : "";
+                string state = !rec.Alive ? " (" + Lang.T("dead") + ")" : !rec.Conscious ? " (" + Lang.T("down") + ")" : "";
                 var r = new Rect(at.x - 90f, at.y + 14f, 180f, 20f);
                 _label.normal.textColor = new Color(0f, 0f, 0f, 0.8f);
                 GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), rec.Name + state + " · " + dist + " m", _label);

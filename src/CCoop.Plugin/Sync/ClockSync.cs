@@ -4,6 +4,7 @@ using CCoop.Plugin.Protocol;
 using CCoop.Plugin.Runtime;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -210,8 +211,8 @@ namespace CCoop.Plugin.Sync
             foreach (var rec in Coop.Players.Values)
                 if (rec.Id != Coop.LocalId && rec.HasPosition && rec.Alive && rec.Conscious) othersAwake = true;
             if (!othersAwake) return;
-            UI.Overlay.Bottom(body.sleeping ? "Sleeping" : "Out cold",
-                "Time speeds up only once every living player is asleep or out cold.");
+            UI.Overlay.Bottom(body.sleeping ? Lang.T("Sleeping") : Lang.T("Out cold"),
+                Lang.T("Time speeds up only once every living player is asleep or out cold."));
         }
 
         private static void Apply(PlayerCamera.SpeedType speed)

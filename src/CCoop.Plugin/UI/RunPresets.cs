@@ -30,15 +30,15 @@ namespace CCoop.Plugin.UI
 
         internal static readonly Preset[] Builtin =
         {
-            Make("Cold snap", "Twenty degrees colder, and clothes hold less heat. Stay close: teammates warm each other.",
+            Make(Lang.N("Cold snap"), Lang.N("Twenty degrees colder, and clothes hold less heat. Stay close: teammates warm each other."),
                  "temperatureoffset", -20f, "insulationmultiplier", 0.8f, "metabolismrate", 1.2f),
-            Make("Glass bones", "Breaks hurt more, wounds bleed faster and heal slowly. Bring a medic.",
+            Make(Lang.N("Glass bones"), Lang.N("Breaks hurt more, wounds bleed faster and heal slowly. Bring a medic."),
                  "fracturepain", 1.5f, "bleedrate", 1.4f, "healingrate", 0.6f, "fibrillationrate", 1.5f),
-            Make("Field hospital", "Infections take hold faster, but everyone starts fully supplied and heals quicker.",
+            Make(Lang.N("Field hospital"), Lang.N("Infections take hold faster, but everyone starts fully supplied and heals quicker."),
                  "infectionchance", 2f, "infectionspeed", 1.5f, "healingrate", 1.3f, "startingsupplies", 2),
-            Make("Lean pickings", "Half the loot and more traders: share what you find and trade together.",
+            Make(Lang.N("Lean pickings"), Lang.N("Half the loot and more traders: share what you find and trade together."),
                  "baselootdensity", 0.5f, "lootmultiplier", 0.6f, "traderchance", 66f, "traderitemamount", 1.5f),
-            Make("Long haul", "Twice the time per layer, slower hunger and slower rot, for long sessions.",
+            Make(Lang.N("Long haul"), Lang.N("Twice the time per layer, slower hunger and slower rot, for long sessions."),
                  "timelimit", 120f, "metabolismrate", 0.8f, "itemdecayrate", 0.6f),
         };
 
@@ -74,7 +74,7 @@ namespace CCoop.Plugin.UI
                 Log.Warn("[presets] could not apply " + p.Name + ": " + e.Message);
                 return false;
             }
-            CoopRuntime.Notice("Run settings: " + p.Name);
+            CoopRuntime.Notice(Lang.F("Run settings: {0}", p.Saved ? p.Name : Lang.T(p.Name)));
             Log.Info("[presets] applied " + p.Name + " (" + p.Values.Count + " settings)");
             return true;
         }
@@ -235,7 +235,7 @@ namespace CCoop.Plugin.UI
             SavedPresets.RemoveAll(x => string.Equals(x.Name, p.Name, StringComparison.OrdinalIgnoreCase));
             SavedPresets.Add(p);
             Write();
-            CoopRuntime.Notice("Saved run preset: " + p.Name);
+            CoopRuntime.Notice(Lang.F("Saved run preset: {0}", p.Name));
             return true;
         }
 
@@ -265,40 +265,40 @@ namespace CCoop.Plugin.UI
         {
             if (!CanApply) return;
             string match = Matching();
-            _show = GUILayout.Toggle(_show, " Co-op run presets" + (match != null ? " (" + match + ")" : ""));
+            _show = GUILayout.Toggle(_show, " " + Lang.T("Co-op run presets") + (match != null ? " (" + Lang.T(match) + ")" : ""));
             if (!_show) return;
             GUILayout.BeginVertical(box);
-            GUILayout.Label("These set the game's run settings for the next run. Open the game's run settings to check or change them.", small);
+            GUILayout.Label(Lang.T("These set the game's run settings for the next run. Open the game's run settings to check or change them."), small);
             Preset remove = null;
             foreach (var p in All())
             {
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button((p.Name == match ? "✓ " : "") + p.Name, GUILayout.Width(130))) Apply(p);
-                GUILayout.Label(p.Saved ? Summary(p) : p.About, small);
-                if (p.Saved && GUILayout.Button("Delete", GUILayout.Width(55))) remove = p;
+                if (GUILayout.Button((p.Name == match ? "✓ " : "") + (p.Saved ? p.Name : Lang.T(p.Name)), GUILayout.Width(130))) Apply(p);
+                GUILayout.Label(p.Saved ? Summary(p) : Lang.T(p.About), small);
+                if (p.Saved && GUILayout.Button(Lang.T("Delete"), GUILayout.Width(55))) remove = p;
                 GUILayout.EndHorizontal();
             }
             if (remove != null) Delete(remove);
 
             GUILayout.BeginHorizontal();
             _name = GUILayout.TextField(_name, 32, GUILayout.Width(150));
-            if (GUILayout.Button("Save the current settings as", GUILayout.Width(190)) && Clean(_name).Length > 0) Save(_name);
+            if (GUILayout.Button(Lang.T("Save the current settings as"), GUILayout.Width(190)) && Clean(_name).Length > 0) Save(_name);
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Copy as text"))
+            if (GUILayout.Button(Lang.T("Copy as text")))
             {
                 var cur = Current(match ?? (Clean(_name).Length > 0 ? _name : "Shared"));
                 if (cur != null)
                 {
                     GUIUtility.systemCopyBuffer = Encode(cur);
-                    CoopRuntime.Notice("Copied the run settings: paste them to a friend");
+                    CoopRuntime.Notice(Lang.T("Copied the run settings: paste them to a friend"));
                 }
             }
-            if (GUILayout.Button("Use text from the clipboard"))
+            if (GUILayout.Button(Lang.T("Use text from the clipboard")))
             {
                 var p = Decode(GUIUtility.systemCopyBuffer);
-                if (p == null) CoopRuntime.Notice("The clipboard has no co-op run preset (it starts with " + SharePrefix + ")");
+                if (p == null) CoopRuntime.Notice(Lang.F("The clipboard has no co-op run preset (it starts with {0})", SharePrefix));
                 else Apply(p);
             }
             GUILayout.EndHorizontal();
@@ -307,7 +307,7 @@ namespace CCoop.Plugin.UI
 
         private static string Summary(Preset p)
         {
-            if (p.Values.Count == 0) return "The game's normal settings.";
+            if (p.Values.Count == 0) return Lang.T("The game's normal settings.");
             var parts = new List<string>();
             foreach (var kv in p.Values)
             {
@@ -316,7 +316,8 @@ namespace CCoop.Plugin.UI
                 parts.Add(label);
                 if (parts.Count == 4) break;
             }
-            return "Changes " + string.Join(", ", parts.ToArray()) + (p.Values.Count > 4 ? " and " + (p.Values.Count - 4) + " more" : "") + ".";
+            string list = string.Join(", ", parts.ToArray());
+            return p.Values.Count > 4 ? Lang.F("Changes {0} and {1} more.", list, p.Values.Count - 4) : Lang.F("Changes {0}.", list);
         }
     }
 }

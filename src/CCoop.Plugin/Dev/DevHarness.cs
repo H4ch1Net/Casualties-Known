@@ -62,6 +62,10 @@ namespace CCoop.Plugin.Dev
 
         internal static readonly int StartLayer = int.TryParse(Env("CCOOP_STARTDEPTH"), out var d) ? d : 0;
 
+        /// <summary>CCOOP_LANG / CCOOP_LANGFILE: show the mod in this language, from this file (never the player's setting).</summary>
+        internal static readonly string LangOverride = Env("CCOOP_LANG");
+        internal static readonly string LangFileOverride = Env("CCOOP_LANGFILE");
+
         /// <summary>CCOOP_PRESET=&lt;name&gt;: the host applies this co-op run preset on the pre-run screen before the run.</summary>
         internal static readonly string PresetOverride = Env("CCOOP_PRESET");
 
@@ -1507,6 +1511,9 @@ namespace CCoop.Plugin.Dev
                      " temp " + WorldGeneration.world.ambientTemperature.ToString("F1"));
             if (tag == "team") Log.Info("VERIFY " + tag + " scaling enemy strength " + SpiderHandler.strengthMult.ToString("F2") + " (run setting " +
                                          (WorldGeneration.runSettings != null && WorldGeneration.runSettings.TryGetValue("enemystrength", out var es0) ? es0 : "-") + ")");
+            if (tag == "before")
+                Log.Info("VERIFY before lang " + UI.Lang.Code + " " + UI.Lang.Count + " lines; sample " + UI.Lang.T("Host with Steam") + " | " +
+                         UI.Lang.F("{0} joined", "X") + " | " + UI.Lang.Unpack(UI.Lang.Pack("Treated {0}", "Y")));
             if (tag == "before")
             {
                 // M9: a shared preset line is checked against the game's settings: unknown

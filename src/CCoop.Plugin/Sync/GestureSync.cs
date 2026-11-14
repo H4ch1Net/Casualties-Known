@@ -24,14 +24,14 @@ namespace CCoop.Plugin.Sync
 
         private static readonly (Kind kind, string label, string line)[] Wheel =
         {
-            (Kind.Wave, "Wave", "*waves*"),
-            (Kind.ComeHere, "Come here", "*beckons you over*"),
-            (Kind.Point, "Point", "*points*"),
-            (Kind.Help, "Help!", "*calls for help!*"),
-            (Kind.Hug, "Hug", null),
-            (Kind.No, "No", "*shakes head*"),
-            (Kind.Wait, "Wait", "*holds up a hand: wait*"),
-            (Kind.ThumbsUp, "Thumbs up", "*gives a thumbs up*"),
+            (Kind.Wave, Lang.N("Wave"), Lang.N("*waves*")),
+            (Kind.ComeHere, Lang.N("Come here"), Lang.N("*beckons you over*")),
+            (Kind.Point, Lang.N("Point"), Lang.N("*points*")),
+            (Kind.Help, Lang.N("Help!"), Lang.N("*calls for help!*")),
+            (Kind.Hug, Lang.N("Hug"), null),
+            (Kind.No, Lang.N("No"), Lang.N("*shakes head*")),
+            (Kind.Wait, Lang.N("Wait"), Lang.N("*holds up a hand: wait*")),
+            (Kind.ThumbsUp, Lang.N("Thumbs up"), Lang.N("*gives a thumbs up*")),
         };
 
         private const float HugReach = 1.8f;
@@ -104,16 +104,16 @@ namespace CCoop.Plugin.Sync
         private void Do(int index)
         {
             var body = GameInfo.LocalBody;
-            if (body == null || !body.alive || !body.conscious) { CoopRuntime.Notice("You can't do that right now."); return; }
+            if (body == null || !body.alive || !body.conscious) { CoopRuntime.Notice(Lang.T("You can't do that right now.")); return; }
             var (kind, label, line) = Wheel[index];
             var msg = new GestureMsg { Kind = (byte)kind };
 
             if (kind == Kind.Hug)
             {
                 var target = NearestTeammate(body, HugReach);
-                if (target == null) { CoopRuntime.Notice("No one close enough to hug."); return; }
+                if (target == null) { CoopRuntime.Notice(Lang.T("No one close enough to hug.")); return; }
                 msg.Target = target.Id;
-                line = "*hugs " + Coop.Player(target.Id).Name + "*";
+                line = Lang.F("*hugs {0}*", Coop.Player(target.Id).Name);
                 Hugged(target.Id, body);
             }
             else if (kind == Kind.Point)
@@ -130,7 +130,7 @@ namespace CCoop.Plugin.Sync
                 Coop.Get<PingSync>()?.DevPing(body.transform.position);
             }
 
-            if (line != null) Say(body, line);
+            if (line != null) Say(body, Lang.T(line));
             Session.Broadcast(msg);
             Log.Info("[gesture] " + label);
         }
@@ -201,7 +201,7 @@ namespace CCoop.Plugin.Sync
                     if (body == null || !body.alive) return;
                     float before = body.happiness;
                     Hugged(origin, body);
-                    CoopRuntime.Notice(Coop.Player(origin).Name + " hugged you");
+                    CoopRuntime.Notice(Lang.F("{0} hugged you", Coop.Player(origin).Name));
                     Log.Info("[gesture] hugged by " + Coop.Player(origin).Name + ": mood " + before.ToString("F1") + " -> " + body.happiness.ToString("F1"));
                     break;
             }
@@ -284,7 +284,7 @@ namespace CCoop.Plugin.Sync
                 var at = centre + new Vector2(Mathf.Sin(angle), -Mathf.Cos(angle)) * radius;
                 var r = new Rect(at.x - 55f * k, at.y - 16f * k, 110f * k, 32f * k);
                 GUI.color = i == _choice ? Color.white : new Color(1f, 1f, 1f, 0.8f);
-                GUI.Box(r, Wheel[i].label, i == _choice ? _wheelSel : _wheelStyle);
+                GUI.Box(r, Lang.T(Wheel[i].label), i == _choice ? _wheelSel : _wheelStyle);
             }
             GUI.color = old;
         }

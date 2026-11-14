@@ -4,6 +4,7 @@ using CCoop.Plugin.Runtime;
 using CCoop.Plugin.World;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -32,7 +33,7 @@ namespace CCoop.Plugin.Sync
         private static bool Prefix()
         {
             if (!Coop.InSession) return true;
-            CoopRuntime.Notice("Saving is off in co-op. Press Continue to descend together, or leave from the co-op menu (F1).");
+            CoopRuntime.Notice(Lang.T("Saving is off in co-op. Press Continue to descend together, or leave from the co-op menu (F1)."));
             return false;
         }
     }

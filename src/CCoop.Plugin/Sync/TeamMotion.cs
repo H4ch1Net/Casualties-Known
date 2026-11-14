@@ -5,6 +5,7 @@ using CCoop.Plugin.Protocol;
 using CCoop.Plugin.Runtime;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -107,28 +108,28 @@ namespace CCoop.Plugin.Sync
 
         internal void GiveLegUp(byte target)
         {
-            if (DistanceTo(target) > LegUpReach) { CoopRuntime.Notice("Stand right next to them."); return; }
+            if (DistanceTo(target) > LegUpReach) { CoopRuntime.Notice(Lang.T("Stand right next to them.")); return; }
             Session.Broadcast(new TeamMove { Kind = MoveKind.LegUp, Target = target, F = LegUpWindow });
             Milestones.Add("legup");
-            Say("*cups hands for a leg-up*");
+            Say(Lang.T("*cups hands for a leg-up*"));
             Log.Info("[move] leg-up for " + Coop.Player(target).Name);
         }
 
         internal void PullUp(byte target)
         {
             var me = GameInfo.LocalBody;
-            if (me == null || DistanceTo(target) > PullReach) { CoopRuntime.Notice("They're too far to reach."); return; }
+            if (me == null || DistanceTo(target) > PullReach) { CoopRuntime.Notice(Lang.T("They're too far to reach.")); return; }
             var hand = me.limbs != null && me.limbs.Length > 5 && me.limbs[5] != null ? (Vector2)me.limbs[5].transform.position : (Vector2)me.transform.position;
             var top = new Vector2(hand.x, Mathf.Max(hand.y, me.transform.position.y) + 0.4f);
             Session.Broadcast(new TeamMove { Kind = MoveKind.Pull, Target = target, X = top.x, Y = top.y });
-            Say("*reaches down*");
+            Say(Lang.T("*reaches down*"));
             Log.Info("[move] reaching down to " + Coop.Player(target).Name);
         }
 
         internal string CantSnap(byte target)
         {
             if (_snapGiven.TryGetValue(target, out var at) && Time.unscaledTime - at < SnapCooldown)
-                return "Give them a minute (" + Mathf.CeilToInt(SnapCooldown - (Time.unscaledTime - at)) + " s).";
+                return Lang.F("Give them a minute ({0} s).", Mathf.CeilToInt(SnapCooldown - (Time.unscaledTime - at)));
             return null;
         }
 
@@ -138,7 +139,7 @@ namespace CCoop.Plugin.Sync
             if (why != null) { CoopRuntime.Notice(why); return; }
             _snapGiven[target] = Time.unscaledTime;
             Session.Broadcast(new TeamMove { Kind = MoveKind.Snap, Target = target });
-            Say("*shakes " + Coop.Player(target).Name + " by the shoulders*");
+            Say(Lang.F("*shakes {0} by the shoulders*", Coop.Player(target).Name));
             Log.Info("[move] snapping " + Coop.Player(target).Name + " out of it");
         }
 
@@ -164,15 +165,15 @@ namespace CCoop.Plugin.Sync
         {
             var me = GameInfo.LocalBody;
             string item = HeavyHeld(holder, out var weight);
-            if (item == null) { CoopRuntime.Notice("They're not holding anything heavy."); return; }
-            if (me == null || me.GetItem(me.handSlot) != null) { CoopRuntime.Notice("Empty your hand to help carry it."); return; }
-            if (DistanceTo(holder) > LiftReach) { CoopRuntime.Notice("Get closer to help carry it."); return; }
+            if (item == null) { CoopRuntime.Notice(Lang.T("They're not holding anything heavy.")); return; }
+            if (me == null || me.GetItem(me.handSlot) != null) { CoopRuntime.Notice(Lang.T("Empty your hand to help carry it.")); return; }
+            if (DistanceTo(holder) > LiftReach) { CoopRuntime.Notice(Lang.T("Get closer to help carry it.")); return; }
             StopLifting(true);
             _liftingFor = holder;
             _liftWeight = weight;
             LiftLoad = weight * 0.5f;
             Session.Broadcast(new TeamMove { Kind = MoveKind.LiftStart, Target = holder, F = weight });
-            CoopRuntime.Notice("Helping " + Coop.Player(holder).Name + " carry the " + Medic.Pretty(item));
+            CoopRuntime.Notice(Lang.F("Helping {0} carry the {1}", Coop.Player(holder).Name, Medic.Pretty(item)));
             Log.Info("[move] helping " + Coop.Player(holder).Name + " carry " + item + " (" + weight + " u)");
         }
 
@@ -210,7 +211,7 @@ namespace CCoop.Plugin.Sync
                 case MoveKind.LegUp:
                     _legUpUntil = Time.unscaledTime + m.F;
                     _legUpFrom = origin;
-                    CoopRuntime.Notice(who + " is giving you a leg-up: jump!");
+                    CoopRuntime.Notice(Lang.F("{0} is giving you a leg-up: jump!", who));
                     break;
                 case MoveKind.Pull:
                     TakeHand(body, new Vector2(m.X, m.Y), who);
@@ -221,7 +222,7 @@ namespace CCoop.Plugin.Sync
                     SnapBoost = again ? 20f : 40f;  // it works less the second time
                     SnapAt = Time.time;
                     Say("*snaps out of it*");
-                    CoopRuntime.Notice(who + " snapped you out of it. For now.");
+                    CoopRuntime.Notice(Lang.F("{0} snapped you out of it. For now.", who));
                     Log.Info("[move] snapped out of it by " + who + " (+" + SnapBoost + " mood, fading)");
                     break;
                 case MoveKind.LiftStart:
@@ -229,11 +230,11 @@ namespace CCoop.Plugin.Sync
                     if (held == null || held.Stats.weight < HeavyItem) { Log.Info("[move] " + who + " offered to help carry, but we hold nothing heavy"); return; }
                     _helpers[origin] = m.F;
                     RecomputeLiftLoad();
-                    CoopRuntime.Notice(who + " is helping you carry the " + Medic.Pretty(held.id));
+                    CoopRuntime.Notice(Lang.F("{0} is helping you carry the {1}", who, Medic.Pretty(held.id)));
                     Log.Info("[move] " + who + " helps carry our " + held.id);
                     break;
                 case MoveKind.LiftStop:
-                    if (_helpers.Remove(origin)) { RecomputeLiftLoad(); CoopRuntime.Notice(who + " let go of your load"); }
+                    if (_helpers.Remove(origin)) { RecomputeLiftLoad(); CoopRuntime.Notice(Lang.F("{0} let go of your load", who)); }
                     if (_liftingFor == origin) { _liftingFor = -1; RecomputeLiftLoad(); }
                     break;
                 case MoveKind.Caught:
@@ -260,7 +261,7 @@ namespace CCoop.Plugin.Sync
                 _rope = rope;
                 _ropeUntil = Time.unscaledTime + 6f;
                 body.StartClimbing(rope);
-                CoopRuntime.Notice(who + " is pulling you up");
+                CoopRuntime.Notice(Lang.F("{0} is pulling you up", who));
                 Log.Info("[move] pulled up by " + who + (body.currentClimbable == rope ? "" : " (couldn't grab)"));
             }
             catch (Exception e) { Log.Warn("[move] pull failed: " + e.Message); }
@@ -287,7 +288,7 @@ namespace CCoop.Plugin.Sync
             float hard = HardLanding(body);
             if (caught)
             {
-                CoopRuntime.Notice("You caught " + who);
+                CoopRuntime.Notice(Lang.F("You caught {0}", who));
                 Milestones.Add("catch");
                 Log.Info("[move] caught " + who + " falling at " + speed.ToString("F1") + " (hard landing " + hard.ToString("F0") + ")");
                 if (speed < hard * 1.4f) return;  // a clean catch
@@ -299,7 +300,7 @@ namespace CCoop.Plugin.Sync
             }
             else
             {
-                CoopRuntime.Notice(who + " landed on you");
+                CoopRuntime.Notice(Lang.F("{0} landed on you", who));
                 Log.Info("[move] " + who + " landed on us at " + speed.ToString("F1"));
                 float force = speed * 0.7f;
                 foreach (int i in new[] { 0, 1 })
@@ -378,7 +379,7 @@ namespace CCoop.Plugin.Sync
                 float soft = ready ? Mathf.Min(fall, hard * 0.5f) : Mathf.Min(fall * 0.7f, hard * 1.1f);
                 body.SetVelocity(new Vector2(rb.velocity.x * (ready ? 0.4f : 1f), -soft));
                 Session.Broadcast(new TeamMove { Kind = ready ? MoveKind.Caught : MoveKind.LandedOn, Target = r.Id, F = fall });
-                CoopRuntime.Notice(ready ? Coop.Player(r.Id).Name + " caught you" : "You landed on " + Coop.Player(r.Id).Name);
+                CoopRuntime.Notice(ready ? Lang.F("{0} caught you", Coop.Player(r.Id).Name) : Lang.F("You landed on {0}", Coop.Player(r.Id).Name));
                 Log.Info("[move] " + (ready ? "caught by " : "landed on ") + Coop.Player(r.Id).Name + " at " + fall.ToString("F1"));
                 return;
             }
@@ -412,9 +413,9 @@ namespace CCoop.Plugin.Sync
         internal override void Gui()
         {
             if (Time.unscaledTime < _legUpUntil)
-                UI.Overlay.Bottom(Coop.Player(_legUpFrom).Name + " is giving you a leg-up", "Jump next to them to go higher.", 1);
+                UI.Overlay.Bottom(Lang.F("{0} is giving you a leg-up", Coop.Player(_legUpFrom).Name), Lang.T("Jump next to them to go higher."), 1);
             if (_liftingFor >= 0)
-                UI.Overlay.Bottom("Helping " + Coop.Player((byte)_liftingFor).Name + " carry", "You take half the weight. Stay close and keep your hand free.", 2);
+                UI.Overlay.Bottom(Lang.F("Helping {0} carry", Coop.Player((byte)_liftingFor).Name), Lang.T("You take half the weight. Stay close and keep your hand free."), 2);
         }
     }
 

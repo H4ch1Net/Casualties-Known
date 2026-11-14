@@ -6,6 +6,7 @@ using CCoop.Plugin.Runtime;
 using CCoop.Plugin.World;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -125,7 +126,7 @@ namespace CCoop.Plugin.Sync
                     _pending.Remove(m.Trader + ":" + m.Item);
                     if (item != null) t.items.Remove(item);
                     Refresh(t);
-                    CoopRuntime.Notice("A teammate just bought that");
+                    CoopRuntime.Notice(Lang.T("A teammate just bought that"));
                     break;
 
                 case TraderOp.Removed:

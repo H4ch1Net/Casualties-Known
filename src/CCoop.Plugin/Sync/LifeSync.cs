@@ -100,10 +100,10 @@ namespace CCoop.Plugin.Sync
             if (body == null || body.alive || _wiped) return;
             if (Rule == RespawnRule.Permadeath)
             {
-                CoopRuntime.Notice("Permadeath: you're spectating for the rest of the run");
+                CoopRuntime.Notice(Lang.T("Permadeath: you're spectating for the rest of the run"));
                 return;
             }
-            Revive(body, null, "You're back for the new layer");
+            Revive(body, null, Lang.T("You're back for the new layer"));
         }
 
         private void Revive(Body body, Vector2? at, string notice)
@@ -145,8 +145,8 @@ namespace CCoop.Plugin.Sync
                 // Brought back mid-layer (a teammate's defibrillator): gasp.
                 _diedAt = -1f;
                 ConditionFx.Flash(new Color(1f, 1f, 1f, 0.8f), 1.5f);
-                try { body.talker?.Talk("*gasps*", null, true, true); } catch { /* speechless */ }
-                CoopRuntime.Notice("You're back!");
+                try { body.talker?.Talk(Lang.T("*gasps*"), null, true, true); } catch { /* speechless */ }
+                CoopRuntime.Notice(Lang.T("You're back!"));
             }
             _wasAlive = alive;
 
@@ -158,7 +158,7 @@ namespace CCoop.Plugin.Sync
                 if (Rule == RespawnRule.Quick && _diedAt >= 0f && Coop.WorldLive && Time.unscaledTime - _diedAt >= QuickDelay)
                 {
                     var p = TargetPosition();
-                    Revive(body, p.HasValue ? p.Value + Vector2.up : (Vector2?)null, "Back on your feet");
+                    Revive(body, p.HasValue ? p.Value + Vector2.up : (Vector2?)null, Lang.T("Back on your feet"));
                 }
             }
 
@@ -171,7 +171,7 @@ namespace CCoop.Plugin.Sync
             _target = -1;
             PickTarget(0);
             Log.Info("[life] local player died; spectating " + (_target >= 0 ? Coop.Player((byte)_target).Name : "nobody"));
-            if (!_wiped) CoopRuntime.Notice("You died");
+            if (!_wiped) CoopRuntime.Notice(Lang.T("You died"));
         }
 
         /// <summary>"X died" / "X is back" for teammates on this layer.</summary>
@@ -182,7 +182,7 @@ namespace CCoop.Plugin.Sync
                 if (rec.Id == Coop.LocalId || !rec.HasPosition) continue;
                 if (_aliveSeen.TryGetValue(rec.Id, out var was) && was != rec.Alive && !_wiped)
                 {
-                    CoopRuntime.Notice(rec.Name + (rec.Alive ? " is back" : " died"));
+                    CoopRuntime.Notice(rec.Alive ? Lang.F("{0} is back", rec.Name) : Lang.F("{0} died", rec.Name));
                     var me = GameInfo.LocalBody;
                     if (!rec.Alive && me != null && me.alive && Vector2.Distance(me.transform.position, rec.Position) < 25f)
                     {
@@ -266,7 +266,7 @@ namespace CCoop.Plugin.Sync
             CoopSaves.DeleteCurrent();
             Session.Broadcast(new TeamWipe { Epoch = Coop.Epoch });
             Log.Info("[life] everyone is dead; the run is over");
-            CoopRuntime.Notice("Everyone is dead. The run is over");
+            CoopRuntime.Notice(Lang.T("Everyone is dead. The run is over"));
         }
 
         private void OnWipe(byte origin, TeamWipe m)
@@ -275,7 +275,7 @@ namespace CCoop.Plugin.Sync
             _wiped = true;
             CoopSaves.DeleteCurrent();
             Log.Info("[life] team wipe on epoch " + m.Epoch);
-            CoopRuntime.Notice("Everyone is dead. The run is over");
+            CoopRuntime.Notice(Lang.T("Everyone is dead. The run is over"));
         }
 
         internal static bool Wiped => _wiped;
@@ -317,9 +317,9 @@ namespace CCoop.Plugin.Sync
             if (m.Dead && body.alive)
             {
                 body.brainHealth = 0f;
-                CoopRuntime.Notice("You were dead when you left, so you're spectating");
+                CoopRuntime.Notice(Lang.T("You were dead when you left, so you're spectating"));
             }
-            else if (m.HasPosition) CoopRuntime.Notice("Back where you left off");
+            else if (m.HasPosition) CoopRuntime.Notice(Lang.T("Back where you left off"));
             Log.Info("[life] host restored our place" + (m.Dead ? " (dead)" : ""));
         }
 
@@ -330,20 +330,20 @@ namespace CCoop.Plugin.Sync
             if (!Spectating || !Coop.WorldLive) return;
             string who = TargetName;
             string top = who != null
-                ? "You died · watching " + who + (Candidates().Count > 1 ? "   (A / D to switch)" : "")
-                : "You died";
+                ? Lang.F("You died · watching {0}", who) + (Candidates().Count > 1 ? "   " + Lang.T("(A / D to switch)") : "")
+                : Lang.T("You died");
             string bottom;
             switch (Rule)
             {
                 case RespawnRule.Permadeath:
-                    bottom = "Permadeath: you're out for the rest of this run.";
+                    bottom = Lang.T("Permadeath: you're out for the rest of this run.");
                     break;
                 case RespawnRule.Quick:
                     float left = _diedAt >= 0f ? Mathf.Max(0f, QuickDelay - (Time.unscaledTime - _diedAt)) : QuickDelay;
-                    bottom = "Back beside a teammate in " + Mathf.CeilToInt(left) + " s.";
+                    bottom = Lang.F("Back beside a teammate in {0} s.", Mathf.CeilToInt(left));
                     break;
                 default:
-                    bottom = "You'll be back when the team goes down to the next layer.";
+                    bottom = Lang.T("You'll be back when the team goes down to the next layer.");
                     break;
             }
             Overlay.Bottom(top, bottom);

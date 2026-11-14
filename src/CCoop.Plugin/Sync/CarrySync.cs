@@ -2,6 +2,7 @@ using CCoop.Net.Session;
 using CCoop.Plugin.Protocol;
 using CCoop.Plugin.Runtime;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -83,34 +84,34 @@ namespace CCoop.Plugin.Sync
         internal static string CantCarry(CarryMode mode)
         {
             var b = GameInfo.LocalBody;
-            if (b == null) return "You need to be in the layer.";
+            if (b == null) return Lang.T("You need to be in the layer.");
             switch (mode)
             {
                 case CarryMode.Drag:
-                    return HandFree(b, b.handSlot) ? null : "Empty your hand to drag them.";
+                    return HandFree(b, b.handSlot) ? null : Lang.T("Empty your hand to drag them.");
                 case CarryMode.Back:
-                    return b.GetWearableBySlotID("back") == null ? null : "Take off your backpack to carry them on your back.";
+                    return b.GetWearableBySlotID("back") == null ? null : Lang.T("Take off your backpack to carry them on your back.");
                 default:
-                    return HandFree(b, 0) && HandFree(b, 1) ? null : "Empty both hands to carry them in your arms.";
+                    return HandFree(b, 0) && HandFree(b, 1) ? null : Lang.T("Empty both hands to carry them in your arms.");
             }
         }
 
         internal void Pick(byte target, CarryMode mode)
         {
             string why = Medic.CantTreat(target);
-            if (why == null && !Downed(target)) why = Coop.Player(target).Name + " can walk.";
+            if (why == null && !Downed(target)) why = Lang.F("{0} can walk.", Coop.Player(target).Name);
             if (why == null) why = CantCarry(mode);
             if (why != null) { CoopRuntime.Notice(why); return; }
             if (_carrying >= 0) PutDown("switching");
             _carrying = target;
             _mode = mode;
             Session.Broadcast(new CarryCommand { Carrier = Coop.LocalId, Target = target, Start = true, Mode = mode });
-            CoopRuntime.Notice(Verb(mode) + " " + Coop.Player(target).Name);
+            CoopRuntime.Notice(Lang.F("{0} {1}", Verb(mode), Coop.Player(target).Name));
             Log.Info("[carry] " + mode + " " + Coop.Player(target).Name);
         }
 
         internal static string Verb(CarryMode mode) =>
-            mode == CarryMode.Drag ? "Dragging" : mode == CarryMode.Back ? "Carrying on your back:" : "Carrying in your arms:";
+            mode == CarryMode.Drag ? Lang.T("Dragging") : mode == CarryMode.Back ? Lang.T("Carrying on your back:") : Lang.T("Carrying in your arms:");
 
         internal void PutDown(string why = "put down")
         {
@@ -120,7 +121,7 @@ namespace CCoop.Plugin.Sync
             Log.Info("[carry] letting go of " + Coop.Player(target).Name + ": " + why);
             StopCarrying();
             Session.Broadcast(new CarryCommand { Carrier = Coop.LocalId, Target = target, Start = false });
-            CoopRuntime.Notice("Put " + Coop.Player(target).Name + " down");
+            CoopRuntime.Notice(Lang.F("Put {0} down", Coop.Player(target).Name));
         }
 
         private void StopCarrying()
@@ -202,7 +203,7 @@ namespace CCoop.Plugin.Sync
                     _carriedMode = m.Mode;
                     var b = GameInfo.LocalBody;
                     _hold = b != null && b.limbs != null && b.limbs.Length > 5 ? (Vector2)b.limbs[PinnedLimb(m.Mode)].transform.position : Vector2.zero;
-                    CoopRuntime.Notice(Coop.Player(m.Carrier).Name + (m.Mode == CarryMode.Drag ? " is dragging you" : " is carrying you"));
+                    CoopRuntime.Notice(m.Mode == CarryMode.Drag ? Lang.F("{0} is dragging you", Coop.Player(m.Carrier).Name) : Lang.F("{0} is carrying you", Coop.Player(m.Carrier).Name));
                     Log.Info("[carry] " + m.Mode + " by " + Coop.Player(m.Carrier).Name);
                 }
                 else if (_carriedBy == m.Carrier) Release("the carrier let go");
@@ -210,7 +211,7 @@ namespace CCoop.Plugin.Sync
             else if (m.Carrier == Coop.LocalId && !m.Start && _carrying == m.Target)
             {
                 StopCarrying();  // they woke up and got down
-                CoopRuntime.Notice(Coop.Player(m.Target).Name + " got down");
+                CoopRuntime.Notice(Lang.F("{0} got down", Coop.Player(m.Target).Name));
             }
         }
 
@@ -263,10 +264,10 @@ namespace CCoop.Plugin.Sync
         internal override void Gui()
         {
             if (_carrying < 0) return;
-            string cost = _mode == CarryMode.Drag ? "Slow going, and no jumping."
-                : _mode == CarryMode.Back ? "They weigh on you: you can't jump as high."
-                : "Both arms full: slower, and only small hops.";
-            UI.Overlay.Bottom(Verb(_mode) + " " + Coop.Player((byte)_carrying).Name, cost + " Right-click them to put them down.", 2);
+            string cost = _mode == CarryMode.Drag ? Lang.T("Slow going, and no jumping.")
+                : _mode == CarryMode.Back ? Lang.T("They weigh on you: you can't jump as high.")
+                : Lang.T("Both arms full: slower, and only small hops.");
+            UI.Overlay.Bottom(Verb(_mode) + " " + Coop.Player((byte)_carrying).Name, cost + " " + Lang.T("Right-click them to put them down."), 2);
         }
     }
 }

@@ -52,6 +52,10 @@
     </ItemGroup>
     <MakeDir Directories="$(GameBepInExPluginPath)\CasualtiesCoop" />
     <Copy SourceFiles="@(CCoopDeploy)" DestinationFolder="$(GameBepInExPluginPath)\CasualtiesCoop" />
+    <ItemGroup>
+      <CCoopLang Include="$(MSBuildThisFileDirectory)..\..\lang\*.txt" />
+    </ItemGroup>
+    <Copy SourceFiles="@(CCoopLang)" DestinationFolder="$(GameBepInExPluginPath)\CasualtiesCoop\lang" />
     <Message Importance="high" Text="Deployed to $(GameBepInExPluginPath)\CasualtiesCoop" />
   </Target>
 
@@ -64,6 +68,10 @@
     <RemoveDir Directories="$(MSBuildThisFileDirectory)..\..\dist\stage" />
     <MakeDir Directories="$(StageDir)" />
     <Copy SourceFiles="$(TargetDir)CCoop.Plugin.dll;$(TargetDir)CCoop.Net.dll;$(TargetDir)LiteNetLib.dll" DestinationFolder="$(StageDir)" />
+    <ItemGroup>
+      <CCoopLangPack Include="$(MSBuildThisFileDirectory)..\..\lang\*.txt" />
+    </ItemGroup>
+    <Copy SourceFiles="@(CCoopLangPack)" DestinationFolder="$(StageDir)\lang" />
     <!-- The installer sits beside the BepInEx folder in the zip. -->
     <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\tools\install.ps1" DestinationFolder="$(MSBuildThisFileDirectory)..\..\dist\stage" />
     <Delete Files="$(ZipPath)" />

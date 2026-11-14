@@ -2,6 +2,7 @@ using CCoop.Plugin.Protocol;
 using CCoop.Plugin.Runtime;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -56,8 +57,9 @@ namespace CCoop.Plugin.Sync
                 if (rec.Id != Coop.LocalId && rec.InWorld && !rec.Finished) playing++;
             if (playing == 0 || Time.unscaledTime < _armedUntil) return true;
             _armedUntil = Time.unscaledTime + 8f;
-            CoopRuntime.Notice((playing == 1 ? "A teammate is" : playing + " teammates are") +
-                               " still playing. Leaving now ends the run for everyone: do it again within 8 s to leave anyway.");
+            CoopRuntime.Notice(playing == 1
+                ? Lang.T("A teammate is still playing. Leaving now ends the run for everyone: do it again within 8 s to leave anyway.")
+                : Lang.F("{0} teammates are still playing. Leaving now ends the run for everyone: do it again within 8 s to leave anyway.", playing));
             Log.Info("[endlab] held the host's return to the menu: " + playing + " still playing");
             return false;
         }

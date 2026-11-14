@@ -118,7 +118,7 @@ namespace CCoop.Plugin.Sync
             if (inLayer && !body.alive) kind = ChatLine.Ghost;
             else if (inLayer && !body.conscious)
             {
-                Add("You can't speak while unconscious.", new Color(1f, 0.6f, 0.5f));
+                Add(Lang.T("You can't speak while unconscious."), new Color(1f, 0.6f, 0.5f));
                 return;
             }
             else if (inLayer)
@@ -151,7 +151,7 @@ namespace CCoop.Plugin.Sync
             if (string.IsNullOrEmpty(name)) name = "?";
             var color = m.Kind == ChatLine.Ghost ? new Color(0.7f, 0.75f, 0.9f) : Color.white;
             string text = origin == Coop.LocalId ? m.Text : ConditionFx.AsRead(m.Text, name);
-            Add((m.Kind == ChatLine.Ghost ? "(dead) " : "") + name + ": " + text, color);
+            Add((m.Kind == ChatLine.Ghost ? "(" + Lang.T("dead") + ") " : "") + name + ": " + text, color);
             Log.Info("[chat] " + name + (m.Kind == ChatLine.Ghost ? " (dead)" : "") + ": " + text);
         }
 
@@ -221,7 +221,7 @@ namespace CCoop.Plugin.Sync
                 {
                     // The key that opened chat mustn't also become its first letter.
                     if (Time.frameCount == _openedFrame && _openedBy != KeyCode.Return) _draft = "";
-                    GUI.Label(new Rect(x - 52f, y + 2f, 50f, 24f), "Say:", _style);
+                    GUI.Label(new Rect(x - 52f, y + 2f, 50f, 24f), Lang.T("Say:"), _style);
                     GUI.SetNextControlName("ccoop_chat");
                     _draft = GUI.TextField(new Rect(x, y, width, 26f), _draft ?? "", MaxLength, _field);
                     if (_focusPending)

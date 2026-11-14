@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Networking;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Runtime
 {
@@ -37,7 +38,7 @@ namespace CCoop.Plugin.Runtime
                 string url = Field(req.downloadHandler.text, "html_url");
                 if (IsNewer(tag, CoopPlugin.Version))
                 {
-                    Notice = "CasualtiesCoop " + tag.TrimStart('v', 'V') + " is out (you have " + CoopPlugin.Version + "): " + url;
+                    Notice = Lang.F("CasualtiesCoop {0} is out (you have {1}): {2}", tag.TrimStart('v', 'V'), CoopPlugin.Version, url);
                     Log.Info("update check: " + Notice);
                 }
                 else Log.Info("update check: up to date (" + tag + ")");

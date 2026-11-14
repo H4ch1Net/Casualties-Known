@@ -228,6 +228,12 @@ docs/game-systems.md    how the game works, system by system, and what each mean
 legacy/v1/              the demo-era version
 ```
 
+## Translations
+
+The mod's text follows the game's language. A translation is a plain text file, `lang/<code>.txt`, where `<code>` is the game's language code (`zh-CN` for Simplified Chinese, or the name of a community language file in the game's `Lang` folder). Start from `lang/template.txt`: under each English line, write the translation after `= `. Keep `{0}`, `{1}`… (names and numbers) and the `*asterisks*` of emotes. Lines left empty show in English.
+
+Put the file in `BepInEx/plugins/CasualtiesCoop/lang/`, or in the game's data folder under `CasualtiesCoop/lang/` (`%USERPROFILE%\AppData\LocalLow\Orsoniks\CasualtiesUnknown\CasualtiesCoop\lang\`) to keep it across mod updates. `Language` in the config picks a language other than the game's. After a mod update, `python tools/extract-strings.py lang/<code>.txt` adds the new lines to a translation and keeps the existing ones.
+
 ## For mod authors
 
 Other BepInEx mods can share their own state through a CasualtiesCoop session. Reference `CCoop.Plugin.dll` and `CCoop.Net.dll`, add `[BepInDependency("ccoop.casualtiescoop", BepInDependency.DependencyFlags.SoftDependency)]`, and register each message type once from your plugin's `Awake`:

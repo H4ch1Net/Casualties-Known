@@ -6,6 +6,7 @@ using CCoop.Plugin.Runtime;
 using CCoop.Plugin.World;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -45,7 +46,7 @@ namespace CCoop.Plugin.Sync
             if (_pending != null && Time.unscaledTime > _pendingUntil)
             {
                 _pending = null;
-                CoopRuntime.Notice("The host didn't answer; try crafting again");
+                CoopRuntime.Notice(Lang.T("The host didn't answer; try crafting again"));
             }
         }
 
@@ -79,7 +80,7 @@ namespace CCoop.Plugin.Sync
                 foreach (var id in ids)
                     if (HeldByOther(id, NetSession.HostId))
                     {
-                        CoopRuntime.Notice("A teammate is crafting with that");
+                        CoopRuntime.Notice(Lang.T("A teammate is crafting with that"));
                         PlayerCamera.main?.PlayUISound(PlayerCamera.UISoundType.Deny);
                         return false;
                     }
@@ -136,7 +137,7 @@ namespace CCoop.Plugin.Sync
                     if (m.Op == CraftOp.Denied)
                     {
                         Denied++;
-                        CoopRuntime.Notice("A teammate got to it first");
+                        CoopRuntime.Notice(Lang.T("A teammate got to it first"));
                         PlayerCamera.main?.PlayUISound(PlayerCamera.UISoundType.Deny);
                         return;
                     }

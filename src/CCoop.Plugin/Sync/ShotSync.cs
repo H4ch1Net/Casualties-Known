@@ -6,6 +6,7 @@ using CCoop.Plugin.Runtime;
 using CCoop.Plugin.World;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -186,7 +187,7 @@ namespace CCoop.Plugin.Sync
             if (m.FromPlayer && !info.ignoreBody && body != null && body.limbs[1].skinHealth + body.limbs[0].skinHealth < before)
             {
                 Log.Info("[shot] hit by " + Coop.Player(origin).Name + "'s shot");
-                CoopRuntime.Notice(Coop.Player(origin).Name + " shot you");
+                CoopRuntime.Notice(Lang.F("{0} shot you", Coop.Player(origin).Name));
             }
         }
     }

@@ -5,6 +5,7 @@ using CCoop.Plugin.Protocol;
 using CCoop.Plugin.Runtime;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -117,11 +118,12 @@ namespace CCoop.Plugin.Sync
             rec.Sleeping = (m.Flags & PlayerFlags.Sleeping) != 0;
             rec.Dying = (m.Flags & PlayerFlags.Dying) != 0;
             bool finished = (m.Flags & PlayerFlags.Finished) != 0;
-            if (finished && !rec.Finished) CoopRuntime.Notice(rec.Name + " has reached an ending" + (origin == NetSession.HostId ? "; the run goes on until you finish too" : ""));
+            if (finished && !rec.Finished)
+                CoopRuntime.Notice(origin == NetSession.HostId ? Lang.F("{0} has reached an ending; the run goes on until you finish too", rec.Name) : Lang.F("{0} has reached an ending", rec.Name));
             rec.Finished = finished;
             rec.LastStateTime = Time.unscaledTime;
             rec.ReportedEpoch = m.Epoch;
-            if (!Coop.IsHost) rec.Status = rec.HasPosition ? LifeStatus(rec) : "menu";
+            if (!Coop.IsHost) rec.Status = rec.HasPosition ? LifeStatus(rec) : Lang.N("menu");
             else if (rec.InWorld && rec.HasPosition) rec.Status = LifeStatus(rec);
             Remote(origin)?.Receive(m);
             if (Coop.IsHost && origin != Coop.LocalId) SendByInterest(origin, m);
@@ -202,7 +204,7 @@ namespace CCoop.Plugin.Sync
         }
 
         internal static string LifeStatus(PlayerRecord rec) =>
-            !rec.Alive ? "dead" : rec.Conscious ? "in game" : rec.Sleeping ? "asleep" : "out cold";
+            !rec.Alive ? Lang.N("dead") : rec.Conscious ? Lang.N("in game") : rec.Sleeping ? Lang.N("asleep") : Lang.N("out cold");
 
         private PlayerState BuildState(Body body)
         {

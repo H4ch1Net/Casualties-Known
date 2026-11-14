@@ -4,6 +4,7 @@ using CCoop.Net.Session;
 using CCoop.Plugin.Net;
 using CCoop.Plugin.Runtime;
 using Steamworks;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -39,12 +40,12 @@ namespace CCoop.Plugin.Sync
 
         internal override void OnPeerJoined(PeerInfo peer)
         {
-            if (Enabled) SteamServices.TimelineEvent(peer.Name + " joined", "Co-op", "steam_group");
+            if (Enabled) SteamServices.TimelineEvent(Lang.F("{0} joined", peer.Name), "Co-op", "steam_group");
         }
 
         internal override void OnPeerLeft(PeerInfo peer)
         {
-            if (Enabled) SteamServices.TimelineEvent(peer.Name + " left", "Co-op", "steam_x");
+            if (Enabled) SteamServices.TimelineEvent(Lang.F("{0} left", peer.Name), "Co-op", "steam_x");
         }
 
         internal override void OnWorldLive()
@@ -58,10 +59,10 @@ namespace CCoop.Plugin.Sync
             }
             if (w.biomeDepth == _depth) return;
             _depth = w.biomeDepth;
-            string title = "Layer " + (_depth + 1);
+            string title = Lang.F("Layer {0}", _depth + 1);
             SteamServices.TimelineLayer(title, (uint)(_depth + 1));
             int n = Session != null ? Session.PeerCount : 1;
-            SteamServices.TimelineEvent(title, "Co-op with " + n + (n == 1 ? " player" : " players"), "steam_flag");
+            SteamServices.TimelineEvent(title, n == 1 ? Lang.T("Co-op with 1 player") : Lang.F("Co-op with {0} players", n), "steam_flag");
         }
 
         internal override void Tick()
@@ -86,7 +87,7 @@ namespace CCoop.Plugin.Sync
                 var body = local ? GameInfo.LocalBody : null;
                 bool alive = local ? body == null || body.alive : !rec.HasPosition || rec.Alive;
                 if (_alive.TryGetValue(rec.Id, out var was) && was && !alive)
-                    SteamServices.TimelineEvent((local ? "You" : rec.Name) + " died", "Layer " + (_depth + 1), "steam_death", local);
+                    SteamServices.TimelineEvent(local ? Lang.T("You died") : Lang.F("{0} died", rec.Name), Lang.F("Layer {0}", _depth + 1), "steam_death", local);
                 _alive[rec.Id] = alive;
             }
         }

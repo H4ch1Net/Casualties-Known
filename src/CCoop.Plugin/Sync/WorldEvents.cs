@@ -6,6 +6,7 @@ using CCoop.Plugin.Runtime;
 using CCoop.Plugin.World;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -339,7 +340,7 @@ namespace CCoop.Plugin.Sync
             heart.StartCoroutine(heart.Cutscene());
             if (!endless && body != null) body.talker.Talk(Locale.GetCharacter("cargo2"));
             Sound.Play("blueHeartObtain", Vector2.zero, twoDimensional: true, pitchShift: false, null, 1f, 1f, noReverb: true, ignoreMixer: true);
-            CoopRuntime.Notice("The Blue Heart is rising");
+            CoopRuntime.Notice(Lang.T("The Blue Heart is rising"));
         }
 
         /// <summary>A peer's copy breaks because the host's did: it must not go off a second time.</summary>

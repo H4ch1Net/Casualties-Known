@@ -7,6 +7,7 @@ using CCoop.Plugin.Runtime;
 using CCoop.Plugin.World;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -92,25 +93,25 @@ namespace CCoop.Plugin.Sync
         internal static string CantTreat(byte patient, float reach)
         {
             var body = GameInfo.LocalBody;
-            if (body == null || !Coop.WorldLive) return "You need to be in the layer.";
-            if (!body.alive) return "You're dead.";
-            if (!body.conscious) return "You're not conscious.";
+            if (body == null || !Coop.WorldLive) return Lang.T("You need to be in the layer.");
+            if (!body.alive) return Lang.T("You're dead.");
+            if (!body.conscious) return Lang.T("You're not conscious.");
             var r = Coop.Get<PlayerSync>()?.Find(patient);
             var at = r?.ShownAt;
-            if (!at.HasValue) return "They're not here.";
+            if (!at.HasValue) return Lang.T("They're not here.");
             float d = Vector2.Distance(body.transform.position, at.Value);
-            if (d > reach) return "Get closer (" + d.ToString("F0") + " m away).";
+            if (d > reach) return Lang.F("Get closer ({0} m away).", d.ToString("F0"));
             return null;
         }
 
         /// <summary>Why the held item can't be used on a limb, or null.</summary>
         internal static string CantUse(Item item)
         {
-            if (item == null) return "Hold a medical item in your hand.";
+            if (item == null) return Lang.T("Hold a medical item in your hand.");
             var body = GameInfo.LocalBody;
             if (IsDefibrillator(item)) return null;
-            if (!item.Stats.ActuallyUsableOnLimb(item)) return "That isn't used on a limb.";
-            if (body != null && !body.aboveMedicalCutoff && !item.Stats.ignoreDepression) return "You can't bring yourself to do it right now.";
+            if (!item.Stats.ActuallyUsableOnLimb(item)) return Lang.T("That isn't used on a limb.");
+            if (body != null && !body.aboveMedicalCutoff && !item.Stats.ignoreDepression) return Lang.T("You can't bring yourself to do it right now.");
             return null;
         }
 
@@ -165,7 +166,7 @@ namespace CCoop.Plugin.Sync
                     MedicSession.Start(origin, _pendingLimb, TreatKind.Item, item);
                     return;
                 }
-                CoopRuntime.Notice(who + ": " + m.Message);
+                CoopRuntime.Notice(Lang.F("{0}: {1}", who, Lang.Unpack(m.Message)));
                 return;
             }
             if (item != null)
@@ -177,7 +178,7 @@ namespace CCoop.Plugin.Sync
                     if (spec != null) Coop.AsRemote(() => ItemCodec.Apply(item, spec));
                 }
             }
-            CoopRuntime.Notice(string.IsNullOrEmpty(m.Message) ? "Treated " + who : m.Message);
+            CoopRuntime.Notice(string.IsNullOrEmpty(m.Message) ? Lang.F("Treated {0}", who) : Lang.Unpack(m.Message));
             Log.Info("[medic] " + who + " was treated" + (m.Consumed ? " (item used up)" : "") + ": " + m.Message);
         }
 
@@ -203,7 +204,7 @@ namespace CCoop.Plugin.Sync
             if (Time.unscaledTime - _lastCprNotice > 4f)
             {
                 _lastCprNotice = Time.unscaledTime;
-                CoopRuntime.Notice(Coop.Player(origin).Name + " is giving you CPR");
+                CoopRuntime.Notice(Lang.F("{0} is giving you CPR", Coop.Player(origin).Name));
                 Log.Info("[medic] CPR from " + Coop.Player(origin).Name + ": pressure " + body.bloodPressure.ToString("F0") + ", oxygen " + body.bloodOxygen.ToString("F0"));
             }
         }
@@ -251,7 +252,7 @@ namespace CCoop.Plugin.Sync
                         ps = StartPatientSession(origin, m, body, out var refuse);
                         if (refuse != null) { Reply(origin, m.Session, TreatOp.Refuse, refuse, null); return; }
                         _patientSessions[key] = ps;
-                        CoopRuntime.Notice(who + " is treating your " + LimbName(ps.Limb));
+                        CoopRuntime.Notice(Lang.F("{0} is treating your {1}", who, LimbName(ps.Limb)));
                         Log.Info("[medic] " + who + " started treating limb " + m.Limb + " (" + m.Kind + ")");
                         break;
                     case TreatOp.Wrap:
@@ -277,7 +278,7 @@ namespace CCoop.Plugin.Sync
                         {
                             ps.Limb.dislocationTimer = 0f;
                             ps.Limb.UnDislocate();
-                            CoopRuntime.Notice(who + " set your " + LimbName(ps.Limb) + " back in place");
+                            CoopRuntime.Notice(Lang.F("{0} set your {1} back in place", who, LimbName(ps.Limb)));
                         }
                         break;
                     case TreatOp.Shock:
@@ -302,23 +303,23 @@ namespace CCoop.Plugin.Sync
         {
             refuse = null;
             var ps = new PatientSession { Id = m.Session, Treater = treater };
-            if (body == null || body.limbs == null || m.Limb >= body.limbs.Length) { refuse = "not in the layer"; return ps; }
+            if (body == null || body.limbs == null || m.Limb >= body.limbs.Length) { refuse = Lang.N("not in the layer"); return ps; }
             ps.Limb = body.limbs[m.Limb];
-            if (ps.Limb == null || ps.Limb.dismembered) { refuse = "that limb is gone"; return ps; }
+            if (ps.Limb == null || ps.Limb.dismembered) { refuse = Lang.N("that limb is gone"); return ps; }
             switch (m.Kind)
             {
                 case TreatKind.SetDislocation:
-                    if (!ps.Limb.dislocated) refuse = "that joint isn't dislocated";
-                    else if (body.averagePain > 75f) refuse = "too much pain to set it";
+                    if (!ps.Limb.dislocated) refuse = Lang.N("that joint isn't dislocated");
+                    else if (body.averagePain > 75f) refuse = Lang.N("too much pain to set it");
                     return ps;
                 case TreatKind.PullShrapnel:
-                    if (ps.Limb.shrapnel <= 0) refuse = "there's nothing to pull out";
+                    if (ps.Limb.shrapnel <= 0) refuse = Lang.N("there's nothing to pull out");
                     return ps;
             }
             ps.Item = MakeTemporary(m.Item, body.transform.position);
-            if (ps.Item == null) { refuse = "couldn't make sense of the item"; return ps; }
+            if (ps.Item == null) { refuse = Lang.N("couldn't make sense of the item"); return ps; }
             if (IsDefibrillator(ps.Item)) return ps;  // shocks arrive on their own
-            if (!body.alive) { refuse = "they're dead"; return ps; }
+            if (!body.alive) { refuse = Lang.N("they're dead"); return ps; }
 
             Minigame mg;
             MinigameCapture.Capturing = true;
@@ -327,7 +328,7 @@ namespace CCoop.Plugin.Sync
             ps.Bandage = mg as BandageMinigame;
             ps.Syringe = mg as SyringeMinigame;
             if ((ps.Bandage != null || ps.Syringe != null) && ps.Limb.prostheticInfo.hasProsthetic)
-                refuse = "that won't work on a prosthetic";
+                refuse = Lang.N("that won't work on a prosthetic");
             return ps;
         }
 
@@ -366,9 +367,9 @@ namespace CCoop.Plugin.Sync
             Item tmp = null;
 
             string fail = null;
-            if (body == null || !Coop.WorldLive) fail = "not in the layer";
-            else if (limb == null) fail = "no such limb";
-            else if (limb.dismembered) fail = "that limb is gone";
+            if (body == null || !Coop.WorldLive) fail = Lang.N("not in the layer");
+            else if (limb == null) fail = Lang.N("no such limb");
+            else if (limb.dismembered) fail = Lang.N("that limb is gone");
 
             if (fail == null)
             {
@@ -377,39 +378,39 @@ namespace CCoop.Plugin.Sync
                     switch (m.Kind)
                     {
                         case TreatKind.SetDislocation:
-                            if (!limb.dislocated) fail = "that joint isn't dislocated";
-                            else if (body.averagePain > 75f) fail = "too much pain to set it";
+                            if (!limb.dislocated) fail = Lang.N("that joint isn't dislocated");
+                            else if (body.averagePain > 75f) fail = Lang.N("too much pain to set it");
                             else
                             {
                                 limb.dislocationTimer = 0f;
                                 limb.UnDislocate();
-                                result.Message = who + " set your " + LimbName(limb) + " back in place";
+                                result.Message = Lang.Pack("You set {0}'s {1} back in place", Coop.Player(Coop.LocalId).Name, LimbName(limb));
                             }
                             break;
                         case TreatKind.RemoveTourniquet:
                         {
                             var t = limb.GetComponent<TourniquetScript>();
-                            if (t == null) fail = "no tourniquet there";
-                            else { t.TakeOff(); result.Message = who + " took off your tourniquet"; }
+                            if (t == null) fail = Lang.N("no tourniquet there");
+                            else { t.TakeOff(); result.Message = Lang.Pack("You took off {0}'s tourniquet", Coop.Player(Coop.LocalId).Name); }
                             break;
                         }
                         case TreatKind.RemoveSplint:
                         {
                             var sp = limb.GetComponent<SplintLimb>();
-                            if (sp == null) fail = "no splint there";
-                            else { sp.TakeOff(); result.Message = who + " took off your splint"; }
+                            if (sp == null) fail = Lang.N("no splint there");
+                            else { sp.TakeOff(); result.Message = Lang.Pack("You took off {0}'s splint", Coop.Player(Coop.LocalId).Name); }
                             break;
                         }
                         default:
                             tmp = MakeTemporary(m.Item, body.transform.position);
-                            if (tmp == null) fail = "couldn't make sense of the item";
+                            if (tmp == null) fail = Lang.N("couldn't make sense of the item");
                             else fail = UseItem(body, limb, tmp, who, result);
                             break;
                     }
                 }
                 catch (Exception e)
                 {
-                    fail = "the treatment failed";
+                    fail = Lang.N("the treatment failed");
                     Log.Warn("[medic] treatment threw: " + e);
                 }
             }
@@ -431,9 +432,9 @@ namespace CCoop.Plugin.Sync
             result.Consumed = tmp == null || (tmp.condition <= 0f && tmp.Stats.destroyAtZeroCondition);
             if (!result.Consumed && tmp != null) result.Item = ItemCodec.Encode(tmp);
             if (tmp != null) UnityEngine.Object.Destroy(tmp.gameObject);
-            if (string.IsNullOrEmpty(result.Message)) result.Message = "Treated " + Coop.Player(Coop.LocalId).Name;
+            if (string.IsNullOrEmpty(result.Message)) result.Message = Lang.Pack("Treated {0}", Coop.Player(Coop.LocalId).Name);
             Session.Broadcast(result);
-            CoopRuntime.Notice(who + " treated your " + LimbName(limb));
+            CoopRuntime.Notice(Lang.F("{0} treated your {1}", who, LimbName(limb)));
             Log.Info("[medic] " + who + " treated limb " + m.Limb + (result.Consumed ? " (item used up)" : ""));
         }
 
@@ -470,38 +471,38 @@ namespace CCoop.Plugin.Sync
                 bool prosthetic = limb.prostheticInfo.hasProsthetic;
                 if (mg is BandageMinigame bandage)
                 {
-                    if (prosthetic) return "you can't bandage a prosthetic";
+                    if (prosthetic) return Lang.N("you can't bandage a prosthetic");
                     // Three full wraps, or until the dressing runs out.
                     for (float wrapped = 0f; wrapped < 3f && tmp != null && tmp.condition > 0f; wrapped += 1f / 18f)
                         bandage.OnUse(1f / 18f);
                 }
                 else if (mg is SyringeMinigame syringe)
                 {
-                    if (prosthetic) return "you can't inject into a prosthetic";
+                    if (prosthetic) return Lang.N("you can't inject into a prosthetic");
                     var wat = tmp.GetComponent<WaterContainerItem>();
                     for (int i = 0; i < 10 && wat != null && wat.CurrentTotal > 0.01f; i++) syringe.OnUse(1f);
                 }
                 else if (mg is ShrapnelMinigame)
                 {
-                    if (limb.shrapnel <= 0) return "there's nothing to pull out";
+                    if (limb.shrapnel <= 0) return Lang.N("there's nothing to pull out");
                     limb.shrapnel = 0;
                     tmp.condition -= 0.01f;
                 }
                 else if (mg != null) return "minigame";
                 else if (Mathf.Approximately(before, tmp.condition) && limbBefore.SameAs(Snapshot.Of(limb)))
-                    return "that can't be used there";
-                result.Message = who + " used " + Pretty(tmp != null ? tmp.id : "it") + " on " + Coop.Player(Coop.LocalId).Name;
+                    return Lang.N("that can't be used there");
+                result.Message = Lang.Pack("You used {0} on {1}", Pretty(tmp != null ? tmp.id : "it"), Coop.Player(Coop.LocalId).Name);
                 return null;
             }
 
             if (tmp.TryGetComponent<WaterContainerItem>(out var c) && tmp.Stats.ActuallyUsableOnLimb(tmp))
             {
-                if (limb.prostheticInfo.hasProsthetic) return "that won't work on a prosthetic";
+                if (limb.prostheticInfo.hasProsthetic) return Lang.N("that won't work on a prosthetic");
                 c.ApplyToLimb(limb);
-                result.Message = who + " applied " + Pretty(tmp.id);
+                result.Message = Lang.Pack("You applied {0} to {1}", Pretty(tmp.id), Coop.Player(Coop.LocalId).Name);
                 return null;
             }
-            return "that isn't a treatment";
+            return Lang.N("that isn't a treatment");
         }
 
         /// <summary>What a treatment can change, to tell "it worked" from "nothing happened".</summary>
@@ -527,7 +528,7 @@ namespace CCoop.Plugin.Sync
 
         private string Shock(Body body, Item defib, string who, TreatResult result)
         {
-            if (defib.battery == null || defib.battery.GetCharge() < 2f) return "the battery is flat";
+            if (defib.battery == null || defib.battery.GetCharge() < 2f) return Lang.N("the battery is flat");
             string why = ShockFrom(body, defib.id == "aed" ? 1f : 0.6f, who, result);
             if (why == null) defib.battery.DrainCharge(0.14f);
             return why;
@@ -540,7 +541,7 @@ namespace CCoop.Plugin.Sync
             bool dead = !body.alive;
             if (dead)
             {
-                if (deadFor > ReviveWindow) return "too late: dead for " + Mathf.RoundToInt(deadFor) + " s";
+                if (deadFor > ReviveWindow) return Lang.Pack("too late: dead for {0} s", Mathf.RoundToInt(deadFor));
                 if (UnityEngine.Random.value < ReviveChance)
                 {
                     // The brain isn't gone yet: one more chance. The heart still has to be
@@ -551,7 +552,7 @@ namespace CCoop.Plugin.Sync
                 }
                 else
                 {
-                    result.Message = who + "'s shock didn't bring you back";
+                    result.Message = Lang.Pack("Your shock didn't bring {0} back", Coop.Player(Coop.LocalId).Name);
                     Log.Info("[medic] shock from " + who + " didn't bring us back (dead " + deadFor.ToString("F0") + " s)");
                     return null;
                 }
@@ -560,7 +561,7 @@ namespace CCoop.Plugin.Sync
             MedicSession.Bypass = true;
             try { DefibItem.Defibrillate(new Item.DefibInfo { chance = chance, limb = body.limbs[1] }); }
             finally { MedicSession.Bypass = false; }
-            result.Message = dead ? who + " shocked you back to life" : who + " shocked your heart";
+            result.Message = dead ? Lang.Pack("You shocked {0} back to life", Coop.Player(Coop.LocalId).Name) : Lang.Pack("You shocked {0}'s heart", Coop.Player(Coop.LocalId).Name);
             Log.Info("[medic] shocked by " + who + " (chance " + chance.ToString("F2") + "), heart " + body.heartRate.ToString("F0"));
             return null;
         }
@@ -588,7 +589,7 @@ namespace CCoop.Plugin.Sync
             }
         }
 
-        internal static string LimbName(Limb limb) => limb == null ? "limb" : Pretty(limb.name);
+        internal static string LimbName(Limb limb) => limb == null ? Lang.T("limb") : Pretty(limb.name);
 
         internal static string Pretty(string id)
         {

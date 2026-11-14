@@ -27,7 +27,7 @@ namespace CCoop.Plugin.UI
                     if (p?.presetValues != null && Same(p.presetValues, s)) { match = p.presetName; break; }
                 if (match != null)
                 {
-                    lines.Add("The game's " + Name("preset" + match, match) + " settings.");
+                    lines.Add(Lang.F("The game's {0} settings.", Name("preset" + match, match)));
                 }
                 else
                 {
@@ -37,8 +37,8 @@ namespace CCoop.Plugin.UI
                         if (normal != null && normal.TryGetValue(kv.Key, out var d) && Equal(d, kv.Value)) continue;
                         lines.Add(Name("runset" + kv.Key, kv.Key) + ": " + Value(kv.Key, kv.Value));
                     }
-                    if (lines.Count == 0) lines.Add("The game's normal settings.");
-                    else lines.Insert(0, "Changed from normal:");
+                    if (lines.Count == 0) lines.Add(Lang.T("The game's normal settings."));
+                    else lines.Insert(0, Lang.T("Changed from normal:"));
                 }
             }
             catch (Exception e)
@@ -67,7 +67,7 @@ namespace CCoop.Plugin.UI
 
         private static string Value(string key, object v)
         {
-            if (v is bool b) return b ? "on" : "off";
+            if (v is bool b) return b ? Lang.T("on") : Lang.T("off");
             try
             {
                 if (RunSettings.GetSetting(key) is RunSettingDropdown dd && dd.choices != null)

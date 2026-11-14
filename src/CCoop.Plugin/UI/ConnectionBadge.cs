@@ -29,7 +29,7 @@ namespace CCoop.Plugin.UI
                 bool lossy = q >= 0f && q < 0.85f;
                 if (slow || lossy)
                 {
-                    text = "Connection to host: " + rtt + " ms" + (lossy ? ", " + Mathf.RoundToInt((1f - q) * 100f) + "% lost" : "");
+                    text = lossy ? Lang.F("Connection to host: {0} ms, {1}% lost", rtt, Mathf.RoundToInt((1f - q) * 100f)) : Lang.F("Connection to host: {0} ms", rtt);
                     tint = CoopWindow.PingColor(rtt, q);
                 }
                 else
@@ -37,14 +37,14 @@ namespace CCoop.Plugin.UI
                     int hostFps = Coop.Player(CCoop.Net.Session.NetSession.HostId).Fps;
                     if (hostFps > 0 && hostFps < SlowFps)
                     {
-                        text = "The host's game is running slowly (" + hostFps + " fps)";
+                        text = Lang.F("The host's game is running slowly ({0} fps)", hostFps);
                         tint = new Color(1f, 0.7f, 0.4f);
                     }
                 }
             }
             else if (Coop.WorldLive && s.PeerCount > 1 && PlayerSync.LocalFps > 0f && PlayerSync.LocalFps < SlowFps)
             {
-                text = "Your game is running slowly (" + Mathf.RoundToInt(PlayerSync.LocalFps) + " fps); everyone's world goes through yours";
+                text = Lang.F("Your game is running slowly ({0} fps); everyone's world goes through yours", Mathf.RoundToInt(PlayerSync.LocalFps));
                 tint = new Color(1f, 0.7f, 0.4f);
             }
             if (text == null) return;

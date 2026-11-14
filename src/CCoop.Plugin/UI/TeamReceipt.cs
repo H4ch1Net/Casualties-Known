@@ -50,7 +50,7 @@ namespace CCoop.Plugin.UI
                 foreach (var rec in Coop.Players.Values)
                     if (rec.Id != Coop.LocalId && rec.InWorld && !rec.Finished && rec.Alive)
                     {
-                        CoopRuntime.Notice("Your teammates are still playing. Stay on this screen until they finish: leaving ends the run for everyone.");
+                        CoopRuntime.Notice(Lang.T("Your teammates are still playing. Stay on this screen until they finish: leaving ends the run for everyone."));
                         break;
                     }
         }
@@ -81,7 +81,7 @@ namespace CCoop.Plugin.UI
             foreach (var rec in Coop.Players.Values)
             {
                 if (!Fates.TryGetValue(rec.Id, out var f)) Fates[rec.Id] = f = new Fate();
-                f.Name = rec.Id == Coop.LocalId ? rec.Name + " (you)" : rec.Name;
+                f.Name = rec.Id == Coop.LocalId ? rec.Name + " (" + Lang.T("you") + ")" : rec.Name;
                 f.Character = rec.Id == Coop.LocalId && GameInfo.LocalBody != null ? GameInfo.LocalBody.charType : rec.Character;
                 bool alive = rec.Id == Coop.LocalId ? GameInfo.LocalBody != null && GameInfo.LocalBody.alive : rec.Alive;
                 if (alive)
@@ -104,21 +104,21 @@ namespace CCoop.Plugin.UI
         {
             if (v == null) return "";
             float temperature = 20f + v.Temperature / 10f;
-            if (temperature < 31f) return "froze";
-            if (temperature > 41.5f) return "overheated";
-            if (v.Blood < 35) return "bled out";
-            if (v.Oxygen < 45) return "ran out of air";
-            if ((v.Signs & BodySigns.Arrest) != 0 || v.Fibrillation > 60) return "heart stopped";
+            if (temperature < 31f) return Lang.N("froze");
+            if (temperature > 41.5f) return Lang.N("overheated");
+            if (v.Blood < 35) return Lang.N("bled out");
+            if (v.Oxygen < 45) return Lang.N("ran out of air");
+            if ((v.Signs & BodySigns.Arrest) != 0 || v.Fibrillation > 60) return Lang.N("heart stopped");
             return "";
         }
 
         private static string Line(Fate f) =>
             f.Name + " · " + GameInfo.CharacterName(f.Character) + " · " +
-            (f.Dead ? "died on layer " + f.Layer + (f.Cause.Length > 0 ? ", " + f.Cause : "") : "alive on layer " + f.Layer);
+            (f.Dead ? Lang.F("died on layer {0}", f.Layer) + (f.Cause.Length > 0 ? ", " + Lang.T(f.Cause) : "") : Lang.F("alive on layer {0}", f.Layer));
 
         internal static string Summary()
         {
-            var sb = new StringBuilder("CasualtiesCoop run · team of " + Fates.Count + "\n");
+            var sb = new StringBuilder(Lang.F("CasualtiesCoop run · team of {0}", Fates.Count) + "\n");
             foreach (var f in Fates.Values) sb.Append(Line(f)).Append('\n');
             return sb.ToString();
         }
@@ -137,9 +137,9 @@ namespace CCoop.Plugin.UI
             GUI.DrawTexture(r, Texture2D.whiteTexture);
             GUI.color = tint;
             GUILayout.BeginArea(new Rect(r.x + 10f, r.y + 8f, r.width - 20f, r.height - 12f));
-            GUILayout.Label("Your team", _style);
+            GUILayout.Label(Lang.T("Your team"), _style);
             foreach (var f in Fates.Values) GUILayout.Label(Line(f), _style);
-            if (GUILayout.Button("Copy run summary", GUILayout.Width(150))) GUIUtility.systemCopyBuffer = Summary();
+            if (GUILayout.Button(Lang.T("Copy run summary"), GUILayout.Width(150))) GUIUtility.systemCopyBuffer = Summary();
             GUILayout.EndArea();
             GUI.color = old;
         }

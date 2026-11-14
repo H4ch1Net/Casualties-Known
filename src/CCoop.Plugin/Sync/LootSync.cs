@@ -4,6 +4,7 @@ using CCoop.Plugin.Protocol;
 using CCoop.Plugin.Runtime;
 using CCoop.Plugin.World;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -105,7 +106,7 @@ namespace CCoop.Plugin.Sync
                 _offered.Remove(m.Key);
                 Object.Destroy(item.gameObject);
                 Log.Info("[loot] " + Coop.Player(origin).Name + " took " + item.id + " from our body");
-                CoopRuntime.Notice(Coop.Player(origin).Name + " took your " + Medic.Pretty(item.id));
+                CoopRuntime.Notice(Lang.F("{0} took your {1}", Coop.Player(origin).Name, Medic.Pretty(item.id)));
                 _nextList = 0f;  // refresh the list now
             }
             Session.Broadcast(done);
@@ -117,7 +118,7 @@ namespace CCoop.Plugin.Sync
         {
             string why = Medic.CantTreat(owner);
             var body = GameInfo.LocalBody;
-            if (why == null && body.FirstEmptySlot() < 0) why = "You have no free hand or slot.";
+            if (why == null && body.FirstEmptySlot() < 0) why = Lang.T("You have no free hand or slot.");
             if (why != null) { CoopRuntime.Notice(why); return; }
             Session.Broadcast(new LootTake { Owner = owner, Key = key });
         }

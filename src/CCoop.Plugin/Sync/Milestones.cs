@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using CCoop.Plugin.Runtime;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -23,13 +24,13 @@ namespace CCoop.Plugin.Sync
 
         internal static readonly Def[] All =
         {
-            new Def { Key = "carry", Goal = 100f, Unit = " m", Title = "Pack mule", Text = "Carry teammates 100 m in all." },
-            new Def { Key = "catch", Goal = 1f, Title = "Safe hands", Text = "Catch a falling teammate." },
-            new Def { Key = "legup", Goal = 5f, Title = "Stepping stone", Text = "Give 5 leg-ups." },
-            new Def { Key = "hug", Goal = 10f, Title = "Warm company", Text = "Hug teammates 10 times." },
-            new Def { Key = "treat", Goal = 10f, Title = "Field medic", Text = "Treat teammates' wounds 10 times." },
-            new Def { Key = "revived", Goal = 1f, Title = "Second chance", Text = "Be brought back from death by a teammate." },
-            new Def { Key = "layer", Goal = 10f, Title = "Deeper together", Text = "Reach 10 new layers with a teammate alive beside you." },
+            new Def { Key = "carry", Goal = 100f, Unit = " m", Title = Lang.N("Pack mule"), Text = Lang.N("Carry teammates 100 m in all.") },
+            new Def { Key = "catch", Goal = 1f, Title = Lang.N("Safe hands"), Text = Lang.N("Catch a falling teammate.") },
+            new Def { Key = "legup", Goal = 5f, Title = Lang.N("Stepping stone"), Text = Lang.N("Give 5 leg-ups.") },
+            new Def { Key = "hug", Goal = 10f, Title = Lang.N("Warm company"), Text = Lang.N("Hug teammates 10 times.") },
+            new Def { Key = "treat", Goal = 10f, Title = Lang.N("Field medic"), Text = Lang.N("Treat teammates' wounds 10 times.") },
+            new Def { Key = "revived", Goal = 1f, Title = Lang.N("Second chance"), Text = Lang.N("Be brought back from death by a teammate.") },
+            new Def { Key = "layer", Goal = 10f, Title = Lang.N("Deeper together"), Text = Lang.N("Reach 10 new layers with a teammate alive beside you.") },
         };
 
         private static Dictionary<string, float> _counts;
@@ -88,7 +89,7 @@ namespace CCoop.Plugin.Sync
             foreach (var d in All)
                 if (d.Key == key && before < d.Goal && after >= d.Goal)
                 {
-                    CoopRuntime.Notice("Co-op milestone: " + d.Title);
+                    CoopRuntime.Notice(Lang.F("Co-op milestone: {0}", Lang.T(d.Title)));
                     Log.Info("[milestones] reached " + d.Title + " (" + d.Text + ")");
                     Save();
                 }

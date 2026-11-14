@@ -5,6 +5,7 @@ using CCoop.Net.Session;
 using CCoop.Plugin.Runtime;
 using HarmonyLib;
 using UnityEngine;
+using CCoop.Plugin.UI;
 
 namespace CCoop.Plugin.Sync
 {
@@ -245,7 +246,7 @@ namespace CCoop.Plugin.Sync
             var pre = PreRunScript.instance;
             if (pre == null || string.IsNullOrEmpty(PendingContinue)) return false;
             int character = PrepareLoad(PendingContinue);
-            if (character < 0) { CoopRuntime.Notice("That save is gone."); PendingContinue = null; return false; }
+            if (character < 0) { CoopRuntime.Notice(Lang.T("That save is gone.")); PendingContinue = null; return false; }
             RunId = PendingContinue;
             PendingContinue = null;
             _continuing = true;
