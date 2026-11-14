@@ -64,4 +64,20 @@ namespace CCoop.Plugin.Sync
             return false;
         }
     }
+
+    /// <summary>
+    /// Any way back to the menu mid-run (the pause menu, the end screen, the host leaving
+    /// the run): this player's character is saved first, while the layer still exists.
+    /// </summary>
+    [HarmonyPatch(typeof(PlayerCamera), nameof(PlayerCamera.ToMainMenu))]
+    [HarmonyPriority(Priority.Low)]
+    internal static class MenuSavePatch
+    {
+        private static void Prefix(bool __runOriginal)
+        {
+            if (!__runOriginal || !Coop.InSession || !Coop.WorldLive) return;
+            try { CoopSaves.SaveNow("back to the menu"); }
+            catch (System.Exception e) { Log.Warn("[save] " + e.Message); }
+        }
+    }
 }

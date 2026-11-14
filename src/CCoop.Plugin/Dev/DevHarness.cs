@@ -36,6 +36,12 @@ namespace CCoop.Plugin.Dev
         }
 
         private readonly string _autostart = Env("CCOOP_AUTOSTART");
+
+        /// <summary>This test instance's starting role (host / join), or empty outside tests.</summary>
+        internal static readonly string AutostartRole = Env("CCOOP_AUTOSTART");
+
+        /// <summary>CCOOP_HANDOVER=1: the host ends the session mid-run and the client carries the run on as host.</summary>
+        private readonly bool _handover = Env("CCOOP_HANDOVER") == "1";
         private readonly bool _autorun = Env("CCOOP_AUTORUN") == "1";
         private readonly bool _selftest = Env("CCOOP_SELFTEST") == "1";
 
@@ -129,6 +135,7 @@ namespace CCoop.Plugin.Dev
                 DumpCharacter();
             }
             PollTrigger();
+            if (_handover) HandoverTest();  // here: it carries on between sessions
         }
 
         // CCOOP_SHOTS=<dir>: capture the co-op window's screens for layout review.
@@ -229,7 +236,126 @@ namespace CCoop.Plugin.Dev
                 WorldGeneration.runSettings = PreRunScript.instance.runSettings;
                 PreRunScript.instance.StartCoroutine(PreRunScript.instance.WaitLoad());
             }
-            if (_selftest) SelfTest();
+            if (_selftest && !_handover) SelfTest();
+        }
+
+        // ------------------------------------------------------------------ handing the run over
+
+        private int _ho;
+        private float _hoAt;
+        private string _hoRun = "";
+        private bool _wasHost;
+
+        private void HandoverTest()
+        {
+            float now = Time.unscaledTime;
+            switch (_ho)
+            {
+                case 0:
+                    if (!Coop.WorldLive) return;
+                    if (Coop.IsHost)
+                    {
+                        bool allIn = Coop.Session.PeerCount > 1;
+                        foreach (var r in Coop.Players.Values) if (r.Id != NetSession.HostId && !r.InWorld) allIn = false;
+                        if (!allIn) return;
+                    }
+                    _wasHost = Coop.IsHost;
+                    _ho = 1;
+                    // The new-layer save happens 3 s in; the host waits longer so the
+                    // client (a few seconds behind) has checked in first.
+                    _hoAt = now + (_wasHost ? 16f : 8f);
+                    return;
+                case 1:
+                    if (now < _hoAt) return;
+                    _hoRun = CoopSaves.RunId;
+                    HandoverVerify("before");
+                    if (_wasHost)
+                    {
+                        Log.Info("DEV host ends the session mid-run");
+                        Coop.Runtime.Leave();
+                        _ho = 10;
+                        _hoAt = now + 2f;
+                    }
+                    else _ho = 20;
+                    return;
+
+                // ---- the old host: back to the menu, then joins the new host
+                case 10:
+                    if (now < _hoAt) return;
+                    if (GameInfo.InRunScene && PlayerCamera.main != null) PlayerCamera.main.ToMainMenu();
+                    _ho = 11;
+                    _hoAt = now + 14f;
+                    return;
+                case 11:
+                    if (now < _hoAt || !GameInfo.OnMainMenu || Coop.Session != null) return;
+                    Log.Info("DEV old host joins the new host");
+                    Coop.Runtime.JoinLan("127.0.0.1");
+                    _ho = 12;
+                    _hoAt = now + 120f;
+                    return;
+                case 12:
+                    if (!Coop.WorldLive) { if (now > _hoAt) { Log.Info("DEV old host never got back in"); _ho = 30; } return; }
+                    _ho = 13;
+                    _hoAt = now + 8f;
+                    return;
+                case 13:
+                    if (now < _hoAt) return;
+                    HandoverVerify("after");
+                    _ho = 30;
+                    _hoAt = now + 4f;
+                    return;
+
+                // ---- the client: told it can carry on, hosts the saved run
+                case 20:
+                    if (Coop.Session != null || !GameInfo.OnMainMenu) return;
+                    Log.Info("DEV client is back at the menu; picked run " + (CoopSaves.PendingContinue ?? "none") + " (was " + _hoRun + ")");
+                    Coop.Runtime.HostLan();
+                    _ho = 21;
+                    _hoAt = now + 90f;
+                    return;
+                case 21:
+                    if (Coop.Session == null || Coop.Session.PeerCount < 2)
+                    {
+                        if (now > _hoAt) { Log.Info("DEV nobody joined the new host"); _ho = 30; }
+                        return;
+                    }
+                    Log.Info("DEV new host starts the saved run: " + CoopSaves.StartContinue());
+                    _ho = 22;
+                    _hoAt = now + 120f;
+                    return;
+                case 22:
+                    if (!Coop.WorldLive) { if (now > _hoAt) { Log.Info("DEV the saved run never started"); _ho = 30; } return; }
+                    bool everyone = Coop.Session.PeerCount > 1;
+                    foreach (var r in Coop.Players.Values) if (r.Id != NetSession.HostId && !r.InWorld) everyone = false;
+                    if (!everyone) return;
+                    _ho = 23;
+                    _hoAt = now + 8f;
+                    return;
+                case 23:
+                    if (now < _hoAt) return;
+                    HandoverVerify("after");
+                    _ho = 30;
+                    _hoAt = now + 4f;
+                    return;
+
+                case 30:
+                    if (now < _hoAt) return;
+                    _ho = 31;
+                    CoopSaves.DevDeleteRun(_hoRun);
+                    Log.Info("DEV selftest complete");
+                    return;
+            }
+        }
+
+        private void HandoverVerify(string tag)
+        {
+            var body = GameInfo.LocalBody;
+            int items = 0;
+            if (body != null) foreach (var it in body.GetAllItemsThorough()) if (it != null) items++;
+            Log.Info("VERIFY handover " + tag + " " + (_wasHost ? "first-host" : "first-client") + " now " + (Coop.IsHost ? "host" : "client") +
+                     " run=" + CoopSaves.RunId + " same=" + (CoopSaves.RunId == _hoRun) + " depth=" + (WorldGeneration.world != null ? WorldGeneration.world.biomeDepth + 1 : 0) +
+                     " character=" + (body != null ? body.charType : -1) + " items=" + items + " saved=" + CoopSaves.HasSave(_hoRun) +
+                     " players=" + Coop.Players.Count);
         }
 
         private void SelfTest()

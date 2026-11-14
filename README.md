@@ -93,7 +93,7 @@ The game's own save slot is never touched during a session: co-op saves go to th
 
 ## Known limits
 
-- If the host leaves the run, everyone returns to the menu.
+- If the host leaves the run, everyone returns to the menu. Everyone's character is saved, so the run isn't lost: if the host ended the session, any player can host from the co-op window (the run is already picked) and the others join with their own characters, on the layer they were on.
 - If your connection drops, your character is saved, you go back to the menu, and the game reconnects on its own for up to a minute. You come back where you were.
 - A dead player's body can be searched by teammates (everything but what's in their hands and mouth).
 - Water is shared when a layer loads, and after that the water near each player is shared from that player's game. Liquid far from everyone (a geyser nobody is near) can differ until someone comes close.

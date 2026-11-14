@@ -325,7 +325,11 @@ namespace CCoop.Plugin.Runtime
             // A client that lost the host (not kicked, not the host closing on purpose)
             // tries to get back in: its character is saved below, it goes back to the
             // menu, and the normal join brings it back into the run where it was.
-            bool dropped = Coop.Session != null && !Coop.Session.IsHost && reason != null && reason.StartsWith("lost connection to the host", StringComparison.OrdinalIgnoreCase);
+            // The host ending the session closes the connection; a crash or a network
+            // failure times out instead. Only the latter is worth waiting for.
+            bool hostClosed = reason != null && reason.IndexOf("closed by the other side", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool dropped = Coop.Session != null && !Coop.Session.IsHost && reason != null && !hostClosed &&
+                           reason.StartsWith("lost connection to the host", StringComparison.OrdinalIgnoreCase);
             ReconnectTarget target = null;
             if (dropped && (_lastLanAddress != null || retry != null))
                 target = new ReconnectTarget
@@ -337,7 +341,15 @@ namespace CCoop.Plugin.Runtime
                     NextTry = Time.unscaledTime + 3f,
                 };
             bool inRun = GameInfo.InRunScene;
+            bool wasClient = Coop.Session != null && !Coop.Session.IsHost;
             Teardown();
+            // The host ended the session mid-run: anyone can carry the run on as the new host.
+            if (inRun && wasClient && hostClosed)
+            {
+                Notice(Lang.T("The host ended the session"));
+                CoopSaves.OfferToCarryOn();
+                RunFlow.ReturnToMenu();  // the character was saved in Teardown
+            }
             if (target != null && (target.Address != null || target.Lobby != 0))
             {
                 _reconnect = target;
@@ -441,6 +453,7 @@ namespace CCoop.Plugin.Runtime
             {
                 _reconnect = null;
                 Notice(Lang.T("Could not reach the host again"));
+                CoopSaves.OfferToCarryOn();
                 Log.Info("[session] gave up reconnecting after " + r.Attempts + " attempt(s)");
                 return;
             }

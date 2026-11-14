@@ -80,11 +80,14 @@ namespace CCoop.Plugin.Sync
         {
             get
             {
+                // Test instances on one machine share a name (and a data folder): their
+                // role keeps their characters apart.
+                string dev = string.IsNullOrEmpty(Dev.DevHarness.AutostartRole) ? "" : "-dev-" + Dev.DevHarness.AutostartRole;
                 ulong steam = GameInfo.SteamId;
-                if (steam != 0) return "steam" + steam;
+                if (steam != 0) return "steam" + steam + dev;
                 var name = GameInfo.PlayerName ?? "player";
                 foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
-                return "name-" + name;
+                return "name-" + name + dev;
             }
         }
 
@@ -126,6 +129,19 @@ namespace CCoop.Plugin.Sync
             return list;
         }
 
+        /// <summary>
+        /// The session ended under this player mid-run (the host quit or never came back):
+        /// their character is saved, so they can host and continue the run themselves,
+        /// and the others rejoin with their own characters. The run is picked for them.
+        /// </summary>
+        internal static void OfferToCarryOn()
+        {
+            if (string.IsNullOrEmpty(RunId) || !File.Exists(FileFor(RunId))) return;
+            PendingContinue = RunId;
+            CoopRuntime.Notice(Lang.T("Your character is saved. To carry on together, host from the co-op window: this run is picked, and the others get their own characters back."));
+            Log.Info("[save] offering to continue run " + RunId + " as host");
+        }
+
         /// <summary>The run is over (everyone died): its save goes, like the game's own.</summary>
         internal static void DeleteCurrent()
         {
@@ -133,6 +149,20 @@ namespace CCoop.Plugin.Sync
             Delete(RunId);
             Log.Info("[save] run " + RunId + " ended in a wipe; save deleted");
         }
+
+        /// <summary>Self-test: removes a test run's whole folder.</summary>
+        internal static void DevDeleteRun(string runId)
+        {
+            try
+            {
+                string dir = Path.Combine(Root, runId);
+                if (!string.IsNullOrEmpty(runId) && Directory.Exists(dir)) Directory.Delete(dir, true);
+            }
+            catch (Exception e) { Log.Debug("[save] dev cleanup: " + e.Message); }
+        }
+
+        /// <summary>Whether this player has a saved character in <paramref name="runId"/>.</summary>
+        internal static bool HasSave(string runId) => !string.IsNullOrEmpty(runId) && File.Exists(FileFor(runId));
 
         internal static void Delete(string runId)
         {
@@ -163,7 +193,8 @@ namespace CCoop.Plugin.Sync
                 Directory.CreateDirectory(Path.GetDirectoryName(target));
                 if (File.Exists(target)) File.Delete(target);
                 if (File.Exists(GameSave)) File.Move(GameSave, target);
-                if (Coop.IsHost) WriteMeta(w);
+                SameLayer(target, w.biomeDepth);
+                WriteMeta(w);  // every player's copy: any of them can carry the run on as host
                 Log.Info("[save] saved our character for layer " + (w.biomeDepth + 1) + " (" + why + ")");
                 return true;
             }
@@ -177,6 +208,23 @@ namespace CCoop.Plugin.Sync
                 try { RestoreSinglePlayer(); }
                 catch (Exception e) { Log.Error("[save] could not restore the single-player save: " + e.Message); }
             }
+        }
+
+        /// <summary>
+        /// The game saves "the next layer" (its saves happen at the exit), and a co-op save
+        /// is made at the start of a layer: continuing would skip the layer the team was on.
+        /// Our copy records the current one instead. The single-player save is never touched.
+        /// </summary>
+        private static void SameLayer(string path, int depth)
+        {
+            try
+            {
+                var json = Newtonsoft.Json.Linq.JObject.Parse(SaveSystem.Unzip(File.ReadAllBytes(path)));
+                if (json["biome"] == null) return;
+                json["biome"] = depth;
+                File.WriteAllBytes(path, SaveSystem.Zip(json.ToString(Newtonsoft.Json.Formatting.None)));
+            }
+            catch (Exception e) { Log.Warn("[save] could not keep the layer in the co-op save: " + e.Message); }
         }
 
         private static void WriteMeta(WorldGeneration w)
