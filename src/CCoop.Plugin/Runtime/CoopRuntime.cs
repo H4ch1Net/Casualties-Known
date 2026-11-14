@@ -56,6 +56,7 @@ namespace CCoop.Plugin.Runtime
             Add(new TeammateArrows());
             Add(new GestureSync());
             Add(new TeamMotion());
+            Add(new CoopSaves());
             Add(new TeammatePanel());
             Add(new TerrainSync());
             Add(new EntitySync());
@@ -63,10 +64,12 @@ namespace CCoop.Plugin.Runtime
             Add(new CreatureSync());
             Add(new ClockSync());
             Add(new PropSync());
+            Add(new WorldEvents());
             Add(new ExplosionSync());
             Add(new SteamMoments());
             Add(new DevHarness());
 
+            StartCoroutine(UpdateCheck.Run());
             _pendingLaunchLobby = SteamLobby.LaunchLobby();
             if (_pendingLaunchLobby != 0) Log.Info("[steam] launched to join lobby " + _pendingLaunchLobby);
             Lobby.JoinRequested += id =>
@@ -440,6 +443,7 @@ namespace CCoop.Plugin.Runtime
             }
             try
             {
+                Fonts.Apply();
                 if (Coop.Session != null)
                     foreach (var m in _modules) Safe(m.Gui, m, "gui");
                 ConditionFx.DrawFlash();

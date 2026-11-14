@@ -1,0 +1,53 @@
+name: build
+
+# Builds and tests the network library (CCoop.Net) on every push and pull request.
+#
+# The BepInEx plugin (CCoop.Plugin) compiles against the game's own assemblies, which
+# are the developer's property and are never committed here. It is built locally (see
+# README "Building"), or by a self-hosted runner that has the game installed: set the
+# repository variable CCOOP_GAME_PATH and give that runner the label "game".
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  net:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Build CCoop.Net
+        run: dotnet build src/CCoop.Net/CCoop.Net.csproj -c Release
+      - name: Test
+        run: dotnet test tests/CCoop.Net.Tests/CCoop.Net.Tests.csproj -c Release --logger "trx;LogFileName=results.trx"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: "**/results.trx"
+
+  plugin:
+    # Only on a self-hosted runner with the game installed (never on GitHub's runners).
+    if: vars.CCOOP_GAME_PATH != ''
+    runs-on: [self-hosted, game]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the plugin and the release zip
+        shell: pwsh
+        run: |
+          @"
+          <Project>
+            <PropertyGroup>
+              <GamePath>${{ vars.CCOOP_GAME_PATH }}</GamePath>
+              <DeployToGame>false</DeployToGame>
+            </PropertyGroup>
+          </Project>
+          "@ | Set-Content GamePath.Local.props
+          dotnet build src/CCoop.Plugin/CCoop.Plugin.csproj -c Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CasualtiesCoop
+          path: dist/*.zip

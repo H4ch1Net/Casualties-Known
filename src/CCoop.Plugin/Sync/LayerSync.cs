@@ -87,6 +87,7 @@ namespace CCoop.Plugin.Sync
             if (WorldAccess.IsPlayerObject(go)) return false;
             if (go.name.StartsWith("CCoop", StringComparison.Ordinal)) return false;
             if (go.GetComponent<BuildingEntity>() != null) return true;
+            if (go.GetComponent<CaveTickSpawner>() != null) return true;  // a trap, though it looks like an effect
             var item = go.GetComponent<Item>();
             if (item != null) return go.transform.parent == null;
             if (!go.name.Contains("(Clone)")) return false;
@@ -111,6 +112,7 @@ namespace CCoop.Plugin.Sync
             rec.WorldEpoch = Coop.Epoch;
             rec.InWorld = false;
             Session.SendBlob(peer, CoopProtocol.BlobLayer, data);
+            Coop.Get<WorldEvents>()?.SendLogTo(peer);  // traps sprung and doors opened since the layer began
             Log.Info("[layer] sent layer " + (snap.Depth + 1) + " to " + rec.Name + ": " + snap.Entities.Count + " objects, " +
                      (data.Length / 1024) + " KB in " + sw.ElapsedMilliseconds + " ms");
         }

@@ -44,6 +44,8 @@ namespace CCoop.Plugin.Runtime
         internal ConfigEntry<float> VoiceVolume;
         internal ConfigEntry<float> VoiceRange;
         internal ConfigEntry<bool> VerboseLog;
+        internal ConfigEntry<bool> UpdateCheckEnabled;
+        internal ConfigEntry<string> UpdateRepository;
 
         /// <summary>Patch classes that failed to install, for the status panel.</summary>
         internal static string[] FailedPatches = new string[0];
@@ -101,9 +103,15 @@ namespace CCoop.Plugin.Runtime
             SteamTimeline = Config.Bind("UI", "SteamTimeline", true,
                 "Mark co-op moments (layers, joins, deaths) on Steam's game-recording timeline.");
             VerboseLog = Config.Bind("Debug", "VerboseLog", false, "Write detailed sync logs.");
+            UpdateCheckEnabled = Config.Bind("Update", "CheckForUpdates", true,
+                "Once per launch, ask GitHub whether a newer release exists (one anonymous request; nothing is downloaded).");
+            UpdateRepository = Config.Bind("Update", "Repository", "",
+                "GitHub repository to check, as owner/name. Empty: no check.");
             Log.Verbose = VerboseLog.Value;
 
             InstallPatches();
+            GameCheck.Run();
+            Sync.CoopSaves.RecoverFromCrash();
 
             // Our own persistent object: plugin components are destroyed on scene load
             // in this game, and the session must survive menu <-> run transitions.

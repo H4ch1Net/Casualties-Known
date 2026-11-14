@@ -57,6 +57,7 @@ namespace CCoop.Plugin.Sync
 
         // ---- catching
         private float _nextReady;
+        private float _nextFallLog;
         private readonly Dictionary<byte, float> _readyUntil = new Dictionary<byte, float>();
         private bool _caughtThisFall;
 
@@ -174,11 +175,11 @@ namespace CCoop.Plugin.Sync
             Log.Info("[move] helping " + Coop.Player(holder).Name + " carry " + item + " (" + weight + " u)");
         }
 
-        internal void StopLifting(bool tell)
+        internal void StopLifting(bool tell, string why = "let go")
         {
             if (_liftingFor < 0) return;
             if (tell) Session?.Broadcast(new TeamMove { Kind = MoveKind.LiftStop, Target = (byte)_liftingFor });
-            Log.Info("[move] stopped helping " + Coop.Player((byte)_liftingFor).Name + " carry");
+            Log.Info("[move] stopped helping " + Coop.Player((byte)_liftingFor).Name + " carry: " + why);
             _liftingFor = -1;
             RecomputeLiftLoad();
         }
@@ -224,7 +225,7 @@ namespace CCoop.Plugin.Sync
                     break;
                 case MoveKind.LiftStart:
                     var held = Medic.HeldItem(body);
-                    if (held == null || held.totalWeight < HeavyItem * 0.75f) return;
+                    if (held == null || held.Stats.weight < HeavyItem) { Log.Info("[move] " + who + " offered to help carry, but we hold nothing heavy"); return; }
                     _helpers[origin] = m.F;
                     RecomputeLiftLoad();
                     CoopRuntime.Notice(who + " is helping you carry the " + Medic.Pretty(held.id));
@@ -273,27 +274,32 @@ namespace CCoop.Plugin.Sync
             _rope = null;
         }
 
+        /// <summary>The game's own hard-landing speed for this body (it ragdolls and takes damage above it).</summary>
+        internal static float HardLanding(Body b) => Mathf.Max(b.actualJumpSpeed * 2f, b.jumpSpeed * 1.5f);
+
         private static void HurtCatcher(Body body, float speed, string who, bool caught)
         {
             if (!body.alive) return;
-            float js = Mathf.Max(1f, body.jumpSpeed);
+            float hard = HardLanding(body);
             if (caught)
             {
                 CoopRuntime.Notice("You caught " + who);
-                Log.Info("[move] caught " + who + " falling at " + speed.ToString("F1"));
-                if (speed < js * 2.2f) return;  // an easy catch
-                // A long fall lands hard in the arms.
+                Log.Info("[move] caught " + who + " falling at " + speed.ToString("F1") + " (hard landing " + hard.ToString("F0") + ")");
+                if (speed < hard * 1.4f) return;  // a clean catch
+                // A very long fall lands hard in the arms: the game's own impact damage, scaled by the excess.
+                float force = (speed - hard * 0.9f) * 1.2f;
                 foreach (int i in new[] { 3, 4, 6, 7 })
-                    if (i < body.limbs.Length && body.limbs[i] != null) body.limbs[i].ImpactDamage(speed * 0.45f, Vector2.down);
-                if (speed > js * 3.5f) body.Ragdoll();
+                    if (i < body.limbs.Length && body.limbs[i] != null) body.limbs[i].ImpactDamage(force, Vector2.down);
+                if (speed > hard * 2f) body.Ragdoll();
             }
             else
             {
                 CoopRuntime.Notice(who + " landed on you");
                 Log.Info("[move] " + who + " landed on us at " + speed.ToString("F1"));
+                float force = speed * 0.7f;
                 foreach (int i in new[] { 0, 1 })
-                    if (i < body.limbs.Length && body.limbs[i] != null) body.limbs[i].ImpactDamage(speed * 0.6f, Vector2.down);
-                if (speed > js * 2.5f) body.Ragdoll();
+                    if (i < body.limbs.Length && body.limbs[i] != null) body.limbs[i].ImpactDamage(force, Vector2.down);
+                body.Ragdoll();
             }
         }
 
@@ -309,14 +315,14 @@ namespace CCoop.Plugin.Sync
 
             if (_liftingFor >= 0)
             {
-                if (body.GetItem(body.handSlot) != null) StopLifting(true);
-                else if (DistanceTo((byte)_liftingFor) > LiftReach * 1.6f) StopLifting(true);
-                else if (HeavyHeld((byte)_liftingFor, out _) == null) StopLifting(true);
+                if (body.GetItem(body.handSlot) != null) StopLifting(true, "our hand isn't free");
+                else if (DistanceTo((byte)_liftingFor) > LiftReach * 1.6f) StopLifting(true, "too far");
+                else if (HeavyHeld((byte)_liftingFor, out _) == null) StopLifting(true, "they put it down");
             }
             if (_helpers.Count > 0)
             {
                 var held = Medic.HeldItem(body);
-                if (held == null || held.totalWeight < HeavyItem * 0.75f)
+                if (held == null || held.Stats.weight < HeavyItem)
                 {
                     foreach (var h in new List<byte>(_helpers.Keys)) Session.Broadcast(new TeamMove { Kind = MoveKind.LiftStop, Target = h });
                     _helpers.Clear();
@@ -341,9 +347,10 @@ namespace CCoop.Plugin.Sync
             if (!Coop.WorldLive || body == null || !body.alive || !body.standing || _caughtThisFall) return;
             var rb = body.rb;
             if (rb == null) return;
-            float js = Mathf.Max(1f, body.jumpSpeed);
+            if (body.currentClimbable != null) return;  // climbing isn't falling
+            float hard = HardLanding(body);
             float fall = -rb.velocity.y;
-            if (fall < js * 1.3f) return;
+            if (fall < hard * 0.75f) return;
 
             Vector2 feet = body.transform.position;
             foreach (var r in Coop.Get<PlayerSync>().Remotes)
@@ -352,12 +359,18 @@ namespace CCoop.Plugin.Sync
                 if (!chest.HasValue || !Coop.Player(r.Id).Alive) continue;
                 float dx = Mathf.Abs(feet.x - chest.Value.x);
                 float dy = feet.y - chest.Value.y;
+                if (dx < 3f && dy > -1f && dy < 6f && Time.unscaledTime >= _nextFallLog)
+                {
+                    _nextFallLog = Time.unscaledTime + 0.5f;
+                    Log.Info("[move] falling at " + fall.ToString("F0") + " near " + Coop.Player(r.Id).Name + ": dx " + dx.ToString("F2") + " dy " + dy.ToString("F2"));
+                }
                 if (dx > 0.9f || dy < 0f || dy > 2.4f) continue;
 
                 bool ready = _readyUntil.TryGetValue(r.Id, out var until) && Time.unscaledTime < until;
-                if (!ready && fall < js * 1.6f) continue;
+                if (!ready && fall < hard * 0.9f) continue;
                 _caughtThisFall = true;
-                float soft = ready ? Mathf.Min(fall, js * 0.8f) : fall * 0.6f;
+                // Caught: well under a hard landing. Landed on someone: their body breaks some of the fall.
+                float soft = ready ? Mathf.Min(fall, hard * 0.5f) : Mathf.Min(fall * 0.7f, hard * 1.1f);
                 body.SetVelocity(new Vector2(rb.velocity.x * (ready ? 0.4f : 1f), -soft));
                 Session.Broadcast(new TeamMove { Kind = ready ? MoveKind.Caught : MoveKind.LandedOn, Target = r.Id, F = fall });
                 CoopRuntime.Notice(ready ? Coop.Player(r.Id).Name + " caught you" : "You landed on " + Coop.Player(r.Id).Name);

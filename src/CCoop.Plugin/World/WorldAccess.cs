@@ -123,11 +123,35 @@ namespace CCoop.Plugin.World
             }
             if (_index.TryGetValue(key, out var found)) return found;
 
+            // A few objects are made from a part of a prefab (the start shuttle's doors are
+            // a child of LifepodStart): index the parts once, on the first miss.
+            if (_parts == null)
+            {
+                _parts = new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
+                foreach (var root in _index.Values)
+                    IndexParts(root.transform, 0);
+                Log.Info("[world] indexed " + _parts.Count + " prefab parts");
+            }
+            if (_parts.TryGetValue(key, out found)) return found;
+
             // Parts of structure prefabs carry Unity's duplicate suffix ("ladder (1)",
             // "medcrate (2)"); the standalone prefab is the same object.
             var bare = System.Text.RegularExpressions.Regex.Replace(key, @"\s*\(\d+\)$", "");
             if (bare.Length > 0 && bare != key) return ResolvePrefab(bare);
             return null;
+        }
+
+        private static Dictionary<string, GameObject> _parts;
+
+        private static void IndexParts(Transform t, int depth)
+        {
+            if (depth >= 2) return;
+            for (int i = 0; i < t.childCount; i++)
+            {
+                var c = t.GetChild(i);
+                if (!_index.ContainsKey(c.name) && !_parts.ContainsKey(c.name)) _parts[c.name] = c.gameObject;
+                IndexParts(c, depth + 1);
+            }
         }
 
         internal static string KeyFor(GameObject go)

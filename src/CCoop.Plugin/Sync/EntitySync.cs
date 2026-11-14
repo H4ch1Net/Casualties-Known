@@ -159,6 +159,7 @@ namespace CCoop.Plugin.Sync
             if (m.Broken && b != null)
             {
                 Blank(b);
+                WorldEvents.BeforeRemoteBreak(go);
                 RemoteBreak = true;
                 bool wasClient = Coop.IsClient;
                 if (wasClient) SuppressLoot++;

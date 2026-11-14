@@ -87,7 +87,9 @@ namespace CCoop.Plugin.Sync
         internal static bool IsDefibrillator(Item item) => item != null && (item.id == "aed" || item.id == "manualdefibrillator");
 
         /// <summary>Why the local player can't treat <paramref name="patient"/> right now, or null.</summary>
-        internal static string CantTreat(byte patient)
+        internal static string CantTreat(byte patient) => CantTreat(patient, Reach);
+
+        internal static string CantTreat(byte patient, float reach)
         {
             var body = GameInfo.LocalBody;
             if (body == null || !Coop.WorldLive) return "You need to be in the layer.";
@@ -97,7 +99,7 @@ namespace CCoop.Plugin.Sync
             var at = r?.ShownAt;
             if (!at.HasValue) return "They're not here.";
             float d = Vector2.Distance(body.transform.position, at.Value);
-            if (d > Reach) return "Get closer (" + d.ToString("F0") + " m away).";
+            if (d > reach) return "Get closer (" + d.ToString("F0") + " m away).";
             return null;
         }
 

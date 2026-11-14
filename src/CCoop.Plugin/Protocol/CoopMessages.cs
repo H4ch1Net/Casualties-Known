@@ -72,7 +72,9 @@ namespace CCoop.Plugin.Protocol
                 .Add<LootTake>((ushort)(b + 70), Delivery.Reliable)
                 .Add<SpawnPoint>((ushort)(b + 71), Delivery.Reliable)
                 .Add<GestureMsg>((ushort)(b + 72), Delivery.Reliable)
-                .Add<TeamMove>((ushort)(b + 73), Delivery.Reliable);
+                .Add<TeamMove>((ushort)(b + 73), Delivery.Reliable)
+                // M5: the rest of the world
+                .Add<WorldEvent>((ushort)(b + 74), Delivery.Reliable);
         }
     }
 
@@ -287,6 +289,10 @@ namespace CCoop.Plugin.Protocol
         public bool InRun;
         public ushort Epoch;
         public int Depth;
+
+        /// <summary>The run's id, for co-op saves.</summary>
+        public string RunId = "";
+
         public List<RunSettingValue> Settings = new List<RunSettingValue>();
 
         public void Write(PacketWriter w)
@@ -294,6 +300,7 @@ namespace CCoop.Plugin.Protocol
             w.WriteBool(InRun);
             w.WriteUInt16(Epoch);
             w.WriteInt32(Depth);
+            w.WriteString(RunId);
             w.WriteUInt16((ushort)Settings.Count);
             foreach (var s in Settings)
             {
@@ -314,6 +321,7 @@ namespace CCoop.Plugin.Protocol
             InRun = r.ReadBool();
             Epoch = r.ReadUInt16();
             Depth = r.ReadInt32();
+            RunId = r.ReadString();
             int n = r.ReadCount(512);
             Settings.Clear();
             for (int i = 0; i < n; i++)
@@ -1435,6 +1443,68 @@ namespace CCoop.Plugin.Protocol
             AmbientTemperature = r.ReadSingle();
             RadiationActive = r.ReadBool();
             RadiationTime = r.ReadSingle();
+        }
+    }
+
+    // ====================================================================== M5: world events
+
+    internal enum WorldEventKind : byte
+    {
+        /// <summary>Greyed out and walk-through: bio terminals, scrap eaters, their doors, used med stations.</summary>
+        Backgroundify = 1,
+        BearTrap = 2,
+        SpikeStab = 3,
+        CoilShock = 4,
+        CaveTicks = 5,
+        StalactiteDrop = 6,
+        PodRepaired = 7,
+        ScrapFed = 8,
+        GuardSpawned = 9,
+        ShuttleOpen = 10,
+        BlueHeart = 11,
+        GunmineFired = 12,
+        MinePressed = 13,
+    }
+
+    /// <summary>
+    /// Something in the world happened on one machine (a trap went off, a door opened).
+    /// Clients send it to the host, which keeps the first of each one-shot, applies it to
+    /// its copy and passes it on. <see cref="Replay"/> marks a catch-up for a late joiner:
+    /// state only, no sounds or cutscenes.
+    /// </summary>
+    internal sealed class WorldEvent : IMessage
+    {
+        public WorldEventKind Kind;
+        public uint Id;
+        /// <summary>Child names below the registered object, '/'-separated ("" for the object itself).</summary>
+        public string Path = "";
+        public float X, Y;
+        public int Arg;
+        public float F;
+        public bool Replay;
+
+        public void Write(PacketWriter w)
+        {
+            w.WriteByte((byte)Kind);
+            w.WriteUInt32(Id);
+            w.WriteString(Path ?? "");
+            w.WriteSingle(X);
+            w.WriteSingle(Y);
+            w.WriteInt32(Arg);
+            w.WriteSingle(F);
+            w.WriteBool(Replay);
+        }
+
+        public void Read(ref PacketReader r)
+        {
+            Kind = (WorldEventKind)r.ReadByte();
+            Id = r.ReadUInt32();
+            Path = r.ReadString();
+            X = r.ReadSingle();
+            Y = r.ReadSingle();
+            Arg = r.ReadInt32();
+            F = r.ReadSingle();
+            Replay = r.ReadBool();
         }
     }
 }

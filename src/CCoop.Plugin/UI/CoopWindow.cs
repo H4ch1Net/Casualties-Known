@@ -155,9 +155,26 @@ namespace CCoop.Plugin.UI
                                 "). The game was probably updated; parts of co-op may not sync.", _bad);
             }
 
+            if (GameCheck.Missing.Count > 0)
+            {
+                GUILayout.Space(4);
+                GUILayout.Label("The game changed under these features: " + string.Join("; ", GameCheck.Missing.ToArray()) +
+                                ". They may not work until the mod is updated.", _bad);
+            }
+            if (!string.IsNullOrEmpty(UpdateCheck.Notice))
+            {
+                GUILayout.Space(4);
+                GUILayout.Label(UpdateCheck.Notice, _small);
+            }
+
             GUILayout.Space(4);
             GUILayout.BeginHorizontal();
             GUILayout.Label("Log: " + System.IO.Path.GetFileName(Log.FilePath ?? "-"), _small);
+            if (GUILayout.Button(new GUIContent("Bug report", "Saves your co-op logs and session details to a folder on your desktop."), GUILayout.Width(90)))
+            {
+                try { rt.LastMessage = "Saved to " + GameCheck.SaveReport() + ". Attach the folder's files to your report."; }
+                catch (System.Exception ex) { rt.LastMessage = "Couldn't save the report: " + ex.Message; }
+            }
             if (GUILayout.Button("Close", GUILayout.Width(70))) _open = false;
             GUILayout.EndHorizontal();
 
@@ -206,8 +223,10 @@ namespace CCoop.Plugin.UI
             }
             RulesEditor(rt, null);
 
+            SavedRuns();
+
             GUILayout.Space(4);
-            if (GUILayout.Button("Host with Steam", GUILayout.Height(32))) rt.HostSteam();
+            if (GUILayout.Button(CoopSaves.PendingContinue != null ? "Host with Steam and continue" : "Host with Steam", GUILayout.Height(32))) rt.HostSteam();
             GUILayout.Label("Host from the main menu, then start a run. Players who join are brought into your run " +
                             "with the character they picked on the character screen.", _small);
 
@@ -328,6 +347,27 @@ namespace CCoop.Plugin.UI
             GUILayout.Label("Speed-up", GUILayout.Width(90));
             cfg.AllowSpeedUp.Value = GUILayout.Toggle(cfg.AllowSpeedUp.Value, cfg.AllowSpeedUp.Value ? " Anyone may fast-forward time" : " Time always runs at normal speed (sleep still fast-forwards)");
             GUILayout.EndHorizontal();
+        }
+
+        private static bool _showSaves;
+
+        private static void SavedRuns()
+        {
+            var runs = CoopSaves.List();
+            if (runs.Count == 0) return;
+            GUILayout.Space(4);
+            _showSaves = GUILayout.Toggle(_showSaves, " Continue a co-op run (" + runs.Count + ")");
+            if (!_showSaves) return;
+            foreach (var r in runs)
+            {
+                GUILayout.BeginHorizontal(_box);
+                bool picked = CoopSaves.PendingContinue == r.Id;
+                GUILayout.Label("Layer " + r.Layer + " · " + r.When.ToString("MMM d HH:mm") + (r.Players.Length > 0 ? " · " + r.Players : ""), _small, GUILayout.Width(280));
+                if (GUILayout.Button(picked ? "Picked" : "Continue", GUILayout.Width(70))) CoopSaves.PendingContinue = picked ? null : r.Id;
+                if (GUILayout.Button("Delete", GUILayout.Width(55))) { CoopSaves.Delete(r.Id); if (picked) CoopSaves.PendingContinue = null; }
+                GUILayout.EndHorizontal();
+            }
+            if (CoopSaves.PendingContinue != null) GUILayout.Label("Host, then press \"Start the saved run\" when your friends are in.", _small);
         }
 
         private static void Refresh(CoopRuntime rt)
@@ -502,6 +542,12 @@ namespace CCoop.Plugin.UI
             }
             GUILayout.EndScrollView();
             if (!s.IsHost) GUILayout.Label("Ping is each player's round trip to the host.", _small);
+
+            if (s.IsHost && GameInfo.OnMainMenu && CoopSaves.PendingContinue != null)
+            {
+                if (GUILayout.Button("Start the saved run", GUILayout.Height(30))) CoopSaves.StartContinue();
+                GUILayout.Label("Players who join get their own characters back from this run; newcomers start fresh.", _small);
+            }
 
             if (!s.IsHost && flow != null && flow.CanJoinHostRun)
             {

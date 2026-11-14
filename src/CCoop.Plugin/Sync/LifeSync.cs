@@ -263,6 +263,7 @@ namespace CCoop.Plugin.Sync
             if (Time.unscaledTime - _allDeadSince < WipeGrace) return;
 
             _wiped = true;
+            CoopSaves.DeleteCurrent();
             Session.Broadcast(new TeamWipe { Epoch = Coop.Epoch });
             Log.Info("[life] everyone is dead; the run is over");
             CoopRuntime.Notice("Everyone is dead. The run is over");
@@ -272,6 +273,7 @@ namespace CCoop.Plugin.Sync
         {
             if (Coop.IsHost || _wiped) return;
             _wiped = true;
+            CoopSaves.DeleteCurrent();
             Log.Info("[life] team wipe on epoch " + m.Epoch);
             CoopRuntime.Notice("Everyone is dead. The run is over");
         }

@@ -66,7 +66,7 @@ namespace CCoop.Plugin.Sync
     {
         private static bool Prefix()
         {
-            if (!Coop.InSession) return true;
+            if (!Coop.InSession || SaveGate.Allowed) return true;
             Log.Info("[save] blocked during a co-op session");
             CoopRuntime.Notice("Saving is disabled during co-op");
             return false;

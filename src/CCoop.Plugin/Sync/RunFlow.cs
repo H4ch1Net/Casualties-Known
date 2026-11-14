@@ -88,6 +88,7 @@ namespace CCoop.Plugin.Sync
                 InRun = GameInfo.InRunScene && WorldGeneration.world.biomeOverride == WorldGeneration.OverrideSceneType.None,
                 Epoch = Coop.Epoch,
                 Depth = WorldGeneration.world != null ? WorldGeneration.world.biomeDepth : 0,
+                RunId = CoopSaves.RunId ?? "",
             };
             var settings = WorldGeneration.runSettings;
             if (settings != null)
@@ -185,6 +186,7 @@ namespace CCoop.Plugin.Sync
             if (Coop.IsHost) return;
             bool hostWasInRun = HostInRun;
             _hostRun = m;
+            if (!string.IsNullOrEmpty(m.RunId)) CoopSaves.RunId = m.RunId;
             if (m.Epoch > Coop.Epoch || !m.InRun) Coop.Epoch = m.Epoch;
             TargetDepth = m.Depth;
 
@@ -219,6 +221,13 @@ namespace CCoop.Plugin.Sync
                 WorldGeneration.runSettings = ToSettings(_hostRun.Settings);
                 SaveSystem.loadedRun = false;
                 TargetDepth = _hostRun.Depth;
+                // Rejoining a run we've played before: bring our own character back.
+                int saved = string.IsNullOrEmpty(_hostRun.RunId) ? -1 : CoopSaves.PrepareLoad(_hostRun.RunId);
+                if (saved >= 0)
+                {
+                    PreRunScript.characterSelected = saved;
+                    CoopRuntime.Notice("Welcome back: your character from this run is restored");
+                }
                 Log.Info("[run] joining the host's run on layer " + (TargetDepth + 1) + " as " + GameInfo.CharacterName(PreRunScript.characterSelected));
                 pre.StartCoroutine(pre.WaitLoad());
                 Session.SendToHost(new LayerStatus { Epoch = Coop.Epoch, Phase = LayerPhase.Loading });

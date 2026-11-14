@@ -501,6 +501,7 @@ namespace CCoop.Plugin.Dev
                 if (now < _cprUntil && now >= _nextDevCpr)
                 {
                     _nextDevCpr = now + 0.5f;
+                    WalkOver();
                     medic.Cpr(other);
                 }
                 if (_stage == 210 && now >= _nextShock && _shocks < 10)
@@ -545,6 +546,7 @@ namespace CCoop.Plugin.Dev
                     Verify("bandaged");
                     if (Coop.IsHost)
                     {
+                        WalkOver();
                         medic.Treat(other, 3, TreatKind.SetDislocation);
                         MedicSession.DevAct = limb => limb.UnDislocate();
                         _simEndAt = now + 1.5f;
@@ -558,6 +560,7 @@ namespace CCoop.Plugin.Dev
                     if (Coop.IsHost)
                     {
                         Coop.Get<Chat>()?.Send("can you read this");
+                        WalkOver();
                         GiveHand("morphine");
                         medic.Treat(other, 3, TreatKind.Item);
                         _simSteps = 8;
@@ -615,14 +618,16 @@ namespace CCoop.Plugin.Dev
                         b.happiness = 0f;
                         for (int i = 0; i < 2; i++) { var it = b.GetItem(i); if (it != null) b.DropItem(it); }
                     }
-                    if (Coop.IsHost) { GiveHand("minibarrel"); Log.Info("DEV host picks up a mini barrel"); }
+                    if (Coop.IsHost) { GiveHand("heavydrill"); Log.Info("DEV host picks up a heavy drill"); }
                     _stage = 224; _stageAt = now + 2f;
                     break;
                 case 224:
                     if (Coop.IsClient) { WalkOverClient(); Coop.Get<TeamMotion>().StartLifting(NetSession.HostId); Log.Info("DEV client helps carry it"); }
                     _stage = 225; _stageAt = now + 2f;
+                    _waitUntil = now + 8f;
                     break;
                 case 225:
+                    if (Coop.IsHost && TeamMotion.LiftLoad >= 0f && now < _waitUntil) return;
                     Verify("lifting");
                     if (Coop.IsClient) Coop.Get<TeamMotion>().StopLifting(true);
                     if (Coop.IsHost)
@@ -638,12 +643,25 @@ namespace CCoop.Plugin.Dev
                     break;
                 case 227:
                     Verify("pulled");
-                    if (Coop.IsHost) { _catchReadyUntil = now + 5f; Log.Info("DEV host gets ready to catch"); }
+                    // Let go of the hand, and give the host time to stand still before anyone falls.
+                    if (Coop.IsClient) GameInfo.LocalBody?.StopClimbing();
+                    if (Coop.IsHost) { WalkOver(); _catchReadyUntil = now + 10f; Log.Info("DEV host gets ready to catch"); }
+                    _stage = 229; _stageAt = now + 2.5f;
+                    break;
+                case 229:
                     if (Coop.IsClient)
                     {
+                        GameInfo.LocalBody?.StopClimbing();
                         var host = Coop.Get<PlayerSync>().Find(NetSession.HostId);
                         var chest = host?.LimbPosition(1);
-                        if (chest.HasValue) { BodyFreeze.PlaceAt(chest.Value + new Vector2(0f, 9f)); Log.Info("DEV client drops from 9 m above the host"); }
+                        if (chest.HasValue)
+                        {
+                            var b = GameInfo.LocalBody;
+                            BodyFreeze.PlaceAt(chest.Value + new Vector2(0f, 3.5f));
+                            float hard = TeamMotion.HardLanding(b);
+                            b.SetVelocity(new Vector2(0f, -hard * 1.1f));
+                            Log.Info("DEV client falls onto the host at " + (hard * 1.1f).ToString("F0") + " (hard landing " + hard.ToString("F0") + ")");
+                        }
                     }
                     _stage = 228; _stageAt = now + 4f;
                     break;
@@ -974,6 +992,14 @@ namespace CCoop.Plugin.Dev
         }
 
         /// <summary>A fingerprint of the live world; equal lines on both peers mean the same world.</summary>
+        /// <summary>A short hash of the current layer's terrain, as VERIFY prints it.</summary>
+        internal static string TerrainHash()
+        {
+            var terrain = WorldAccess.CaptureTerrain();
+            if (terrain == null) return "-";
+            using (var sha = SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(terrain), 0, 8).Replace("-", "").ToLowerInvariant();
+        }
+
         internal static void Verify(string tag)
         {
             if (!WorldAccess.Settled) { Log.Info("VERIFY " + tag + " no world"); return; }

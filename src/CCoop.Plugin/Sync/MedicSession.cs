@@ -132,7 +132,8 @@ namespace CCoop.Plugin.Sync
             var s = _active;
             if (s == null) return;
             if (!Coop.WorldLive || MinigameBase.main == null || MinigameBase.main.currentMinigame == null) { End(); return; }
-            if (Medic.CantTreat(s.Patient) is string why)
+            // A patient may roll a little while being worked on: only a real gap ends it.
+            if (Medic.CantTreat(s.Patient, Medic.Reach + 1.5f) is string why)
             {
                 MinigameBase.main.EndMinigame();
                 End(why);

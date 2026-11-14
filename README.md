@@ -153,6 +153,22 @@ dotnet build src/CCoop.Plugin/CCoop.Plugin.csproj -c Release   # also writes dis
 
 `CasualtiesCoop.slnx` contains only the game-independent projects. The plugin needs the game install and is built through its own csproj.
 
+**CI.** `.github/workflows/build.yml` builds and tests the network library on every push. The plugin job only runs on a self-hosted runner that has the game (labelled `game`, with the repository variable `CCOOP_GAME_PATH` set), because the game's assemblies are never committed.
+
+**Update check.** Set `Update.Repository` in the config to `owner/name` of the release repository. The mod then asks GitHub once per launch whether a newer release exists and says so in the co-op window. Nothing is downloaded.
+
+## Linux, Proton and Steam Deck
+
+BepInEx loads through `winhttp.dll`, which Proton ignores unless told otherwise. In the game's Steam **Properties → Launch options**, set:
+
+```
+WINEDLLOVERRIDES="winhttp=n,b" %command%
+```
+
+On Steam Deck the co-op window scales up by itself, and text fields open Steam's on-screen keyboard.
+
+**Bug reports.** The co-op window's **Bug report** button gathers your co-op logs and the session details into a folder on your desktop. Attach its files to the report.
+
 ## Testing on one machine
 
 ```powershell
