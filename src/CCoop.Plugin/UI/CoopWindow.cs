@@ -354,7 +354,7 @@ namespace CCoop.Plugin.UI
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             GUILayout.Label(Lang.T("Danger"), GUILayout.Width(90));
-            cfg.FriendlyFire.Value = GUILayout.Toggle(cfg.FriendlyFire.Value, " " + Lang.T("Friendly fire (guns hurt teammates)"));
+            cfg.FriendlyFire.Value = GUILayout.Toggle(cfg.FriendlyFire.Value, " " + Lang.T("Friendly fire (shots and blows hurt teammates)"));
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             GUILayout.Label(Lang.T("Voices carry"), GUILayout.Width(90));

@@ -105,7 +105,7 @@ namespace CCoop.Plugin.Sync
                 NameTags = c.HostNameTags.Value,
                 SpawnApart = c.SpawnApart.Value,
                 VoicePercent = (byte)Mathf.Clamp(c.VoiceRangePercent.Value, 25, 100),
-                FriendlyFire = c.FriendlyFire.Value,
+                FriendlyFire = Dev.DevHarness.FfOverride >= 0 ? Dev.DevHarness.FfOverride == 1 : c.FriendlyFire.Value,
                 LootScale = (byte)Mathf.Clamp(Dev.DevHarness.LootOverride >= 0 ? Dev.DevHarness.LootOverride : c.LootScale.Value, 0, 1),
                 DangerScale = (byte)Mathf.Clamp(Dev.DevHarness.DangerOverride >= 0 ? Dev.DevHarness.DangerOverride : c.DangerScale.Value, 0, 2),
             };

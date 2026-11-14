@@ -85,7 +85,8 @@ namespace CCoop.Plugin.Protocol
                 .Add<ItemConditions>((ushort)(b + 79), Delivery.Reliable)
                 .Add<CraftClaim>((ushort)(b + 80), Delivery.Reliable)
                 .Add<GiveAsk>((ushort)(b + 81), Delivery.Reliable)
-                .Add<FluidChunks>((ushort)(b + 82), Delivery.Reliable);
+                .Add<FluidChunks>((ushort)(b + 82), Delivery.Reliable)
+                .Add<PlayerHit>((ushort)(b + 83), Delivery.Reliable);
             // Other mods' messages (CCoopApi), after ours, so they share the fingerprint.
             return CCoop.CCoopApi.AddTo(registry);
         }
@@ -544,6 +545,40 @@ namespace CCoop.Plugin.Protocol
         public uint Id;
         public void Write(PacketWriter w) => w.WriteUInt32(Id);
         public void Read(ref PacketReader r) => Id = r.ReadUInt32();
+    }
+
+    /// <summary>A teammate's blow reached this player (friendly fire): applied by the victim's machine.</summary>
+    internal sealed class PlayerHit : IMessage
+    {
+        public byte Victim;
+        public byte Limb;
+        public float Force, Cut, DX, DY;
+        public bool Heavy;
+        public string ItemId = "";
+
+        public void Write(PacketWriter w)
+        {
+            w.WriteByte(Victim);
+            w.WriteByte(Limb);
+            w.WriteSingle(Force);
+            w.WriteSingle(Cut);
+            w.WriteSingle(DX);
+            w.WriteSingle(DY);
+            w.WriteBool(Heavy);
+            w.WriteString(ItemId);
+        }
+
+        public void Read(ref PacketReader r)
+        {
+            Victim = r.ReadByte();
+            Limb = r.ReadByte();
+            Force = r.ReadSingle();
+            Cut = r.ReadSingle();
+            DX = r.ReadSingle();
+            DY = r.ReadSingle();
+            Heavy = r.ReadBool();
+            ItemId = r.ReadString();
+        }
     }
 
     internal struct FluidChunk

@@ -347,7 +347,11 @@ namespace CCoop.Plugin.Sync
         private static void Postfix(Body __instance, AttackInfo atk, bool __state)
         {
             if (!__state) return;
-            try { Coop.Get<PlayerSync>()?.AnnounceAttack(__instance, atk); }
+            try
+            {
+                Coop.Get<PlayerSync>()?.AnnounceAttack(__instance, atk);
+                Coop.Get<FriendlyFireSync>()?.Swung(__instance, atk);
+            }
             catch (Exception e) { Log.Debug("attack hook: " + e.Message); }
         }
     }

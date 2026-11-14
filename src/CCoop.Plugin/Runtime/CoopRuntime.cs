@@ -91,6 +91,7 @@ namespace CCoop.Plugin.Runtime
             Add(new ItemDecay());
             Add(new CraftSync());
             Add(new FluidSync());
+            Add(new FriendlyFireSync());
             Add(new TeamReceipt());
             Add(new ExplosionSync());
             Add(new SteamMoments());

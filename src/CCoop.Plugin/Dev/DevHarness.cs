@@ -67,6 +67,9 @@ namespace CCoop.Plugin.Dev
         internal static readonly int LootOverride = int.TryParse(Env("CCOOP_LOOT"), out var loot) ? loot : -1;
         internal static readonly int DangerOverride = int.TryParse(Env("CCOOP_DANGER"), out var danger) ? danger : -1;
 
+        /// <summary>CCOOP_FF=0/1: the friendly-fire rule for this test (never the player's config).</summary>
+        internal static readonly int FfOverride = int.TryParse(Env("CCOOP_FF"), out var ff) ? ff : -1;
+
         /// <summary>Seconds between desync checks (tests use a short one).</summary>
         internal static readonly float CheckEveryOverride = float.TryParse(Env("CCOOP_CHECKEVERY"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var every) ? every : -1f;
 
@@ -737,7 +740,7 @@ namespace CCoop.Plugin.Dev
         private float _catchReadyUntil, _nextReadyDev;
         private float _waitUntil;
         private bool _sawDrop;
-        private float _layAt = -1f, _craftAt = -1f, _bogusAt = -1f, _fireAt = -1f;
+        private float _layAt = -1f, _craftAt = -1f, _bogusAt = -1f, _fireAt = -1f, _swingAt = -1f;
 
         /// <summary>
         /// M5: rot and crafting. The host leaves rotting items (one at its feet, one by the
@@ -775,6 +778,8 @@ namespace CCoop.Plugin.Dev
             _layAt = Time.unscaledTime + 0.5f;
             _craftAt = Time.unscaledTime + 2.5f;
             _bogusAt = Time.unscaledTime + 4f;
+            // Friendly fire: a swing at the host, which hurts only under the rule.
+            _swingAt = Time.unscaledTime + 3f;
         }
 
         private void DecayCraftTick()
@@ -789,6 +794,27 @@ namespace CCoop.Plugin.Dev
                 {
                     gun.Fire();
                     Log.Info("DEV host fires a pistol");
+                }
+            }
+            if (_swingAt > 0f && now >= _swingAt)
+            {
+                _swingAt = -1f;
+                var b = GameInfo.LocalBody;
+                var host = Coop.Get<PlayerSync>()?.Find(NetSession.HostId);
+                var chest = host?.LimbPosition(1) ?? host?.ShownAt;
+                if (b != null && chest.HasValue)
+                {
+                    BodyFreeze.PlaceAt(chest.Value + new Vector2(-2.5f, 0f));
+                    GiveHand("machete");
+                    b.targetLookPos = chest.Value;
+                    b.attackCooldown = 0f;
+                    // The machete's own swing (its item definition): 50 damage, 5.75 reach, cutting.
+                    bool swung = b.Attack(new AttackInfo
+                    {
+                        damage = 50f, structuralDamage = 0f, distance = 5.75f, knockBack = 270f, cooldown = 0.5f,
+                        staminaUse = 1f, swingSounds = new[] { "BSSwing1" }, volume = 0.3f, rotateAmount = 11.5f,
+                    }, b.handSlot);
+                    Log.Info("DEV client swings at the host (" + (swung ? "swung" : "couldn't") + ", friendly fire " + HostRules.Current.FriendlyFire + ")");
                 }
             }
             if (_layAt > 0f && now >= _layAt)
@@ -1674,6 +1700,12 @@ namespace CCoop.Plugin.Dev
                      " legup " + Milestones.Count("legup") + " hug " + Milestones.Count("hug") + " treat " + Milestones.Count("treat") +
                      " revived " + Milestones.Count("revived") + " layer " + Milestones.Count("layer") + ")");
             Log.Info("VERIFY " + tag + " hazards " + HazardsLine());
+            var lb = GameInfo.LocalBody;
+            Log.Info("VERIFY " + tag + " ff rule=" + HostRules.Current.FriendlyFire + " hits sent/taken/refused " + FriendlyFireSync.HitsSent + "/" +
+                     FriendlyFireSync.HitsTaken + "/" + FriendlyFireSync.HitsRefused + (lb != null && lb.limbs != null && FriendlyFireSync.LastLimb >= 0 && FriendlyFireSync.LastLimb < lb.limbs.Length
+                         ? " hit limb " + lb.limbs[FriendlyFireSync.LastLimb].name + " muscle=" + lb.limbs[FriendlyFireSync.LastLimb].muscleHealth.ToString("F0") +
+                           " skin=" + lb.limbs[FriendlyFireSync.LastLimb].skinHealth.ToString("F0") + " bleed=" + lb.limbs[FriendlyFireSync.LastLimb].bleedAmount.ToString("F1") +
+                           " pain=" + lb.limbs[FriendlyFireSync.LastLimb].pain.ToString("F0") : ""));
             Log.Info("VERIFY " + tag + " fluid " + FluidLine());
             Log.Info("VERIFY " + tag + " decay crumbled/forothers " + ItemDecay.Crumbled + "/" + ItemDecay.DecayedForOthers +
                      " conditions " + ItemDecay.ConditionsApplied + " crumbles seen " + ItemDecay.CrumblesSeen +

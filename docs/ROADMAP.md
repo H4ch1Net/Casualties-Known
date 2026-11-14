@@ -321,8 +321,10 @@ The game saves only the player: inventory, `[Saveable]` body state, recipes and 
 
 These were cut to keep milestones shippable. Each slots into the milestone named.
 
-- [~] **M** **Friendly fire**: guns done in M5 (host rule). Still open: Melee swings and thrown items that reach a puppet are resolved on the attacker's machine by distance, like crawler bites, then applied by the victim's machine with the game's own hit code. Host rule, off by default. → with M4, which adds puppet hit zones.
+- [x] **M** **Friendly fire**: guns done in M5 (host rule). Still open: Melee swings and thrown items that reach a puppet are resolved on the attacker's machine by distance, like crawler bites, then applied by the victim's machine with the game's own hit code. Host rule, off by default. → with M4, which adds puppet hit zones.
   - Found while reading `Body.Attack`: the game's melee hits only creatures and blocks, never a human body, so there is no "game's own hit code" for a swing at a person. Melee friendly fire would be a new mechanic (how much does a pipe do to an arm?), not a sync fix. Left out unless it's wanted.
+  - Built on request (`FriendlyFireSync`): the attacker's machine checks the game's own swing shape (a 1 x 3.5 box along the swing, the weapon's reach, not through rock) against the teammate's puppet limbs and sends the hit. The victim's machine applies it through the game's own impact code, `Limb.ImpactDamage` (the one for falls and hard knocks: bruising, dislocation, broken bones, head knocks, pain), at a force of 1.2 x the weapon's damage times the game's own swing power (arm, strength, off hand, claw wear). Claws come to about 36, a machete 60, a sledgehammer 72 or more. Cutting weapons also cut (skin, bleeding), and a heavy blow (knockback x power of 600 or more) knocks a standing player down. The block behind the limb isn't chipped. Only under the host's rule, checked on both sides.
+  - Thrown items: left out. In the game an item in flight passes through bodies and hurts nothing (only special falling crates do), not even creatures, so it doesn't hurt teammates either.
 - [~] **M** **Every enemy hunts everyone.** Guards, turrets, laser drones, crystal enemies, grabber plants and traders read `PlayerCamera.main.body` directly. On the owner's machine, swap that read (Harmony transpiler or a per-class prefix) for "nearest living player", including puppets. Their raycast hits on a puppet become hit events applied by the victim, as bites are. → M5.
   - As it stands: guards, drones and crystal enemies are run by the machine of the nearest living player (handing over when another player is 10 m closer), so each hunts whoever is closest. Turrets run on every machine and fire at that machine's player, and every shot is replayed everywhere. The gap is two players at a similar distance: only the owner's player is engaged.
   - Why not a straight swap: the game's code needs a real `Body` (limbs, velocity, consciousness), and puppets are a drawn rig, not a body. Doing it properly means a stand-in body per puppet. Not started.
@@ -479,7 +481,7 @@ Recommended defaults are in **bold**. Most become host rules, so they're less fi
 | Death | **Spectate, respawn next layer** (built, default) · permadeath · quick respawn (both built as host rules) |
 | Descending | **Half of living players at the exit** (built, default) · everyone · first arrives |
 | Time speed | **Shared, host decides; sleep races only when everyone sleeps** (built) · disabled like Casualties Together |
-| Friendly fire | **Off** · on (needs puppet hit zones, M4) |
+| Friendly fire | **Off** · on: shots and blows |
 | Player cap | **4 tested, 8 allowed** |
 | Distribution | **GitHub releases** + Nexus page |
 | Teammate treatment (M4) | **Decided: the treater plays the real minigame**; the effects land on the patient's body |

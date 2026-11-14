@@ -167,6 +167,12 @@ Waiting for {0} to finish loading this layer.
 You
 = 
 
+# Sync/FriendlyFireSync.cs
+{0} hit you
+= 
+{0} hit you with the {1}
+= 
+
 # Sync/GestureSync.cs
 Wave
 = 
@@ -728,7 +734,7 @@ Spawn apart
 = 
 Danger
 = 
-Friendly fire (guns hurt teammates)
+Friendly fire (shots and blows hurt teammates)
 = 
 Voices carry
 = 

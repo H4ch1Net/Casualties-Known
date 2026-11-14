@@ -43,6 +43,8 @@ param(
     [string]$Preset = '',
     # The host ends the session mid-run; the client carries the run on as host and the old host rejoins.
     [switch]$Handover,
+    # Friendly fire on for this test (the host's rule), whatever the config says.
+    [switch]$FriendlyFire,
     # The host runs at this frame rate once in the run (a slow host).
     [int]$HostFps = 0,
     [int]$StaggerSeconds = 6
@@ -68,6 +70,7 @@ for ($i = 1; $i -le $Count; $i++) {
     $env:CCOOP_MODIFIER = if ($Modifier -ge 0 -and $i -eq 1) { "$Modifier" } else { '' }
     $env:CCOOP_PRESET = if ($Preset -and $i -eq 1) { $Preset } else { '' }
     $env:CCOOP_HANDOVER = if ($Handover) { '1' } else { '' }
+    $env:CCOOP_FF = if ($FriendlyFire) { '1' } else { '' }
     $env:CCOOP_FPS = if ($HostFps -gt 0 -and $i -eq 1) { "$HostFps" } else { '' }
     if ($Steam -and $i -eq 1) {
         $env:CCOOP_AUTOSTART = 'steamhost'
@@ -80,7 +83,7 @@ for ($i = 1; $i -le $Count; $i++) {
     Write-Host ("instance {0} ({1}) pid {2}" -f $i, $env:CCOOP_AUTOSTART, $p.Id)
     if ($i -lt $Count) { Start-Sleep -Seconds $StaggerSeconds }
 }
-Remove-Item Env:CCOOP_AUTOSTART, Env:CCOOP_AUTORUN, Env:CCOOP_SELFTEST, Env:CCOOP_DUMP, Env:CCOOP_STARTDEPTH, Env:CCOOP_MODIFIER, Env:CCOOP_PRESET, Env:CCOOP_HANDOVER, Env:CCOOP_FPS, Env:SteamAppId, Env:SteamGameId -ErrorAction SilentlyContinue
+Remove-Item Env:CCOOP_AUTOSTART, Env:CCOOP_AUTORUN, Env:CCOOP_SELFTEST, Env:CCOOP_DUMP, Env:CCOOP_STARTDEPTH, Env:CCOOP_MODIFIER, Env:CCOOP_PRESET, Env:CCOOP_HANDOVER, Env:CCOOP_FPS, Env:CCOOP_FF, Env:SteamAppId, Env:SteamGameId -ErrorAction SilentlyContinue
 
 $logs = Join-Path $env:USERPROFILE 'AppData\LocalLow\Orsoniks\CasualtiesUnknown\CasualtiesCoop'
 Write-Host "Per-instance logs: $logs"
