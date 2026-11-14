@@ -306,11 +306,11 @@ These were cut to keep milestones shippable. Each slots into the milestone named
 
 - [~] **M** **Friendly fire**: guns done in M5 (host rule). Still open: Melee swings and thrown items that reach a puppet are resolved on the attacker's machine by distance, like crawler bites, then applied by the victim's machine with the game's own hit code. Host rule, off by default. → with M4, which adds puppet hit zones.
 - [ ] **M** **Every enemy hunts everyone.** Guards, turrets, laser drones, crystal enemies, grabber plants and traders read `PlayerCamera.main.body` directly. On the owner's machine, swap that read (Harmony transpiler or a per-class prefix) for "nearest living player", including puppets. Their raycast hits on a puppet become hit events applied by the victim, as bites are. → M5.
-- [ ] **S** **Voice polish.**
-  - Walls muffle a voice: a `Ground` linecast between listener and speaker adds a low-pass.
-  - The speaker's own condition distorts it: brain damage or being underwater, mirroring `Talker`.
-  - Per-player volume and mute in the player list.
-  - Optional voice activation threshold for open mic. → M8.
+- [~] **S** **Voice polish.** (Built but untested: voice needs Steam on both sides.)
+  - [x] Walls muffle a voice: a `Ground` linecast between listener and speaker adds a low-pass. (Cutoff 1.4 kHz and 75% volume; the filter glides so corners don't click.)
+  - [ ] The speaker's own condition distorts it: brain damage or being underwater, mirroring `Talker`. (A broken or dislocated jaw already muffles.)
+  - [x] Per-player volume and mute in the player list. (A button cycles 100% / 50% / muted / 150%, remembered per Steam id.)
+  - [ ] Optional voice activation threshold for open mic. → M8.
 - [ ] **S** **Two-account Steam playtest:** browser, password, ban, rich-presence grouping, voice, rejoin. → before 2.1.
 
 ---

@@ -212,8 +212,86 @@ namespace CCoop.Plugin.Sync
                 var vit = Coop.Get<VitalsSync>()?.Of(kv.Key);
                 bool jaw = vit != null && vit.Limbs.Count > 0 &&
                            (vit.Limbs[0].Signs & (Protocol.LimbSigns.Broken | Protocol.LimbSigns.Dislocated)) != 0;
-                kv.Value.Set(volume * volume * master * ConditionFx.HearingFactor(), pan, sameLayer && !listenerDead ? mixer : null, jaw);
+                // Rock between you muffles a voice (and takes some of its volume).
+                bool walled = ear.HasValue && sameLayer && rec.Alive && Walled(kv.Key, ear.Value, rec.Position);
+                if (walled) volume *= 0.75f;
+                float cutoff = jaw ? 900f : walled ? 1400f : 22000f;
+                kv.Value.Set(volume * volume * master * ConditionFx.HearingFactor() * PlayerVolume(rec), pan, sameLayer && !listenerDead ? mixer : null, cutoff);
             }
+        }
+
+        // ================================================================== walls and personal volume
+
+        private readonly Dictionary<byte, KeyValuePair<float, bool>> _wallCache = new Dictionary<byte, KeyValuePair<float, bool>>();
+
+        private bool Walled(byte id, Vector2 ear, Vector2 mouth)
+        {
+            float now = Time.unscaledTime;
+            if (_wallCache.TryGetValue(id, out var c) && now - c.Key < 0.2f) return c.Value;
+            bool walled = false;
+            try { walled = Physics2D.Linecast(ear + Vector2.up, mouth + Vector2.up, LayerMask.GetMask("Ground")); }
+            catch { /* no physics yet */ }
+            _wallCache[id] = new KeyValuePair<float, bool>(now, walled);
+            return walled;
+        }
+
+        /// <summary>Volume levels a player can pick for each teammate: 100%, 50%, muted, 150%.</summary>
+        internal static readonly float[] Levels = { 1f, 0.5f, 0f, 1.5f };
+
+        private static Dictionary<string, float> _volumes;
+
+        private static string VolumePath => System.IO.Path.Combine(System.IO.Path.Combine(Application.persistentDataPath, "CasualtiesCoop"), "voice-volumes.txt");
+
+        /// <summary>Who a volume belongs to: their Steam id, or their name on LAN.</summary>
+        private static string VolumeKey(PlayerRecord rec) => rec.SteamId != 0 ? "steam" + rec.SteamId : "name:" + rec.Name;
+
+        private static Dictionary<string, float> Volumes
+        {
+            get
+            {
+                if (_volumes != null) return _volumes;
+                _volumes = new Dictionary<string, float>();
+                try
+                {
+                    if (System.IO.File.Exists(VolumePath))
+                        foreach (var line in System.IO.File.ReadAllLines(VolumePath))
+                        {
+                            int eq = line.LastIndexOf('=');
+                            if (eq > 0 && float.TryParse(line.Substring(eq + 1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v))
+                                _volumes[line.Substring(0, eq)] = Mathf.Clamp(v, 0f, 2f);
+                        }
+                }
+                catch (Exception e) { Log.Debug("voice volumes: " + e.Message); }
+                return _volumes;
+            }
+        }
+
+        internal static float PlayerVolume(PlayerRecord rec) =>
+            rec != null && Volumes.TryGetValue(VolumeKey(rec), out var v) ? v : 1f;
+
+        /// <summary>Steps a teammate's volume to the next level and remembers it.</summary>
+        internal static void CycleVolume(PlayerRecord rec)
+        {
+            if (rec == null) return;
+            float cur = PlayerVolume(rec);
+            int i = Array.FindIndex(Levels, l => Mathf.Abs(l - cur) < 0.01f);
+            float next = Levels[(i + 1) % Levels.Length];
+            Volumes[VolumeKey(rec)] = next;
+            try
+            {
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(VolumePath));
+                var lines = new List<string>();
+                foreach (var kv in Volumes)
+                    if (Mathf.Abs(kv.Value - 1f) > 0.01f) lines.Add(kv.Key + "=" + kv.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                System.IO.File.WriteAllLines(VolumePath, lines.ToArray());
+            }
+            catch (Exception e) { Log.Debug("voice volumes: " + e.Message); }
+        }
+
+        internal static string VolumeLabel(PlayerRecord rec)
+        {
+            float v = PlayerVolume(rec);
+            return v <= 0.001f ? "Muted" : Mathf.RoundToInt(v * 100f) + "%";
         }
 
         // ================================================================== a speaker
@@ -298,14 +376,15 @@ namespace CCoop.Plugin.Sync
 
             private AudioLowPassFilter _muffle;
 
-            internal void Set(float volume, float pan, UnityEngine.Audio.AudioMixerGroup mixer, bool muffled)
+            internal void Set(float volume, float pan, UnityEngine.Audio.AudioMixerGroup mixer, float cutoff)
             {
                 if (_source == null) return;
                 _source.volume = Mathf.Clamp01(volume);
                 _source.panStereo = pan;
                 if (_source.outputAudioMixerGroup != mixer) _source.outputAudioMixerGroup = mixer;
                 if (_muffle == null) _muffle = _go.AddComponent<AudioLowPassFilter>();
-                _muffle.cutoffFrequency = muffled ? 900f : 22000f;
+                // Glide, so walking round a corner doesn't click.
+                _muffle.cutoffFrequency = Mathf.Lerp(_muffle.cutoffFrequency, cutoff, 0.25f);
             }
 
             public void Dispose()

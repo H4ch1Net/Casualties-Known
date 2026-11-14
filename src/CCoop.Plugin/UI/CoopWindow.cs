@@ -657,6 +657,8 @@ namespace CCoop.Plugin.UI
             GUI.color = old;
 
             GUILayout.FlexibleSpace();
+            // How loud this teammate's voice is for you (only you): 100% / 50% / muted / 150%.
+            if (!me && voice != null && VoiceSync.Available && GUILayout.Button(VoiceSync.VolumeLabel(rec), GUILayout.Width(56))) VoiceSync.CycleVolume(rec);
             if (!me && Coop.WorldLive && rec.HasPosition && GUILayout.Button("Check", GUILayout.Width(52))) TeammatePanel.Open(p.Id);
             if (s.IsHost && !me)
             {
