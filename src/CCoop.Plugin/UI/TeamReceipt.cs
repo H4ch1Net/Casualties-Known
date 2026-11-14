@@ -33,14 +33,18 @@ namespace CCoop.Plugin.UI
         {
             Fates.Clear();
             _showFrom = -1f;
+            ReachedEnding = false;
         }
 
         /// <summary>From the game's EndSequence: the run is over for this player.</summary>
-        internal static void EndScreenShown()
+        /// <param name="type">The game's end screen kind: 0 is death, 1 bio-pod, 2 escape, 3 M.E.R.C.</param>
+        internal static void EndScreenShown(int type = 1)
         {
             if (!Coop.InSession) return;
             Refresh();
             _showFrom = Time.unscaledTime + 4f;  // after the game's receipt has come in
+            ReachedEnding = type != 0;
+            if (!ReachedEnding) return;
             Coop.Player(Coop.LocalId).Finished = true;
             if (Coop.IsHost)
                 foreach (var rec in Coop.Players.Values)
@@ -51,14 +55,18 @@ namespace CCoop.Plugin.UI
                     }
         }
 
-        /// <summary>This player is on the game's end screen.</summary>
+        /// <summary>This player is on the game's end screen (an ending or death).</summary>
         internal static bool EndScreenUp => _showFrom >= 0f;
+
+        /// <summary>This player reached an ending (not death) and is on the end screen.</summary>
+        internal static bool ReachedEnding { get; private set; }
 
         internal override void Tick()
         {
             if (GameInfo.OnMainMenu)
             {
                 _showFrom = -1f;
+                ReachedEnding = false;
                 foreach (var rec in Coop.Players.Values) rec.Finished = false;  // a new run starts unfinished
                 return;
             }
@@ -140,6 +148,6 @@ namespace CCoop.Plugin.UI
     [HarmonyPatch(typeof(PlayerCamera), nameof(PlayerCamera.EndSequence))]
     internal static class EndScreenPatch
     {
-        private static void Prefix() => TeamReceipt.EndScreenShown();
+        private static void Prefix(int type) => TeamReceipt.EndScreenShown(type);
     }
 }

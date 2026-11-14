@@ -215,7 +215,7 @@ namespace CCoop.Plugin.Sync
             if (body.isRight) m.Flags |= PlayerFlags.Right;
             if (body.sleeping) m.Flags |= PlayerFlags.Sleeping;
             if (body.alive && body.brainDying) m.Flags |= PlayerFlags.Dying;
-            if (UI.TeamReceipt.EndScreenUp) m.Flags |= PlayerFlags.Finished;
+            if (UI.TeamReceipt.ReachedEnding) m.Flags |= PlayerFlags.Finished;
             if (t.lossyScale.x < 0) m.Flags |= PlayerFlags.BodyFlip;
             m.X = t.position.x;
             m.Y = t.position.y;

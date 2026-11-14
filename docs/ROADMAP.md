@@ -414,11 +414,11 @@ What happens when real networks and real crashes meet a two-hour run.
 - [ ] **M** **Localisation.** All mod text moves into a string table. Ship English, and accept community translations for the languages the game itself ships.
 - [x] **S** **Accessibility.** Colour-blind-safe ping and name-tag palettes, a text-size setting separate from UI scale, and a no-flash option for ping bursts. (Built: "Colour-blind safe colours" switches player colours to Okabe and Ito's palette, and "Reduce flashes and shaking" turns the mod's flashes into a faint tint, drops its screen shakes and stills ping and spectator pulses. Both are in the co-op window. Text size follows the window's UI scale; a separate setting wasn't needed.)
 - [x] **S** **A small mod API.** Other BepInEx mods can register their own synced messages through CasualtiesCoop (`CCoopApi.Register<T>()`), with the registry hash covering them so mismatches are refused at the door. (Built: `CCoop.CCoopApi` with `Register`, `Broadcast`, `SendTo`, `SendToHost` and the session state. Mod messages get ids from 1024 in a fixed order, and are part of the protocol fingerprint. See the README.)
-- [ ] **S** **Distribution.**
+- [~] **S** **Distribution.**
   - GitHub releases (M7).
   - A Nexus page.
   - A Thunderstore/r2modman package, if the game gets a community there.
-  - An installer script that also installs BepInEx.
+  - [x] An installer script that also installs BepInEx. (`tools/install.ps1`, shipped in the release zip: it finds the game through Steam's library list, installs the latest stable BepInEx 5 x64 from GitHub only if it is missing, and copies the mod in. `-Uninstall` and `-DryRun` too. Windows only.)
 
 ---
 

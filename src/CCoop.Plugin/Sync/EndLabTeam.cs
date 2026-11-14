@@ -50,7 +50,7 @@ namespace CCoop.Plugin.Sync
 
         private static bool Prefix()
         {
-            if (Bypass || !Coop.IsHost || !Coop.WorldLive || !UI.TeamReceipt.EndScreenUp) return true;
+            if (Bypass || !Coop.IsHost || !Coop.WorldLive || !UI.TeamReceipt.ReachedEnding) return true;
             int playing = 0;
             foreach (var rec in Coop.Players.Values)
                 if (rec.Id != Coop.LocalId && rec.InWorld && !rec.Finished) playing++;

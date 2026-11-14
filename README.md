@@ -10,9 +10,14 @@ Version 2 is a rewrite. Version 1 targeted the demo and is kept under `legacy/v1
 
 ### Install
 
+**The easy way (Windows):** unzip `CasualtiesCoop-2.0.0.zip` anywhere, then right-click `install.ps1` and choose **Run with PowerShell** (or run `powershell -ExecutionPolicy Bypass -File install.ps1`). It finds the game, installs BepInEx 5 if you don't have it yet, and copies the mod in.
+
+**By hand:**
+
 1. Install [BepInEx 5.4.23.x x64](https://github.com/BepInEx/BepInEx/releases) into the game folder (`steamapps/common/Casualties Unknown`).
 2. Unzip `CasualtiesCoop-2.0.0.zip` into the game folder, which gives you `BepInEx/plugins/CasualtiesCoop/`.
-3. Everyone in the session needs the same mod version and the same game build.
+
+Everyone in the session needs the same mod version and the same game build.
 
 ### Host
 
