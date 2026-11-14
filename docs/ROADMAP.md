@@ -215,64 +215,83 @@ Verified by the two-instance self-test, with the test playing the minigames' han
 
 ---
 
-## M4.5 · Moving as a team
+## M4.5 · Moving as a team ✅ (built; catch not yet seen in a test)
 
 Playtest ideas: the team should feel physical together, not just side by side.
 
-- [ ] **M** **Three ways to carry a teammate**, each with a cost. The carried player's own machine always moves their body.
+- [x] **M** **Three ways to carry a teammate**, each with a cost. The carried player's own machine always moves their body.
   - **Drag:** one hand on them. Slow, and it uses no inventory slot.
   - **On your back:** needs a free back slot. You walk nearly as fast, but you can't jump as high, because they count as weight.
   - **In your arms:** both hands busy, and you walk a little slower.
-- [ ] **M** **Boost and pull.** Climbing as a team:
+- [x] **M** **Boost and pull.** Climbing as a team:
   - Stand next to a teammate and give them a leg-up, a stronger jump from your hands.
   - From a ledge, take a teammate's hand and pull them up toward you. They're pulled on their own machine, and their own physics settles them.
-- [ ] **S** **Snap out of it.** A teammate in deep depression can be shaken or talked out of it. Their mood gets a boost that fades over a few minutes. It's temporary: the cause is still there. It works through the game's own mood total, so being above the "medical cutoff" again lets them treat wounds.
-- [ ] **M** **Carry heavy things together.** Two players lift a barrel or crate that's too heavy for one: it moves only while both hold it. The host decides where it goes.
-- [ ] **M** **Catch a falling teammate.** Stand under someone who's falling and hold the catch key: their landing is softened. A fall from very high onto someone hurts the catcher too, shared by how far they fell.
+- [x] **S** **Snap out of it.** A teammate in deep depression can be shaken or talked out of it. Their mood gets a boost that fades over a few minutes. It's temporary: the cause is still there. It works through the game's own mood total, so being above the "medical cutoff" again lets them treat wounds.
+- [x] **M** **Carry heavy things together.** Two players lift a barrel or crate that's too heavy for one: it moves only while both hold it. The host decides where it goes.
+- [x] **M** **Catch a falling teammate.** Stand under someone who's falling and hold the catch key: their landing is softened. A fall from very high onto someone hurts the catcher too, shared by how far they fell.
+
+**As built** (`CarrySync`, `TeamMotion`):
+- Carry modes from the teammate panel. Drag uses one empty hand and forces a walk. Back needs no back wearable: load 8, jump ×0.7. Arms needs both hands empty: load 6, jump ×0.5, a little slower. The carried machine ragdolls its body and moves the held limb toward the carrier's chest or hand in `FixedUpdate`.
+- Leg-up: a 5 s window for a ×1.75 jump next to the helper. Pull up: a temporary climbable from the teammate to the helper's hand, which carries them up on their own machine.
+- Snap out of it: +40 mood (+20 a second time), fading over 3 minutes through the game's own mood total; 90 s cooldown per teammate.
+- Lift together: a helper with a free hand takes half the weight of a heavy item (weight ≥ 4) through the game's own encumbrance.
+- Catch (J): the faller's machine checks for a ready teammate under it. A catch softens the landing to half the game's hard-landing speed; landing on someone unready breaks some of the fall and hurts both. Very high falls hurt the catcher's arms.
+- Leg-up, snap, lift, pull and back carry pass the self-test. The catch hasn't triggered in a run yet: the first try dropped a player who was still on the pull-up rope, the second a player knocked out by a coil trap. The test now revives and stands the faller first.
 
 ---
 
-## M5 · Closing the sync gaps
+## M5 · Closing the sync gaps (in progress)
 
 - [ ] **M** **Self-healing world.** Build on the M0 alarm: on a mismatch, the host resends just the affected chunks (terrain, water, objects in them). A desync gets corrected without anyone noticing.
-- [ ] **M** **One-shot traps.** Bear trap, spike stabber, landmine press, ground glass, stalactite, coil shock and the cave-tick `started` flag: the trigger state is shared, and damage applies on the victim's own machine.
+- [x] **M** **One-shot traps.** Bear trap, spike stabber, landmine press, ground glass, stalactite, coil shock and the cave-tick `started` flag: the trigger state is shared, and damage applies on the victim's own machine.
 - [ ] **S** **Rolled hazard state.** Piston phase, fan spin, geyser liquid and grabber-plant shape travel with the object (the per-type state codec from M0.5).
-- [ ] **M** **One-shot props, confirmed by the host.** Med station, bio terminal and scrap-eater doors (these currently block progress for others), shuttle doors, drill pod "working" and "everyone inside". Results travel; minigames don't.
-- [ ] **M** **Traders.** The host owns stock, hostility and reputation, and is the only one to drop death loot. Requests: give, buy, haggle, threaten, hug, rest, ask to move.
-- [ ] **M** **Items made outside the item factory.** Unloaded rounds, batteries and magazines, ejected casings, food transforms, splint and tourniquet removal, heater-cooked meat.
+- [x] **M** **One-shot props, confirmed by the host.** Med station, bio terminal and scrap-eater doors (these currently block progress for others), shuttle doors, drill pod "working" and "everyone inside". Results travel; minigames don't.
+- [x] **M** **Traders.** The host owns stock and is the only one to drop death loot. Purchases are cleared with the host. Each player keeps their own reputation and credit (the game measures those from the player's own body). Hostility is shared. Not yet: shared trader movement (ask to move, hostile lunges).
+- [x] **M** **Items made outside the item factory.** Unloaded rounds, batteries and magazines, ejected casings, food transforms, splint and tourniquet removal, heater-cooked meat.
 - [ ] **S** **Item decay** is decided by the host for loose items. Clients don't self-destroy networked items at 0.
 - [ ] **S** **Crafting** consumes networked ground items through the host.
 - [ ] **M** **Water after load.** Each peer publishes changed cells inside its own simulated window. Also hook the direct writers: drinking, space drain, traders, geysers, auto-filling containers.
-- [ ] **S** **Guns.** Muzzle, tracer and sound on every screen. Damage to creatures already syncs.
+- [x] **S** **Guns.** Tracer, sound, puffs and creature reactions on every screen; muzzle flash on puppets not yet. Plus a **friendly fire** host rule (on in Hard and Brutal).
 - [ ] **M** **Story and endings as a team:**
   - Blue Heart cargo embedding.
   - The surface-breach cutscene at the top of layer 11, plus the scientist script and escape timer on layer 12, all driven by the host.
   - Each player unlocks their own wins (`wonchar`).
   - Merc runs: the host decides `canStartMercRun` and spawns the techball and chip, and sends `isMercRun`.
   - Endless loops: the descent request carries "loop".
-- [ ] **S** **Guard spawners** fire when *any* player is in range.
-- [ ] **S** **Lifepod shower** only affects players inside the pod.
-- [ ] **S** **`ShuttleStarter`.** Resolve the one object clients can't spawn.
+- [x] **S** **Guard spawners** fire when *any* player is in range.
+- [x] **S** **Lifepod shower** only affects players inside the pod.
+- [x] **S** **`ShuttleStarter`.** Resolve the one object clients can't spawn.
+
+**As built so far:**
+- `WorldEvents`: one message for what one machine sets off. It covers the bear trap, spike stabber, coil, stalactite drop, cave-tick nest (now part of the snapshot), mine press, gun mine, drill pod repair, scrap eater feed (amounts add up), `Backgroundify` (bio terminal and scrap doors, used med stations, one heal per station), guard spawner count, shuttle doors and the Blue Heart. The host keeps the first of each one-shot and replays them for late joiners after the snapshot. A mine whose host copy broke can't explode a second time.
+- Blue Heart: it rises for everyone, and every player's own machine embeds their own cargo, which everyone needs for the way out. Endless loops follow the host's own cutscene.
+- `ShotSync`: every `TurretScript.Shoot` is replayed body-only elsewhere, with dedupe for turrets that fire on two machines at once. A guard's shot hits only a body under its reticle. Gun sounds are looked up from the gun's prefab.
+- `ItemOrigins`: a postfix on `Item.Start` catches every new loose item. Container spills count only on the owner's machine. Clients skip corpse loot rolls, and only the meat's owner cooks it. New spawns are published a frame late, so items the game drops and destroys in the same frame are never sent.
+- `TraderSync`: stock, range and hostility travel in the snapshot and are applied after `Start`. Purchases ask the host (`TraderTrade`); the free bandage for a bleeding player goes on the shared shelf.
+- Clients now also remove leftover world content of their own (an old start shuttle) using the host's own content test.
+- Enemies: guards, drones and crystals are already run by the nearest living player's machine, so each hunts whoever is closest. Retargeting by transpiler (an enemy targeting a teammate's puppet) is still open.
 
 ---
 
-## M6 · Saves
+## M6 · Saves ✅ (built; continue-run not yet tested)
 
 The game saves only the player: inventory, `[Saveable]` body state, recipes and the layer number. Loading regenerates the layer. That fits co-op well.
 
-- [ ] **M** **Co-op save slot.** Each player saves their own character, keyed by run id and Steam id. The host's file also holds run settings and depth. This is done by swapping files around `SaveSystem.SaveGame`/`TryLoadGame`, so the save format stays the game's. The single-player `save.sv` is always backed up first and restored even after a crash.
-- [ ] **S** Auto-save on every descent and on disconnect.
-- [ ] **S** **Continue co-op run** on the main menu. Rejoining players get their own character back automatically; newcomers start fresh.
+- [x] **M** **Co-op save slot.** Each player saves their own character, keyed by run id and Steam id. The host's file also holds run settings and depth. This is done by swapping files around `SaveSystem.SaveGame`/`TryLoadGame`, so the save format stays the game's. The single-player `save.sv` is always backed up first and restored even after a crash.
+- [x] **S** Auto-save on every descent and on disconnect.
+- [x] **S** **Continue co-op run** on the main menu. Rejoining players get their own character back automatically; newcomers start fresh.
+
+**As built** (`CoopSaves`): saves live in `CasualtiesCoop/saves/<run id>/<steam id>.sv` next to a `run.txt` (layer, players). The run id travels with `RunInfo`. The game's own `SaveGame` writes them, with `save.sv` moved aside and put back, and a marker file restores it after a crash. A save happens 3 s after each new layer goes live and on leaving; none on the last layers, where the game itself refuses to save. A team wipe deletes the run's save, like the game. The host picks a saved run in the Host tab, then presses "Start the saved run".
 
 ---
 
 ## M7 · Trust, reach and scale
 
-- [ ] **M** **GitHub repo and CI.** Build and test `CCoop.Net` on every push. Build the plugin against stripped reference assemblies, or on a self-hosted runner, so no game code is committed. Publish releases with checksums: Casualties Together players are asking for exactly this ([their issue #51](https://github.com/creaturefeaturelarry/casualties-together/issues/51)).
-- [ ] **S** **Update check.** Read the latest GitHub release and show a notice. No silent downloads.
+- [~] **M** **GitHub repo and CI.** (workflow written; no public repo yet) Build and test `CCoop.Net` on every push. Build the plugin against stripped reference assemblies, or on a self-hosted runner, so no game code is committed. Publish releases with checksums: Casualties Together players are asking for exactly this ([their issue #51](https://github.com/creaturefeaturelarry/casualties-together/issues/51)).
+- [x] **S** **Update check.** Read the latest GitHub release and show a notice. No silent downloads.
 - [ ] **M** **4–8 players.** Bandwidth budget, interest management for creatures and items, a host FPS budget.
-- [ ] **S** **Linux / Proton / Steam Deck notes.** Document `WINEDLLOVERRIDES="winhttp=n,b" %command%`.
-- [ ] **S** **Unicode Steam names** (CJK) in the IMGUI font.
+- [x] **S** **Linux / Proton / Steam Deck notes.** Document `WINEDLLOVERRIDES="winhttp=n,b" %command%`.
+- [x] **S** **Unicode Steam names** (CJK) in the IMGUI font.
 - [ ] **S** Ask Orsoniks for permission, Workshop support and rich-presence tokens.
 
 ---
@@ -281,7 +300,7 @@ The game saves only the player: inventory, `[Saveable]` body state, recipes and 
 
 These were cut to keep milestones shippable. Each slots into the milestone named.
 
-- [ ] **M** **Friendly fire** (rule exists in the plan, not built). Melee swings and thrown items that reach a puppet are resolved on the attacker's machine by distance, like crawler bites, then applied by the victim's machine with the game's own hit code. Host rule, off by default. → with M4, which adds puppet hit zones.
+- [~] **M** **Friendly fire**: guns done in M5 (host rule). Still open: Melee swings and thrown items that reach a puppet are resolved on the attacker's machine by distance, like crawler bites, then applied by the victim's machine with the game's own hit code. Host rule, off by default. → with M4, which adds puppet hit zones.
 - [ ] **M** **Every enemy hunts everyone.** Guards, turrets, laser drones, crystal enemies, grabber plants and traders read `PlayerCamera.main.body` directly. On the owner's machine, swap that read (Harmony transpiler or a per-class prefix) for "nearest living player", including puppets. Their raycast hits on a puppet become hit events applied by the victim, as bites are. → M5.
 - [ ] **S** **Voice polish.**
   - Walls muffle a voice: a `Ground` linecast between listener and speaker adds a low-pass.
@@ -353,8 +372,8 @@ What happens when real networks and real crashes meet a two-hour run.
   - Done when the host can quit mid-layer and the others keep playing.
 - [ ] **M** **Reconnect after a drop.** A client that loses the connection keeps its world for 60 s and reconnects to the same lobby. It receives only what changed since its last state (by epoch and change sequence), not a full snapshot.
 - [ ] **M** **Delta and progressive snapshots.** Send terrain and the objects near the joiner first, then the rest. This cuts the 1–2 s join stall on big layers and makes reconnects cheap.
-- [ ] **S** **Desync report.** One button bundles the logs, the last VERIFY-style fingerprints and the session info into a zip on the desktop, ready to attach to a GitHub issue. Nothing is uploaded automatically.
-- [ ] **S** **Game-update guard.**
+- [x] **S** **Desync report.** (the Bug report button in the co-op window) One button bundles the logs, the last VERIFY-style fingerprints and the session info into a zip on the desktop, ready to attach to a GitHub issue. Nothing is uploaded automatically.
+- [x] **S** **Game-update guard.** (`GameCheck` at start-up)
   - At startup, every game member the mod reflects on or patches is checked.
   - If the game's assembly hash is new and anything is missing, the co-op window says which features are affected.
   - A tool lists those members, so after a game update the decompile diff is a short read rather than a hunt.

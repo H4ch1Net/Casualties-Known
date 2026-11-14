@@ -409,7 +409,9 @@ namespace CCoop.Plugin.Sync
             {
                 if (go == null || WorldAccess.IsPlayerObject(go)) continue;
                 if (go.name.StartsWith("CCoop", StringComparison.Ordinal)) continue;
-                bool content = go.GetComponent<BuildingEntity>() != null || go.GetComponent<Item>() != null;
+                // The same test the host uses to decide what it sends: anything else of that
+                // kind here is this machine's own (a start shuttle left from layer 1, say).
+                bool content = go.GetComponent<BuildingEntity>() != null || go.GetComponent<Item>() != null || IsWorldContent(go);
                 if (!content) continue;
                 if (EntityRegistry.TryGetId(go, out _)) continue;
                 UnityEngine.Object.Destroy(go);

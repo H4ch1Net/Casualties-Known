@@ -337,6 +337,10 @@ namespace CCoop.Plugin.UI
             cfg.SpawnApart.Value = GUILayout.Toggle(cfg.SpawnApart.Value, " Spawn apart");
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
+            GUILayout.Label("Danger", GUILayout.Width(90));
+            cfg.FriendlyFire.Value = GUILayout.Toggle(cfg.FriendlyFire.Value, " Friendly fire (guns hurt teammates)");
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
             GUILayout.Label("Voices carry", GUILayout.Width(90));
             int pct = Mathf.RoundToInt(GUILayout.HorizontalSlider(cfg.VoiceRangePercent.Value, 25f, 100f, GUILayout.Width(200)) / 5f) * 5;
             if (pct != cfg.VoiceRangePercent.Value) cfg.VoiceRangePercent.Value = pct;

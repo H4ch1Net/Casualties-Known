@@ -74,7 +74,9 @@ namespace CCoop.Plugin.Protocol
                 .Add<GestureMsg>((ushort)(b + 72), Delivery.Reliable)
                 .Add<TeamMove>((ushort)(b + 73), Delivery.Reliable)
                 // M5: the rest of the world
-                .Add<WorldEvent>((ushort)(b + 74), Delivery.Reliable);
+                .Add<WorldEvent>((ushort)(b + 74), Delivery.Reliable)
+                .Add<ShotFired>((ushort)(b + 75), Delivery.Reliable)
+                .Add<TraderTrade>((ushort)(b + 76), Delivery.Reliable);
         }
     }
 
@@ -1230,6 +1232,7 @@ namespace CCoop.Plugin.Protocol
         public bool NameTags = true;
         public bool SpawnApart;
         public byte VoicePercent = 100;
+        public bool FriendlyFire;
 
         public void Write(PacketWriter w)
         {
@@ -1242,6 +1245,7 @@ namespace CCoop.Plugin.Protocol
             w.WriteBool(NameTags);
             w.WriteBool(SpawnApart);
             w.WriteByte(VoicePercent);
+            w.WriteBool(FriendlyFire);
         }
 
         public void Read(ref PacketReader r)
@@ -1255,6 +1259,7 @@ namespace CCoop.Plugin.Protocol
             NameTags = r.ReadBool();
             SpawnApart = r.ReadBool();
             VoicePercent = r.ReadByte();
+            FriendlyFire = r.ReadBool();
         }
     }
 
@@ -1505,6 +1510,101 @@ namespace CCoop.Plugin.Protocol
             Arg = r.ReadInt32();
             F = r.ReadSingle();
             Replay = r.ReadBool();
+        }
+    }
+
+    /// <summary>
+    /// A shot was fired here (a player's gun, a guard, a turret, a gun mine). Everyone else
+    /// replays it for their own player only: tracer, sound, puffs, creature reactions, and
+    /// wounds if it passes through them. Damage to objects and terrain comes from the
+    /// shooter's machine through the usual sync.
+    /// </summary>
+    internal sealed class ShotFired : IMessage
+    {
+        public float X, Y, DX, DY;
+        public bool IgnoreBody, Tinnitus, ForceHead;
+        public float Structure, Animal, PlayerMult;
+
+        /// <summary>The networked object that fired (turret, guard), 0 for a player's gun.</summary>
+        public uint Source;
+
+        /// <summary>Fired from a player's gun (friendly fire is a host rule).</summary>
+        public bool FromPlayer;
+
+        /// <summary>The first pellet of a trigger pull: it carries the sound.</summary>
+        public bool First;
+        public string Sound = "";
+
+        /// <summary>Where a guard was aiming: it only hits a body under its reticle.</summary>
+        public bool HasAim;
+        public float AimX, AimY;
+
+        public void Write(PacketWriter w)
+        {
+            w.WriteSingle(X); w.WriteSingle(Y); w.WriteSingle(DX); w.WriteSingle(DY);
+            w.WriteBool(IgnoreBody); w.WriteBool(Tinnitus); w.WriteBool(ForceHead);
+            w.WriteSingle(Structure); w.WriteSingle(Animal); w.WriteSingle(PlayerMult);
+            w.WriteUInt32(Source);
+            w.WriteBool(FromPlayer);
+            w.WriteBool(First);
+            w.WriteString(Sound ?? "");
+            w.WriteBool(HasAim);
+            if (HasAim) { w.WriteSingle(AimX); w.WriteSingle(AimY); }
+        }
+
+        public void Read(ref PacketReader r)
+        {
+            X = r.ReadSingle(); Y = r.ReadSingle(); DX = r.ReadSingle(); DY = r.ReadSingle();
+            IgnoreBody = r.ReadBool(); Tinnitus = r.ReadBool(); ForceHead = r.ReadBool();
+            Structure = r.ReadSingle(); Animal = r.ReadSingle(); PlayerMult = r.ReadSingle();
+            Source = r.ReadUInt32();
+            FromPlayer = r.ReadBool();
+            First = r.ReadBool();
+            Sound = r.ReadString();
+            HasAim = r.ReadBool();
+            if (HasAim) { AimX = r.ReadSingle(); AimY = r.ReadSingle(); }
+        }
+    }
+
+    internal enum TraderOp : byte
+    {
+        /// <summary>Client -> host: may I buy this?</summary>
+        BuyRequest = 1,
+        BuyGranted = 2,
+        BuyDenied = 3,
+        /// <summary>Gone from the shelf (someone bought it).</summary>
+        Removed = 4,
+        /// <summary>Put on the shelf (the free bandage for a bleeding player).</summary>
+        Added = 5,
+        /// <summary>The trader turned on the team.</summary>
+        Hostile = 6,
+    }
+
+    /// <summary>One change to a trader's shared shelf or temper. Items are named by id, preference and price.</summary>
+    internal sealed class TraderTrade : IMessage
+    {
+        public uint Trader;
+        public TraderOp Op;
+        public string Item = "";
+        public byte Pref;
+        public int Value;
+
+        public void Write(PacketWriter w)
+        {
+            w.WriteUInt32(Trader);
+            w.WriteByte((byte)Op);
+            w.WriteString(Item ?? "");
+            w.WriteByte(Pref);
+            w.WriteInt32(Value);
+        }
+
+        public void Read(ref PacketReader r)
+        {
+            Trader = r.ReadUInt32();
+            Op = (TraderOp)r.ReadByte();
+            Item = r.ReadString();
+            Pref = r.ReadByte();
+            Value = r.ReadInt32();
         }
     }
 }

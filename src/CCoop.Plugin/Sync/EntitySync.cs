@@ -23,6 +23,9 @@ namespace CCoop.Plugin.Sync
         private readonly Dictionary<uint, float> _damage = new Dictionary<uint, float>();
         private readonly HashSet<uint> _killRequested = new HashSet<uint>();
         private readonly List<GameObject> _spawnQueue = new List<GameObject>();
+        private readonly List<int> _spawnFrame = new List<int>();
+        private readonly List<GameObject> _later = new List<GameObject>();
+        private readonly List<int> _laterFrame = new List<int>();
         internal static bool RemoteBreak;
 
         /// <summary>Client: items the game creates while this is raised are local duplicates of host loot.</summary>
@@ -53,6 +56,7 @@ namespace CCoop.Plugin.Sync
             _damage.Clear();
             _killRequested.Clear();
             _spawnQueue.Clear();
+            _spawnFrame.Clear();
             Spawned = Destroyed = Vanished = 0;
             SuppressLoot = 0;
             SuppressDamage = 0;
@@ -259,7 +263,9 @@ namespace CCoop.Plugin.Sync
         /// <summary>Something appeared through the game's item factory; decide at end of frame.</summary>
         internal void QueueSpawn(GameObject go)
         {
-            if (go != null && _spawnQueue.Count < 4096) _spawnQueue.Add(go);
+            if (go == null || _spawnQueue.Count >= 4096) return;
+            _spawnQueue.Add(go);
+            _spawnFrame.Add(Time.frameCount);
         }
 
         internal override void LateTick()
@@ -267,6 +273,7 @@ namespace CCoop.Plugin.Sync
             if (!Coop.WorldLive)
             {
                 _spawnQueue.Clear();
+                _spawnFrame.Clear();
                 _damage.Clear();
                 return;
             }
@@ -286,9 +293,19 @@ namespace CCoop.Plugin.Sync
             }
 
             if (_spawnQueue.Count == 0) return;
-            foreach (var go in _spawnQueue)
+            // Decided a frame late: the game often drops an item and destroys it in the
+            // same frame (food eaten from the hand, crafting ingredients), and a frame
+            // later those are gone instead of being published as ghosts.
+            _later.Clear();
+            _laterFrame.Clear();
+            int frame = Time.frameCount;
+            for (int i = 0; i < _spawnQueue.Count; i++)
             {
+                var go = _spawnQueue[i];
+                if (go != null && _spawnFrame[i] >= frame) { _later.Add(go); _laterFrame.Add(_spawnFrame[i]); continue; }
                 if (go == null || go.transform.parent != null) continue;  // picked up, or in a container
+                var used = go.GetComponent<Item>();
+                if (used != null && used.condition <= 0f && used.Stats != null && used.Stats.destroyAtZeroCondition) continue;  // about to crumble
                 if (EntityRegistry.TryGetId(go, out _)) continue;
                 bool item = go.GetComponent<Item>() != null;
                 bool building = go.GetComponent<BuildingEntity>() != null;
@@ -299,6 +316,9 @@ namespace CCoop.Plugin.Sync
                 PublishSpawn(go);
             }
             _spawnQueue.Clear();
+            _spawnFrame.Clear();
+            _spawnQueue.AddRange(_later);
+            _spawnFrame.AddRange(_laterFrame);
         }
 
         internal uint PublishSpawn(GameObject go)

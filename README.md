@@ -52,9 +52,11 @@ The **LAN / IP** tab hosts on port 7777 and joins by address (with the host's pa
 | **Ping** | **Middle mouse** marks a spot everyone sees for a few seconds. |
 | **Gestures** | Hold **H** for the wheel: wave, come here, wait, thumbs up, no, point (a line to the spot), help (a marker everyone sees) and **hug**, which lifts both players' mood and shares warmth. Your bark (**B**) is heard by everyone. |
 | **Helping a teammate** | Right-click a teammate for their health panel: their vitals and every wound. Then:<br>• treat a limb with what's in your hand. **You play the game's own minigame**, and the effect lands on their body.<br>• set a joint, or pull shrapnel.<br>• take off a tourniquet or splint.<br>• hold CPR, or shock them with a defibrillator (it can even bring them back within 30 s of death).<br>• give them an item, or carry them while they're out.<br>• search a dead teammate's body. |
-| **Difficulty** | The host picks **Friendly**, **Standard**, **Hard** or **Brutal**. These set the co-op rules (respawn, exits, arrows to teammates, name tags, spawning apart, voice range) on top of the game's own run settings. |
+| **Moving together** | From the teammate panel: carry a downed teammate (drag, on your back or in your arms), give a leg-up, reach down and pull them up a ledge, snap them out of a deep low, or help carry a heavy item. Hold **J** under a falling teammate to catch them. |
+| **Difficulty** | The host picks **Friendly**, **Standard**, **Hard** or **Brutal**. These set the co-op rules (respawn, exits, arrows to teammates, name tags, spawning apart, voice range, friendly fire) on top of the game's own run settings. |
 | **Descending** | Continuing at an exit is a vote. By default the team goes down once half of the living players are at the exit; the host can change this to "first arrives" or "all are there". A drill pod needs everyone inside. Nobody is left behind. |
-| **Host rules** | The host can change the rules mid-session in the co-op window, under **Rules**: who can join, max players, password, respawn rule, exit rule and speed-up. |
+| **Host rules** | The host can change the rules mid-session in the co-op window, under **Rules**: who can join, max players, password, respawn rule, exit rule, speed-up and friendly fire (off by default: in the game itself a player's shot never hits a body). |
+| **Saved runs** | Each player's character is saved with the run on every new layer and when leaving. The host can continue a saved run from the Host tab; returning players get their own character back. A team wipe ends the run and deletes its save, like the game. |
 
 ## What is shared
 
@@ -65,26 +67,31 @@ The **LAN / IP** tab hosts on port 7777 and joins by address (with the host's pa
 | **Terrain** | Mining, explosions, block placement and quakes, with crack overlays and hit sounds. |
 | **Objects** | Damage adds up across players. The host alone decides when a crate breaks and rolls its loot, so loot never duplicates. Hit flashes, damage numbers and sounds show on every screen. |
 | **Items** | Pickup is arbitrated by the host, so two players can't grab the same item. Drops and throws keep their velocity. Containers keep their contents, and loose items settle in the same place on every screen. |
-| **Creatures** | Each creature is run by the player closest to it. Crawlers hunt and bite any player; other enemies (guards, turrets, drones) hunt the player whose machine runs them. A fight's threat music plays for teammates nearby. |
+| **Creatures** | Each creature is run by the player closest to it. Crawlers hunt and bite any player; other enemies (guards, drones, crystals) hunt the player whose machine runs them, which is usually the closest. A fight's threat music plays for teammates nearby. |
+| **Gunfire** | Every shot (players, guards, turrets, gun mines) is seen and heard by everyone: tracer, sound, puffs. A shot that passes through you wounds you on your own machine. |
+| **Traps and props** | Bear traps, spike stabbers, coils, stalactites, mines, cave-tick nests, med stations, bio terminals and scrap eaters with their doors, the drill pod repair, guard spawners and the start shuttle: set off on one machine, in the same state everywhere. Damage lands on whoever was hit. Players who join later see the world as it is now. |
+| **Traders** | One shelf for the team: buying is cleared with the host, so two players can't buy the same item. Each player has their own standing with the trader. Anger a trader and it turns on everyone. |
+| **Story** | The Blue Heart rises for the whole team, and everyone gets the cargo. |
 | **Warmth** | Standing next to a living teammate slowly warms you up. |
 | **Players** | Movement and full limb pose at 20 Hz. Your chosen character (Experiment, Milky or Dune) shows correctly, along with wounds, blood, dirt, wetness, held and worn items, swings and speech bubbles. Name tags float above other players. |
 | **Clock** | Time speed is shared and decided by the host. Earthquakes happen to everyone at once. Sleep fast-forwards time once every living player is asleep or out cold, and stops when anyone wakes. |
 | **Death** | When you die, you spectate. The screen stays clear, the camera follows a living teammate (**A / D** to switch), and you hear what they hear. The host's **When you die** rule decides what happens next: **Next layer** (the default: back healed when the team descends), **Permadeath** (out for the rest of the run) or **Quick** (back beside a teammate after 15 s). The host can die too: the run carries on for the others. Only when everyone is dead does the run end, with the normal death screen. |
 | **Rejoining** | If you drop out and come back to the same layer, you return where you were, and still dead if you were dead. |
-| **Props** | Lifepod heater and shower. |
+| **Props** | Lifepod heater and shower (only the players in the pod get washed). |
 
-Saving is disabled during a session. The game has a single save slot, and it can't store a shared world.
+The game's own save slot is never touched during a session: co-op saves go to their own folder, and the single-player save is put back even after a crash.
 
 ## Known limits
 
 - If the host leaves the run, everyone returns to the menu.
-- A dead player keeps their inventory and gets it back on respawn. Teammates can't loot a corpse yet (that comes with M4's clickable teammates).
+- A dead player's body can be searched by teammates (everything but what's in their hands and mouth).
 - Water is shared when a layer loads. After that, each game simulates water near its own player, so lakes far from everyone can drift apart.
 - Pausing or alt-tabbing pauses only your own game. Creatures you're running stop for others until you return.
 - One sleeper alone doesn't speed up time (others would be raced through their day). The sleeper's screen says time is waiting for everyone.
-- Trader stock, minigames (lockpicking, surgery) and crafting are per-player. Their results, such as broken containers, items and dropped loot, are shared.
-- `ShuttleStarter` (one object, spawned by the game from a script reference) doesn't appear on clients.
-- Story beats (Blue Heart, surface breach, End lab scientist and escape), traders, one-shot traps and props are still per-machine. See [docs/game-systems.md](docs/game-systems.md) and the roadmap.
+- Minigames (lockpicking, surgery) and crafting are per-player. Their results, such as broken containers, items and dropped loot, are shared. Crafting with an item on the ground isn't checked with the host yet.
+- Item decay runs on each machine for loose items; the first machine where an item rots away removes it for everyone.
+- An enemy only targets the player whose machine runs it (usually the closest). Two players next to one guard: it fights one of them.
+- The surface breach, the End lab escape and merc runs are still per-machine. See [docs/game-systems.md](docs/game-systems.md) and the roadmap.
 
 ## Test status
 

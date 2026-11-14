@@ -28,6 +28,7 @@ namespace CCoop.Plugin.Runtime
         internal ConfigEntry<bool> HostArrows;
         internal ConfigEntry<bool> HostNameTags;
         internal ConfigEntry<bool> SpawnApart;
+        internal ConfigEntry<bool> FriendlyFire;
         internal ConfigEntry<int> VoiceRangePercent;
         internal ConfigEntry<bool> ShowArrows;
         internal ConfigEntry<float> UiScale;
@@ -75,6 +76,8 @@ namespace CCoop.Plugin.Runtime
             HostNameTags = Config.Bind("Host", "NameTags", true, "Show names above teammates.");
             SpawnApart = Config.Bind("Host", "SpawnApart", false,
                 "From layer 2 on, players arrive spread out across the layer (same depth, sideways) and have to find each other.");
+            FriendlyFire = Config.Bind("Host", "FriendlyFire", false,
+                "Players' guns hurt teammates. In the game itself a player's shot never hits a body, so this is a co-op rule.");
             VoiceRangePercent = Config.Bind("Host", "VoiceRangePercent", 100,
                 new ConfigDescription("How far voices carry, as a percent of each player's own voice range.", new AcceptableValueRange<int>(25, 100)));
             Port = Config.Bind("Host", "Port", 7777, "UDP port for LAN/IP hosting.");

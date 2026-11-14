@@ -178,7 +178,7 @@ namespace CCoop.Plugin.Sync
         }
 
         /// <summary>Runtime items belong to their creator; generated ones to the host.</summary>
-        private static bool Owns(uint id)
+        internal static bool Owns(uint id)
         {
             if (id >= EntityRegistry.StructureBase && id < EntityRegistry.RuntimeBase) return false;
             return EntityRegistry.CreatorOf(id) == Coop.LocalId;

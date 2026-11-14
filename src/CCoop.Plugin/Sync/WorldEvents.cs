@@ -274,8 +274,7 @@ namespace CCoop.Plugin.Sync
                     g.cooldown = 6f;
                     GunmineReloaded(g) = false;
                     var ps = g.GetComponentInChildren<ParticleSystem>();
-                    if (ps != null) ps.Play();
-                    Sound.Play("rifleshot", g.transform.position, twoDimensional: false, pitchShift: false);
+                    if (ps != null) ps.Play();  // the shot itself (sound, tracer) arrives as a ShotFired
                     break;
                 }
                 case WorldEventKind.MinePressed:

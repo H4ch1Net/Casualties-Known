@@ -651,7 +651,15 @@ namespace CCoop.Plugin.Dev
                 case 229:
                     if (Coop.IsClient)
                     {
-                        GameInfo.LocalBody?.StopClimbing();
+                        // On its feet and awake whatever the layer did to it (a coil, a fall).
+                        var me = GameInfo.LocalBody;
+                        if (me != null)
+                        {
+                            me.StopClimbing();
+                            me.consciousness = 100f;
+                            me.shock = 0f;
+                            me.Stand(true);
+                        }
                         var host = Coop.Get<PlayerSync>().Find(NetSession.HostId);
                         var chest = host?.LimbPosition(1);
                         if (chest.HasValue)
@@ -797,6 +805,24 @@ namespace CCoop.Plugin.Dev
 
         private static void M3Actions()
         {
+            if (Coop.IsHost)
+            {
+                // M5: a harmless shot straight down past the client (no damage, no wound):
+                // the client must replay it.
+                var client = Coop.Get<PlayerSync>()?.Remotes;
+                foreach (var r in client ?? (IEnumerable<RemotePlayer>)new RemotePlayer[0])
+                {
+                    var shotAt = r.ShownAt;
+                    if (!shotAt.HasValue) continue;
+                    TurretScript.Shoot(new FireInfo
+                    {
+                        pos = shotAt.Value + new Vector2(1.5f, 4f), dir = Vector2.down, ignoreBody = true, doTinnitus = false,
+                        structureDamage = 0f, animalDamage = 0f, playerDamageMultiplier = 0f,
+                    });
+                    Log.Info("DEV host fires a test shot past " + Coop.Player(r.Id).Name);
+                    break;
+                }
+            }
             if (Coop.IsClient)
             {
                 var chat = Coop.Get<Chat>();
@@ -1035,6 +1061,11 @@ namespace CCoop.Plugin.Dev
                      (ex != null ? ex.Authored + "/" + ex.Replayed + "/" + ex.Deduped : "-") +
                      " vanished " + (es != null ? es.Vanished : 0) + " gravity " + Physics2D.gravity.y.ToString("F1") +
                      " temp " + WorldGeneration.world.ambientTemperature.ToString("F1"));
+            var we = Coop.Get<WorldEvents>();
+            var ss = Coop.Get<ShotSync>();
+            Log.Info("VERIFY " + tag + " world events sent/applied " + (we != null ? we.Sent + "/" + we.Applied : "-") +
+                     " shots sent/replayed/deduped " + (ss != null ? ss.Sent + "/" + ss.Replayed + "/" + ss.Deduped : "-") +
+                     " spawned/destroyed " + (es != null ? es.Spawned + "/" + es.Destroyed : "-"));
             var body = GameInfo.LocalBody;
             var ps = Coop.Get<PlayerSync>();
             if (ps != null && body != null)

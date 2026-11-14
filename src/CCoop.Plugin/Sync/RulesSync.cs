@@ -21,6 +21,9 @@ namespace CCoop.Plugin.Sync
         public bool SpawnApart;
         public byte VoicePercent = 100;
 
+        /// <summary>Players' guns hurt teammates (in the game itself a player's shot never hits a body).</summary>
+        public bool FriendlyFire;
+
         internal static HostRules Current = new HostRules();
 
         // ---- difficulty presets: they set the co-op rules only (the game's own run
@@ -32,8 +35,8 @@ namespace CCoop.Plugin.Sync
         {
             new HostRules { Respawn = RespawnRule.Quick, ExitShare = 0, Arrows = true, NameTags = true, SpawnApart = false, VoicePercent = 100 },
             new HostRules { Respawn = RespawnRule.NextLayer, ExitShare = 50, Arrows = true, NameTags = true, SpawnApart = false, VoicePercent = 100 },
-            new HostRules { Respawn = RespawnRule.NextLayer, ExitShare = 100, Arrows = false, NameTags = true, SpawnApart = true, VoicePercent = 100 },
-            new HostRules { Respawn = RespawnRule.Permadeath, ExitShare = 100, Arrows = false, NameTags = false, SpawnApart = true, VoicePercent = 50 },
+            new HostRules { Respawn = RespawnRule.NextLayer, ExitShare = 100, Arrows = false, NameTags = true, SpawnApart = true, VoicePercent = 100, FriendlyFire = true },
+            new HostRules { Respawn = RespawnRule.Permadeath, ExitShare = 100, Arrows = false, NameTags = false, SpawnApart = true, VoicePercent = 50, FriendlyFire = true },
         };
 
         /// <summary>Which preset these rules match, or -1 for custom.</summary>
@@ -45,7 +48,7 @@ namespace CCoop.Plugin.Sync
                 {
                     var p = Presets[i];
                     if (p.Respawn == Respawn && p.ExitShare == ExitShare && p.Arrows == Arrows && p.NameTags == NameTags &&
-                        p.SpawnApart == SpawnApart && p.VoicePercent == VoicePercent) return i;
+                        p.SpawnApart == SpawnApart && p.VoicePercent == VoicePercent && p.FriendlyFire == FriendlyFire) return i;
                 }
                 return -1;
             }
@@ -65,6 +68,7 @@ namespace CCoop.Plugin.Sync
             c.HostNameTags.Value = p.NameTags;
             c.SpawnApart.Value = p.SpawnApart;
             c.VoiceRangePercent.Value = p.VoicePercent;
+            c.FriendlyFire.Value = p.FriendlyFire;
         }
 
         internal static HostRules FromConfig()
@@ -81,13 +85,14 @@ namespace CCoop.Plugin.Sync
                 NameTags = c.HostNameTags.Value,
                 SpawnApart = c.SpawnApart.Value,
                 VoicePercent = (byte)Mathf.Clamp(c.VoiceRangePercent.Value, 25, 100),
+                FriendlyFire = c.FriendlyFire.Value,
             };
         }
 
         internal bool SameAs(HostRules o) =>
             o != null && o.Respawn == Respawn && o.ExitShare == ExitShare && o.SpeedUp == SpeedUp &&
             o.MaxPlayers == MaxPlayers && o.Locked == Locked && o.Arrows == Arrows && o.NameTags == NameTags &&
-            o.SpawnApart == SpawnApart && o.VoicePercent == VoicePercent;
+            o.SpawnApart == SpawnApart && o.VoicePercent == VoicePercent && o.FriendlyFire == FriendlyFire;
 
         internal string RespawnText =>
             Respawn == RespawnRule.Permadeath ? "permadeath"
@@ -104,11 +109,11 @@ namespace CCoop.Plugin.Sync
         internal string Describe() =>
             PresetName + ": dead players " + RespawnText + " · " + ExitText + (SpeedUp ? "" : " · no speed-up") +
             (Arrows ? "" : " · no arrows") + (NameTags ? "" : " · no name tags") + (SpawnApart ? " · spawn apart" : "") +
-            (VoicePercent < 100 ? " · voices carry " + VoicePercent + "%" : "");
+            (VoicePercent < 100 ? " · voices carry " + VoicePercent + "%" : "") + (FriendlyFire ? " · friendly fire" : "");
 
         /// <summary>Compact form for the lobby advert: "r0e50s1".</summary>
         internal string Encode() => "r" + (int)Respawn + "e" + ExitShare + "s" + (SpeedUp ? 1 : 0) + "a" + (Arrows ? 1 : 0) +
-                                       "n" + (NameTags ? 1 : 0) + "p" + (SpawnApart ? 1 : 0) + "v" + VoicePercent;
+                                       "n" + (NameTags ? 1 : 0) + "p" + (SpawnApart ? 1 : 0) + "v" + VoicePercent + "f" + (FriendlyFire ? 1 : 0);
 
         internal static HostRules Decode(string s)
         {
@@ -130,6 +135,7 @@ namespace CCoop.Plugin.Sync
                     else if (k == 'n') r.NameTags = v != 0;
                     else if (k == 'p') r.SpawnApart = v != 0;
                     else if (k == 'v') r.VoicePercent = (byte)Mathf.Clamp(v, 25, 100);
+                    else if (k == 'f') r.FriendlyFire = v != 0;
                 }
                 return r;
             }
@@ -147,6 +153,7 @@ namespace CCoop.Plugin.Sync
             NameTags = NameTags,
             SpawnApart = SpawnApart,
             VoicePercent = VoicePercent,
+            FriendlyFire = FriendlyFire,
         };
 
         internal static HostRules FromMessage(RulesMessage m) => new HostRules
@@ -160,6 +167,7 @@ namespace CCoop.Plugin.Sync
             NameTags = m.NameTags,
             SpawnApart = m.SpawnApart,
             VoicePercent = (byte)Mathf.Clamp(m.VoicePercent, 25, 100),
+            FriendlyFire = m.FriendlyFire,
         };
     }
 

@@ -20,6 +20,7 @@ namespace CCoop.Plugin.World
     internal static class EntityState
     {
         private const byte SectionCrystal = 1;
+        private const byte SectionTrader = 2;
         private const byte SectionEnd = 0;
 
         private static readonly AccessTools.FieldRef<CrystalBehaviour, List<CrystalEffect>> Effects =
@@ -28,6 +29,18 @@ namespace CCoop.Plugin.World
         /// <summary>Extra state for one object, or null when it has none worth sending.</summary>
         internal static byte[] Capture(GameObject go)
         {
+            var trader = go.GetComponent<TraderScript>();
+            if (trader != null)
+            {
+                var tw = new PacketWriter(256);
+                tw.WriteByte(SectionTrader);
+                var section = new PacketWriter(256);
+                Sync.TraderSync.Write(section, trader);
+                tw.WriteBlob(section.ToArray());
+                tw.WriteByte(SectionEnd);
+                return tw.ToArray();
+            }
+
             var crystal = go.GetComponent<CrystalBehaviour>();
             if (crystal == null) return null;
             var effects = Effects(crystal);
@@ -77,6 +90,13 @@ namespace CCoop.Plugin.World
             {
                 byte section = r.ReadByte();
                 if (section == SectionEnd) break;
+                if (section == SectionTrader)
+                {
+                    var bytes = r.ReadBlob();
+                    // Start rolls a fresh stock after this; the host's goes in after Start.
+                    if (!r.Failed) Sync.TraderSync.Stash(go, bytes);
+                    continue;
+                }
                 if (section != SectionCrystal) { r.Fail(); break; }
                 ApplyCrystal(go, crystal, ref r);
             }
