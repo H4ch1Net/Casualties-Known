@@ -9,6 +9,9 @@ namespace CCoop.Plugin.Protocol
     {
         public const ushort BlobLayer = 1;
 
+        /// <summary>Host -> one client: terrain chunks it asked for after a desync.</summary>
+        public const ushort BlobChunks = 2;
+
         public static MessageRegistry Build()
         {
             ushort b = MessageRegistry.FirstUserId;
@@ -76,7 +79,9 @@ namespace CCoop.Plugin.Protocol
                 // M5: the rest of the world
                 .Add<WorldEvent>((ushort)(b + 74), Delivery.Reliable)
                 .Add<ShotFired>((ushort)(b + 75), Delivery.Reliable)
-                .Add<TraderTrade>((ushort)(b + 76), Delivery.Reliable);
+                .Add<TraderTrade>((ushort)(b + 76), Delivery.Reliable)
+                .Add<WorldFingerprint>((ushort)(b + 77), Delivery.Reliable)
+                .Add<ChunkResync>((ushort)(b + 78), Delivery.Reliable);
         }
     }
 
@@ -1605,6 +1610,57 @@ namespace CCoop.Plugin.Protocol
             Item = r.ReadString();
             Pref = r.ReadByte();
             Value = r.ReadInt32();
+        }
+    }
+
+    /// <summary>Host -> all, every 30 s: a fingerprint of each 64x64 terrain chunk.</summary>
+    internal sealed class WorldFingerprint : IMessage
+    {
+        public const int Max = 4096;
+        public ushort Epoch;
+        public ushort Cols, Rows;
+        public ulong[] Chunks = new ulong[0];
+
+        public void Write(PacketWriter w)
+        {
+            w.WriteUInt16(Epoch);
+            w.WriteUInt16(Cols);
+            w.WriteUInt16(Rows);
+            w.WriteUInt16((ushort)Chunks.Length);
+            foreach (var c in Chunks) w.WriteUInt64(c);
+        }
+
+        public void Read(ref PacketReader r)
+        {
+            Epoch = r.ReadUInt16();
+            Cols = r.ReadUInt16();
+            Rows = r.ReadUInt16();
+            int n = r.ReadUInt16();
+            if (n > Max) { r.Fail(); return; }
+            Chunks = new ulong[n];
+            for (int i = 0; i < n; i++) Chunks[i] = r.ReadUInt64();
+        }
+    }
+
+    /// <summary>Client -> host: these chunks differ from yours, twice in a row; please send them.</summary>
+    internal sealed class ChunkResync : IMessage
+    {
+        public ushort Epoch;
+        public List<ushort> Chunks = new List<ushort>();
+
+        public void Write(PacketWriter w)
+        {
+            w.WriteUInt16(Epoch);
+            w.WriteByte((byte)Chunks.Count);
+            foreach (var c in Chunks) w.WriteUInt16(c);
+        }
+
+        public void Read(ref PacketReader r)
+        {
+            Epoch = r.ReadUInt16();
+            int n = r.ReadByte();
+            Chunks = new List<ushort>(n);
+            for (int i = 0; i < n; i++) Chunks.Add(r.ReadUInt16());
         }
     }
 }

@@ -50,6 +50,9 @@ namespace CCoop.Plugin.Dev
         /// <summary>CCOOP_EXITSHARE=0..100: the host's exit rule, without touching the config.</summary>
         internal static readonly int ExitShareOverride = int.TryParse(Env("CCOOP_EXITSHARE"), out var share) ? share : -1;
 
+        /// <summary>Seconds between desync checks (tests use a short one).</summary>
+        internal static readonly float CheckEveryOverride = float.TryParse(Env("CCOOP_CHECKEVERY"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var every) ? every : -1f;
+
         internal static readonly int StartLayer = int.TryParse(Env("CCOOP_STARTDEPTH"), out var d) ? d : 0;
 
         private bool _started, _ranRun, _dumped;
@@ -412,6 +415,26 @@ namespace CCoop.Plugin.Dev
 
         // ------------------------------------------------------------------ M4: care
 
+        /// <summary>
+        /// Client: silently changes blocks far from anyone, as a desync would. The desync
+        /// alarm must find the chunk and the host's copy must repair it.
+        /// </summary>
+        private static void CorruptChunk()
+        {
+            var g = WorldAccess.Blocks;
+            if (g == null) return;
+            int size = WorldGeneration.CHUNKSIZE;
+            int cx = 1, cy = 1;
+            int changed = 0;
+            for (int x = cx * size + 10; x < cx * size + 20 && x < g.GetLength(0); x++)
+            for (int y = cy * size + 10; y < cy * size + 20 && y < g.GetLength(1); y++)
+            {
+                g[x, y] = (ushort)(g[x, y] == 0 ? 1 : 0);
+                changed++;
+            }
+            Log.Info("DEV client corrupts " + changed + " blocks in chunk " + cx + "," + cy + " (as a desync would)");
+        }
+
         private static byte OtherPlayer()
         {
             foreach (var id in Coop.Players.Keys) if (id != Coop.LocalId) return id;
@@ -428,6 +451,7 @@ namespace CCoop.Plugin.Dev
                 limb.skinHealth = 50f;
                 GiveSync.DevAutoAccept = true;
                 Log.Info("DEV client hurts " + limb.name + " (bleeding, dislocated)");
+                CorruptChunk();
                 return;
             }
             WalkOver();
@@ -665,7 +689,7 @@ namespace CCoop.Plugin.Dev
                         if (chest.HasValue)
                         {
                             var b = GameInfo.LocalBody;
-                            BodyFreeze.PlaceAt(chest.Value + new Vector2(0f, 3.5f));
+                            BodyFreeze.PlaceAt(chest.Value + new Vector2(0f, 2f));  // inside the catch band: no ceiling in the way
                             float hard = TeamMotion.HardLanding(b);
                             b.SetVelocity(new Vector2(0f, -hard * 1.1f));
                             Log.Info("DEV client falls onto the host at " + (hard * 1.1f).ToString("F0") + " (hard landing " + hard.ToString("F0") + ")");
@@ -1065,7 +1089,8 @@ namespace CCoop.Plugin.Dev
             var ss = Coop.Get<ShotSync>();
             Log.Info("VERIFY " + tag + " world events sent/applied " + (we != null ? we.Sent + "/" + we.Applied : "-") +
                      " shots sent/replayed/deduped " + (ss != null ? ss.Sent + "/" + ss.Replayed + "/" + ss.Deduped : "-") +
-                     " spawned/destroyed " + (es != null ? es.Spawned + "/" + es.Destroyed : "-"));
+                     " spawned/destroyed " + (es != null ? es.Spawned + "/" + es.Destroyed : "-") +
+                     " desync checks/mismatched/repaired " + (Coop.Get<WorldCheck>() is WorldCheck wc ? wc.Checks + "/" + wc.Mismatched + "/" + wc.Repaired : "-"));
             var body = GameInfo.LocalBody;
             var ps = Coop.Get<PlayerSync>();
             if (ps != null && body != null)

@@ -230,8 +230,18 @@ namespace CCoop.Net.Session
             msg.Write(_writer);
         }
 
-        private void SendRaw(int connection, Delivery d) =>
-            _transport.Send(connection, _writer.Buffer, 0, _writer.Length, d);
+        private void SendRaw(int connection, Delivery d)
+        {
+            var buf = _writer.Buffer;
+            Traffic.CountSent((ushort)(buf[2] | (buf[3] << 8)), _writer.Length);
+            _transport.Send(connection, buf, 0, _writer.Length, d);
+        }
+
+        /// <summary>What this machine sends and receives, by message type.</summary>
+        public TrafficStats Traffic { get; } = new TrafficStats();
+
+        /// <summary>A message type's name, for traffic reports.</summary>
+        public string TypeName(ushort id) => _registry.TryGet(id, out var e) ? e.Type.Name : "#" + id;
 
         /// <summary>Splits a large payload into reliable chunks. Returns the transfer id.</summary>
         public uint SendBlob(byte target, ushort tag, byte[] data)
@@ -391,6 +401,7 @@ namespace CCoop.Net.Session
             byte target = data[offset + 5];
 
             if (!_registry.TryGet(typeId, out var entry)) return;
+            Traffic.CountReceived(typeId, count);
 
             if (IsHost)
             {
@@ -442,6 +453,7 @@ namespace CCoop.Net.Session
             if (count > _forward.Length) return;
             Buffer.BlockCopy(data, offset, _forward, 0, count);
             _forward[4] = origin;
+            Traffic.CountSent((ushort)(_forward[2] | (_forward[3] << 8)), count);
             _transport.Send(connection, _forward, 0, count, d);
         }
 

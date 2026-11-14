@@ -117,6 +117,34 @@ namespace CCoop.Net.Tests
         }
 
         [Fact]
+        public void Traffic_is_counted_per_type_and_reset_by_take()
+        {
+            var hub = new LoopbackHub();
+            var host = NetSession.CreateHost(hub.Host, Registry(), Cfg("Host"));
+            var a = NetSession.CreateClient(hub.Connect(), Registry(), Cfg("Alice"));
+            var b = NetSession.CreateClient(hub.Connect(), Registry(), Cfg("Bob"));
+            Pump(host, a, b);
+            host.Traffic.Take(null);
+            a.Traffic.Take(null);
+            b.Traffic.Take(null);
+
+            a.Broadcast(new Chat { Text = "hello" });
+            Pump(host, a, b);
+
+            var sent = a.Traffic.Take(a.TypeName);
+            var chat = sent.Find(l => l.Name == nameof(Chat));
+            Assert.Equal(1, chat.Sent);
+            Assert.True(chat.SentBytes > 0);
+            // The host receives it once and forwards it once (to Bob).
+            var relayed = host.Traffic.Take(host.TypeName).Find(l => l.Name == nameof(Chat));
+            Assert.Equal(1, relayed.Received);
+            Assert.Equal(1, relayed.Sent);
+            Assert.Equal(1, b.Traffic.Take(b.TypeName).Find(l => l.Name == nameof(Chat)).Received);
+            Assert.Empty(a.Traffic.Take(null).FindAll(l => l.Name == nameof(Chat)));
+            Assert.Contains("KB/s", TrafficStats.Describe(sent, 1f));
+        }
+
+        [Fact]
         public void Directed_message_reaches_only_its_target()
         {
             var hub = new LoopbackHub();

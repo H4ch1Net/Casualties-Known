@@ -163,6 +163,7 @@ namespace CCoop.Plugin.Sync
         {
             if (!Coop.WorldLive || Coop.Applying) return;
             Coop.Get<TerrainSync>()?.RecordEdit(__instance, pos, block);
+            Coop.Get<WorldCheck>()?.RecordLocal(pos.x, pos.y, block);
         }
     }
 

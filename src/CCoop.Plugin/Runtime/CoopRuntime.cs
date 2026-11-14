@@ -36,6 +36,7 @@ namespace CCoop.Plugin.Runtime
         private void Awake()
         {
             Coop.Runtime = this;
+            Add(new TrafficLog());
             Add(new RunFlow());
             Add(new LayerSync());
             Add(new PlayerSync());
@@ -67,6 +68,7 @@ namespace CCoop.Plugin.Runtime
             Add(new WorldEvents());
             Add(new ShotSync());
             Add(new TraderSync());
+            Add(new WorldCheck());
             Add(new ExplosionSync());
             Add(new SteamMoments());
             Add(new DevHarness());

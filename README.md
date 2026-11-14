@@ -64,7 +64,7 @@ The **LAN / IP** tab hosts on port 7777 and joins by address (with the host's pa
 |---|---|
 | **World** | The game has no seed, so the host streams each layer to every client: terrain, water, about 2,000 objects with their health and item state, structures, the layer modifier and fog. That's ~200 KB and loads in 1–2 s. |
 | **Descending** | Exits and drill pods are votes (see above). The host's descent brings everybody along. |
-| **Terrain** | Mining, explosions, block placement and quakes, with crack overlays and hit sounds. |
+| **Terrain** | Mining, explosions, block placement and quakes, with crack overlays and hit sounds. Every 30 s the host checks every client's terrain chunk by chunk; a chunk that has drifted apart is repaired from the host's copy. |
 | **Objects** | Damage adds up across players. The host alone decides when a crate breaks and rolls its loot, so loot never duplicates. Hit flashes, damage numbers and sounds show on every screen. |
 | **Items** | Pickup is arbitrated by the host, so two players can't grab the same item. Drops and throws keep their velocity. Containers keep their contents, and loose items settle in the same place on every screen. |
 | **Creatures** | Each creature is run by the player closest to it. Crawlers hunt and bite any player; other enemies (guards, drones, crystals) hunt the player whose machine runs them, which is usually the closest. A fight's threat music plays for teammates nearby. |

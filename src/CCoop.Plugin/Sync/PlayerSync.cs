@@ -18,6 +18,12 @@ namespace CCoop.Plugin.Sync
         private const float StateInterval = 1f / 20f;
         private const float SlowInterval = 0.5f;
 
+        // Interest management: full rate to teammates who can see you (or are spectating),
+        // a quarter of it to those far away. It keeps 6-8 player sessions affordable.
+        private const float InterestRange = 48f;
+        private const int FarEvery = 4;
+        private readonly Dictionary<int, int> _relayCount = new Dictionary<int, int>();
+
         private readonly Dictionary<byte, RemotePlayer> _remotes = new Dictionary<byte, RemotePlayer>();
         private float _nextState, _nextSlow, _nextProfile;
         private uint _seq;
@@ -43,6 +49,7 @@ namespace CCoop.Plugin.Sync
             foreach (var r in _remotes.Values) r.Dispose();
             _remotes.Clear();
             _sentCharacter = -1;
+            _relayCount.Clear();
         }
 
         internal override void OnPeerJoined(PeerInfo peer)
@@ -111,6 +118,25 @@ namespace CCoop.Plugin.Sync
             if (!Coop.IsHost) rec.Status = rec.HasPosition ? LifeStatus(rec) : "menu";
             else if (rec.InWorld && rec.HasPosition) rec.Status = LifeStatus(rec);
             Remote(origin)?.Receive(m);
+            if (Coop.IsHost && origin != Coop.LocalId) SendByInterest(origin, m);
+        }
+
+        /// <summary>Host: passes a player's state on to everyone else, at a rate set by distance.</summary>
+        private void SendByInterest(byte origin, PlayerState m)
+        {
+            var from = new Vector2(m.X, m.Y);
+            bool placed = (m.Flags & PlayerFlags.InWorld) != 0;
+            foreach (var rec in Coop.Players.Values)
+            {
+                if (rec.Id == origin || rec.Id == NetSession.HostId) continue;
+                int key = (origin << 8) | rec.Id;
+                _relayCount.TryGetValue(key, out var n);
+                _relayCount[key] = n + 1;
+                bool near = !placed || !rec.HasPosition || !rec.Alive || Vector2.Distance(from, rec.Position) < InterestRange;
+                if (!near && n % FarEvery != 0) continue;
+                if (origin == Coop.LocalId) Session.SendTo(rec.Id, m);
+                else Session.RelayTo(rec.Id, origin, m);
+            }
         }
 
         internal override void Tick()
@@ -132,7 +158,10 @@ namespace CCoop.Plugin.Sync
             if (now >= _nextState)
             {
                 _nextState = now + StateInterval;
-                Session.Broadcast(BuildState(body));
+                var state = BuildState(body);
+                // Through the host, which sends it on by distance.
+                if (Coop.IsHost) SendByInterest(Coop.LocalId, state);
+                else Session.SendToHost(state);
             }
 
             if (now >= _nextSlow && body != null && Coop.WorldLive)

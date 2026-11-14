@@ -15,8 +15,8 @@ How the game works, system by system, and why each item below exists: [game-syst
 Nothing below matters until two real players on two Steam accounts can finish a few layers.
 
 - [ ] **S** Run the [playtest checklist](#playtest-checklist): host, then join by invite, by "Join Game", and from a cold start through an invite.
-- [ ] **S** Add a **Report a problem** button. It opens the log folder and copies a short session summary (versions, transport, ping, epoch, last errors) to the clipboard for a bug report.
-- [ ] **S** Add a **desync alarm**. Every 30 s the host sends a terrain and entity fingerprint, and clients compare theirs and warn in the log and on screen.
+- [x] **S** Add a **Report a problem** button. (The **Bug report** button: a desktop folder with the logs and session info.) It opens the log folder and copies a short session summary (versions, transport, ping, epoch, last errors) to the clipboard for a bug report.
+- [x] **S** Add a **desync alarm**. Every 30 s the host sends a terrain and entity fingerprint, and clients compare theirs and warn in the log and on screen. (Built as `WorldCheck`: one fingerprint per 64×64 terrain chunk. A chunk that differs on two checks in a row is logged and repaired, see M5. Entities aren't fingerprinted yet.)
 
 **Done when:** a 30-minute, three-layer session over Steam has no fingerprint mismatches, and both players say it felt right.
 
@@ -242,7 +242,7 @@ Playtest ideas: the team should feel physical together, not just side by side.
 
 ## M5 · Closing the sync gaps (in progress)
 
-- [ ] **M** **Self-healing world.** Build on the M0 alarm: on a mismatch, the host resends just the affected chunks (terrain, water, objects in them). A desync gets corrected without anyone noticing.
+- [~] **M** **Self-healing world.** Build on the M0 alarm: on a mismatch, the host resends just the affected chunks (terrain, water, objects in them). A desync gets corrected without anyone noticing. Terrain is done: the client asks for chunks that differ twice in a row, the host sends their blocks as a blob, and the client keeps its own edits from the last few seconds on top. Water and objects aren't covered yet.
 - [x] **M** **One-shot traps.** Bear trap, spike stabber, landmine press, ground glass, stalactite, coil shock and the cave-tick `started` flag: the trigger state is shared, and damage applies on the victim's own machine.
 - [ ] **S** **Rolled hazard state.** Piston phase, fan spin, geyser liquid and grabber-plant shape travel with the object (the per-type state codec from M0.5).
 - [x] **M** **One-shot props, confirmed by the host.** Med station, bio terminal and scrap-eater doors (these currently block progress for others), shuttle doors, drill pod "working" and "everyone inside". Results travel; minigames don't.
@@ -289,7 +289,11 @@ The game saves only the player: inventory, `[Saveable]` body state, recipes and 
 
 - [~] **M** **GitHub repo and CI.** (workflow written; no public repo yet) Build and test `CCoop.Net` on every push. Build the plugin against stripped reference assemblies, or on a self-hosted runner, so no game code is committed. Publish releases with checksums: Casualties Together players are asking for exactly this ([their issue #51](https://github.com/creaturefeaturelarry/casualties-together/issues/51)).
 - [x] **S** **Update check.** Read the latest GitHub release and show a notice. No silent downloads.
-- [ ] **M** **4–8 players.** Bandwidth budget, interest management for creatures and items, a host FPS budget.
+- [~] **M** **4–8 players.** Bandwidth budget, interest management for creatures and items, a host FPS budget.
+  - Measured (`[net] traffic` lines, every 30 s in the log): three idle players on LAN, host up 12.5 KB/s and down 6 KB/s, each client up 3 KB/s and down 6 KB/s. `PlayerState` (20 Hz, about 136 bytes) is 80% of it; a layer snapshot is 200–300 KB once per join.
+  - Four players on one machine (two joined mid-run on layer 4): both late joins got the layer in under 0.1 s on the host and about 2.7 s to apply; no warnings anywhere.
+  - Player state now goes through the host, which passes it on at full rate to teammates within 48 m (and to the dead, who spectate) and at 5 Hz to those farther away. At 8 players that keeps the host's upload near 60–80 KB/s instead of 140.
+  - Still open: interest management for creatures and items, and a host FPS budget.
 - [x] **S** **Linux / Proton / Steam Deck notes.** Document `WINEDLLOVERRIDES="winhttp=n,b" %command%`.
 - [x] **S** **Unicode Steam names** (CJK) in the IMGUI font.
 - [ ] **S** Ask Orsoniks for permission, Workshop support and rich-presence tokens.
