@@ -252,14 +252,23 @@ Playtest ideas: the team should feel physical together, not just side by side.
 - [x] **S** **Crafting** consumes networked ground items through the host. (Built: a client asks the host for the ground items a recipe would use and crafts when granted; the host holds them for that player for 3 s, and its own crafting skips items a teammate is about to use. Tools worn down and bottles drained by a recipe are re-sent with their new state.)
 - [x] **M** **Water after load.** Each peer publishes changed cells inside its own simulated window. Also hook the direct writers: drinking, space drain, traders, geysers, auto-filling containers. (Built as `FluidSync`: the layer is cut into 16-cell patches, and each patch belongs to the nearest living player whose machine simulates it (the game's window: 64 cells each side, 64 below and 48 above the camera). The owner sends a patch, run-length coded, whenever its liquid changes, at most twice a second, so every writer is covered without hooking each one. It also sends each patch the first time it comes into its area and all of them every 15 s, because a layer's water already differs by the time it is live everywhere: the host's keeps flowing while the snapshot travels. Liquid out of everyone's reach, such as a far geyser's spurt, can differ until someone comes near.)
 - [x] **S** **Guns.** Tracer, sound, puffs and creature reactions on every screen, and the muzzle flash on the shooter's puppet (the held gun keeps its particle systems). Plus a **friendly fire** host rule (on in Hard and Brutal).
-- [~] **M** **Story and endings as a team:** (the Blue Heart is done; the endings need a hands-on playthrough before any code)
+- [~] **M** **Story and endings as a team:** (the Blue Heart and the End lab's team rules are done; a real playthrough of the endings is still needed)
   - [x] Blue Heart cargo embedding.
   - The End lab is a single-player sequence on each machine: walk to (250, 234), get moved into the surgery room, numb your torso with the lab's one injector, do the cargo surgery on yourself, then walk out to the ending. In co-op it needs:
     - one injector per player (spawn extras on the host when the escape starts);
     - the escape timer and the end guards owned by the host (guard spawners already react to every player);
     - the escape starting for everyone (it starts when a shot hits the scientist, and shots are now replayed everywhere, so it may already start everywhere; to be confirmed);
     - a finished player treated like a spectator until the whole team is done, and the host finishing first must not send everyone back to the menu (today it would, through "the host left the run").
-  - The surface-breach cutscene at the top of layer 11, plus the scientist script and escape timer on layer 12, all driven by the host.
+  - As built for the End lab, after reading the code (`EndLabScript`, the ending coroutines, `PlayerCamera.EndSequence`):
+    - Each machine still runs the whole sequence for its own player, as the game does: the scientist, the move into the surgery room, the timer, the surgery on that player's own cargo, the ending and its win. That is one surgery per player for free.
+    - The escape starts everywhere: the game starts it from any shot that hits the scientist, and every shot is replayed on every machine.
+    - The injector holds 347 ml and numbing the torso takes about 8 ml, so the lab's one injector can be handed round. It is a single object in the lab structure; whether it is shared or one per machine in practice needs the playthrough.
+    - End guards: only the host spawns guards, but each machine's timer released them on that machine only. Now the first timer to run out anywhere releases them on the host's spawner, which sends guards to whoever is in range (`EndGuards` world event).
+    - The end screen never returns to the menu on its own; its player clicks. A host who finished first and clicks while teammates still play gets a warning, and only a second click within 8 s leaves. Players see when a teammate reaches an ending (a new `Finished` player flag).
+    - The game keeps the player alive in the lab (brain health is clamped at 20); brain dying leads to the bio-pod ending instead.
+    - Self-test (`-SelfTest -StartLayer 12`): the host shoots the scientist and the client's escape starts; the client's timer runs out and the host releases the guards; the host reaches an ending, the client sees it, and the host's first try to leave is held.
+  - The surface-breach cutscene at the top of layer 11: the game plays it and then calls `RegenerateWorld`, which in co-op goes through the exit vote like any descent. Not tested.
+  - The scientist script and escape timer are not host-driven; each machine keeps its own, which matches one surgery per player.
   - Each player unlocks their own wins (`wonchar`).
   - Merc runs: the host decides `canStartMercRun` and spawns the techball and chip, and sends `isMercRun`.
   - Endless loops: the descent request carries "loop".
@@ -299,7 +308,9 @@ The game saves only the player: inventory, `[Saveable]` body state, recipes and 
   - Four players on one machine (two joined mid-run on layer 4): both late joins got the layer in under 0.1 s on the host and about 2.7 s to apply; no warnings anywhere.
   - Player state now goes through the host, which passes it on at full rate to teammates within 48 m (and to the dead, who spectate) and at 5 Hz to those farther away. At 8 players that keeps the host's upload near 60–80 KB/s instead of 140.
   - Creatures now go through the host too, which passes each player only the creatures within 120 m of them (the dead get all, since they may be watching anyone).
-  - Still open: interest management for loose items in motion, and a host FPS budget.
+  - Each player's frame rate is shown in the player list (sent with the profile). Clients see a warning when the host's game drops below 20 fps, and the host sees one about its own, since everyone's world goes through it.
+  - Items in flight likewise go only to players within 80 m; where an item comes to rest is still sent to everyone.
+  - Still open: the host doing less (fewer creatures simulated, slower streams) when it is the slow one.
 - [x] **S** **Linux / Proton / Steam Deck notes.** Document `WINEDLLOVERRIDES="winhttp=n,b" %command%`.
 - [x] **S** **Unicode Steam names** (CJK) in the IMGUI font.
 - [~] **S** Ask Orsoniks for permission, Workshop support and rich-presence tokens. (Permission given in November 2026, on the condition that the mod is never sold. Workshop and rich-presence tokens not asked yet.)

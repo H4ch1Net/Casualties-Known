@@ -32,6 +32,12 @@ namespace CCoop.Plugin.Runtime
         public bool Dying;
         public float LastStateTime;
         public string Status = "";
+
+        /// <summary>Their frame rate as last reported (0 = not known yet).</summary>
+        public int Fps;
+
+        /// <summary>They reached an ending and are on the end screen.</summary>
+        public bool Finished;
     }
 
     /// <summary>Static entry points for Harmony patches, which cannot be handed instances.</summary>

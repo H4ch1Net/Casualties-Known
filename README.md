@@ -97,7 +97,7 @@ The game's own save slot is never touched during a session: co-op saves go to th
 - Minigames (lockpicking, surgery) and crafting are per-player. Their results, such as broken containers, items and dropped loot, are shared.
 - Batteries lying on the ground run down on each machine separately.
 - An enemy only targets the player whose machine runs it (usually the closest). Two players next to one guard: it fights one of them.
-- The surface breach, the End lab escape and merc runs are still per-machine. See [docs/game-systems.md](docs/game-systems.md) and the roadmap.
+- The endings are played by each player for themselves: everyone does their own cargo surgery and gets their own win. The escape starts for everyone when the scientist is shot, and the end guards come for the team when the first escape timer runs out. A host who finishes first is warned before leaving, since leaving ends the run for everyone. The endings haven't had a real playthrough yet; merc runs and the surface breach are untested.
 
 ## Test status
 
@@ -128,6 +128,15 @@ The game's own save slot is never touched during a session: co-op saves go to th
 - layer 12 (the End lab) loading on clients
 - a forced Turbulent modifier (same gravity on both)
 - shared ambient temperature
+- care and movement: treatment minigames, CPR, the defibrillator, giving and asking for items, leg-ups, pulling up, snapping out of a low, lifting together, catching a fall, carrying
+- a dropped client reconnecting on its own and coming back where it was, with its saved character
+- desync repair: a deliberately corrupted terrain chunk found and repaired
+- traps, props and shots: world events in both directions, shot replay, a teammate's muzzle flash
+- rot decided by the host (items crumbling for both), crafting from ground items cleared with the host
+- water near both players identical, and fans and geysers rolled the same on four layers
+- a co-op run preset applied on the pre-run screen, seen by both
+- a message registered through the mod API, sent and answered
+- three and four players, two of them joining mid-run
 
 **Smoke-tested on Steam with one account:**
 
@@ -146,7 +155,8 @@ The game's own save slot is never touched during a session: co-op saves go to th
 - creature bites on non-owners
 - throwing at speed
 - container edits
-- rejoining after a disconnect (where you were, and dead if you were dead)
+- voice chat, including the open-mic threshold and voice effects
+- the endings
 - switching between several teammates while spectating (A / D)
 - the host leaving mid-run
 - name tags and speech bubbles on screen

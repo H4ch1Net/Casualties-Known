@@ -687,6 +687,10 @@ namespace CCoop.Plugin.UI
             GUILayout.Label(p.Name + (me ? " (you)" : "") + (p.IsHost ? " [host]" : "") + (talking ? "  ((o))" : ""), GUILayout.Width(150));
             GUILayout.Label(GameInfo.CharacterName(rec.Character), _small, GUILayout.Width(62));
             GUILayout.Label(rec.Status, _small, GUILayout.Width(62));
+            var fpsColor = GUI.color;
+            if (rec.Fps > 0 && rec.Fps < ConnectionBadge.SlowFps) GUI.color = new Color(1f, 0.55f, 0.45f);
+            GUILayout.Label(rec.Fps > 0 ? rec.Fps + " fps" : "", _small, GUILayout.Width(46));
+            GUI.color = fpsColor;
 
             string ping = "";
             if (!p.IsHost && p.RoundTripMs >= 0)

@@ -32,7 +32,11 @@ namespace CCoop.Plugin.Sync
         {
             WorldNet.Register<ItemTake>(s, OnTake, relay: false);
             WorldNet.Register<ItemTaken>(s, OnTaken);
-            WorldNet.Register<EntityMotion>(s, (o, m) => ApplyMotion(m.Bodies, false), queueWhilePending: false);
+            WorldNet.Register<EntityMotion>(s, (o, m) =>
+            {
+                ApplyMotion(m.Bodies, false);
+                if (Coop.IsHost) SendByInterest(o, m);
+            }, queueWhilePending: false, relay: false);
             WorldNet.Register<EntityRest>(s, (o, m) => ApplyMotion(m.Bodies, true));
             // A client's denial is addressed only to it and bypasses the world relay.
             s.On<ItemTaken>((o, m) => { if (!m.Granted && !Coop.IsHost) _pendingTake.Remove(m.Id); });
@@ -179,8 +183,34 @@ namespace CCoop.Plugin.Sync
                     if (rested.Bodies.Count < EntityRest.Max) rested.Bodies.Add(Describe(id, go, rb));
                 }
             }
-            if (moving.Bodies.Count > 0) WorldNet.Publish(moving);
+            if (moving.Bodies.Count > 0)
+            {
+                if (Coop.IsHost) SendByInterest(Coop.LocalId, moving);
+                else WorldNet.Publish(moving);
+            }
             if (rested.Bodies.Count > 0) WorldNet.Publish(rested);
+        }
+
+        /// <summary>Items in flight are streamed only to players within this range; where they come to rest goes to everyone.</summary>
+        private const float MotionRange = 80f;
+
+        /// <summary>Host: each player gets the flight of items near them (M7). The dead get everything.</summary>
+        private void SendByInterest(byte origin, EntityMotion m)
+        {
+            foreach (var rec in Coop.Players.Values)
+            {
+                if (rec.Id == NetSession.HostId || rec.Id == origin) continue;
+                if (rec.WorldEpoch != Coop.Epoch || rec.WorldEpoch == 0) continue;
+                var part = m;
+                if (rec.HasPosition && rec.Alive)
+                {
+                    part = new EntityMotion();
+                    foreach (var b in m.Bodies)
+                        if (Vector2.Distance(new Vector2(b.X, b.Y), rec.Position) < MotionRange) part.Bodies.Add(b);
+                    if (part.Bodies.Count == 0) continue;
+                }
+                Session.RelayTo(rec.Id, origin, part);
+            }
         }
 
         /// <summary>Runtime items belong to their creator; generated ones to the host.</summary>

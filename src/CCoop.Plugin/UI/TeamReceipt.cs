@@ -41,11 +41,27 @@ namespace CCoop.Plugin.UI
             if (!Coop.InSession) return;
             Refresh();
             _showFrom = Time.unscaledTime + 4f;  // after the game's receipt has come in
+            Coop.Player(Coop.LocalId).Finished = true;
+            if (Coop.IsHost)
+                foreach (var rec in Coop.Players.Values)
+                    if (rec.Id != Coop.LocalId && rec.InWorld && !rec.Finished && rec.Alive)
+                    {
+                        CoopRuntime.Notice("Your teammates are still playing. Stay on this screen until they finish: leaving ends the run for everyone.");
+                        break;
+                    }
         }
+
+        /// <summary>This player is on the game's end screen.</summary>
+        internal static bool EndScreenUp => _showFrom >= 0f;
 
         internal override void Tick()
         {
-            if (GameInfo.OnMainMenu) { _showFrom = -1f; return; }
+            if (GameInfo.OnMainMenu)
+            {
+                _showFrom = -1f;
+                foreach (var rec in Coop.Players.Values) rec.Finished = false;  // a new run starts unfinished
+                return;
+            }
             if (!Coop.WorldLive) return;
             Refresh();
         }

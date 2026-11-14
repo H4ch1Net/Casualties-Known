@@ -231,6 +231,8 @@ namespace CCoop.Plugin.Dev
         private void SelfTest()
         {
             if (!Coop.WorldLive) return;
+            // A run that starts in the End lab (layer 12; the client learns the depth from the host).
+            if (StartLayer == 12 || (_stage == 0 && WorldGeneration.world != null && WorldGeneration.world.biomeDepth == 11)) { EndLabTest(); return; }
             HoldAsleep();
             if ((_stage >= 200 && _stage < 211) || (_stage >= 220 && _stage < 230))
             {
@@ -763,6 +765,114 @@ namespace CCoop.Plugin.Dev
                    "; patches sent/applied " + FluidSync.Sent + "/" + FluidSync.Applied;
         }
 
+        // ------------------------------------------------------------------ the End lab (StartLayer 12)
+
+        private int _labStage;
+        private float _labAt;
+        private static readonly HarmonyLib.AccessTools.FieldRef<EndLabScript, float> LabTimeLeft = HarmonyLib.AccessTools.FieldRefAccess<EndLabScript, float>("timeLeft");
+
+        /// <summary>
+        /// Endings, as far as they can be driven without a player: the host shoots the
+        /// scientist (the client must start its escape from the replayed shot), the
+        /// client's escape timer runs out (the host's spawner must release the end guards),
+        /// then the host reaches an ending (the client must see it) and its first return
+        /// to the menu must be held while the client is still playing.
+        /// </summary>
+        private void EndLabTest()
+        {
+            float now = Time.unscaledTime;
+            var lab = EndLabScript.instance;
+            if (_labStage == 0)
+            {
+                if (Coop.IsHost)
+                {
+                    bool allIn = Coop.Session.PeerCount > 1;
+                    foreach (var r in Coop.Players.Values) if (r.Id != NetSession.HostId && !r.InWorld) allIn = false;
+                    if (!allIn) return;
+                }
+                _labStage = 1;
+                _labAt = now + 8f;
+                Log.Info("DEV endlab test armed (lab " + (lab != null ? "found" : "missing") + ")");
+                return;
+            }
+            if (now < _labAt) return;
+            switch (_labStage)
+            {
+                case 1:
+                    LabVerify("before");
+                    if (Coop.IsHost && lab != null && lab.scientist != null)
+                    {
+                        Vector2 at = lab.scientist.transform.position;
+                        var col = lab.scientist.GetComponentInChildren<Collider2D>();
+                        if (col != null) at = col.bounds.center;
+                        TurretScript.Shoot(new FireInfo
+                        {
+                            pos = at + new Vector2(-1.2f, 0.1f), dir = Vector2.right, ignoreBody = true, doTinnitus = false,
+                            structureDamage = 0f, animalDamage = 0f, playerDamageMultiplier = 0f,
+                        });
+                        Log.Info("DEV host shoots the scientist at " + at.ToString("F1"));
+                    }
+                    _labStage = 2;
+                    _labAt = now + 6f;
+                    break;
+                case 2:
+                    LabVerify("shot");
+                    if (Coop.IsClient && lab != null)
+                    {
+                        // As if the client were in the surgery room with the timer nearly out.
+                        lab.doTimer = true;
+                        LabTimeLeft(lab) = 0.3f;
+                        Log.Info("DEV client's escape timer is about to run out");
+                    }
+                    _labStage = 3;
+                    _labAt = now + 5f;
+                    break;
+                case 3:
+                    LabVerify("timer");
+                    if (Coop.IsHost)
+                    {
+                        UI.TeamReceipt.EndScreenShown();
+                        Log.Info("DEV host reaches an ending");
+                    }
+                    _labStage = 4;
+                    _labAt = now + 4f;
+                    break;
+                case 4:
+                    if (Coop.IsHost)
+                    {
+                        bool live = Coop.WorldLive;
+                        PlayerCamera.main.ToMainMenu();
+                        Log.Info("DEV host tries to leave for the menu: " + (live && Coop.WorldLive && GameInfo.LocalBody != null ? "held" : "left"));
+                    }
+                    _labStage = 5;
+                    _labAt = now + 4f;
+                    break;
+                case 5:
+                    LabVerify("ended");
+                    _labStage = 6;
+                    Log.Info("DEV selftest complete");
+                    break;
+            }
+        }
+
+        private static void LabVerify(string tag)
+        {
+            var lab = EndLabScript.instance;
+            var sb = new StringBuilder();
+            sb.Append("VERIFY endlab ").Append(tag).Append(' ').Append(Coop.IsHost ? "host" : "client");
+            if (lab == null) { Log.Info(sb.Append(" no lab").ToString()); return; }
+            sb.Append(" escape=").Append(lab.doingEscape)
+              .Append(" timer=").Append(lab.doTimer).Append('/').Append(LabTimeLeft(lab).ToString("F1"));
+            var g = lab.endGuardSpawner;
+            if (g != null) sb.Append(" endguards=").Append(g.guardsToSpawn).Append(" open=").Append(g.openProgress.ToString("F1"));
+            sb.Append(" guards=").Append(UnityEngine.Object.FindObjectsOfType<GuardScript>().Length);
+            var ids = new List<byte>(Coop.Players.Keys);
+            ids.Sort();
+            sb.Append(" finished");
+            foreach (var id in ids) sb.Append(' ').Append(id).Append('=').Append(Coop.Player(id).Finished);
+            Log.Info(sb.ToString());
+        }
+
         private static string RottingLine()
         {
             var parts = new List<string>();
@@ -1211,7 +1321,8 @@ namespace CCoop.Plugin.Dev
                    " pings=" + (Coop.Get<PingSync>()?.Count ?? 0) +
                    " exit=" + (Coop.Get<ExitVote>()?.Describe() ?? "-") +
                    " threat=" + (cam != null ? cam.threatMusicTime.ToString("F1") : "-") +
-                   " warmth=" + warming + " voice=" + VoiceSync.Mode;
+                   " warmth=" + warming + " voice=" + VoiceSync.Mode + " fps=" + Mathf.RoundToInt(PlayerSync.LocalFps) +
+                   " host fps=" + Coop.Player(NetSession.HostId).Fps;
         }
 
         /// <summary>Holds the local body asleep (the game would wake a rested body at once).</summary>

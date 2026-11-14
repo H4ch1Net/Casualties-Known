@@ -1,4 +1,5 @@
 using CCoop.Plugin.Runtime;
+using CCoop.Plugin.Sync;
 using UnityEngine;
 
 namespace CCoop.Plugin.UI
@@ -11,25 +12,51 @@ namespace CCoop.Plugin.UI
     {
         private static GUIStyle _style;
 
+        /// <summary>Below this the host's game is struggling, and everyone's world with it.</summary>
+        internal const int SlowFps = 20;
+
         internal static void Draw()
         {
             var s = Coop.Session;
-            if (!Coop.IsClient || s.LocalPeer == null) return;
-            int rtt = s.LocalPeer.RoundTripMs;
-            float q = s.LocalPeer.Quality;
-            bool slow = rtt >= 180;
-            bool lossy = q >= 0f && q < 0.85f;
-            if (!slow && !lossy) return;
+            if (s == null || s.LocalPeer == null) return;
+            string text = null;
+            Color tint = Color.white;
+            if (Coop.IsClient)
+            {
+                int rtt = s.LocalPeer.RoundTripMs;
+                float q = s.LocalPeer.Quality;
+                bool slow = rtt >= 180;
+                bool lossy = q >= 0f && q < 0.85f;
+                if (slow || lossy)
+                {
+                    text = "Connection to host: " + rtt + " ms" + (lossy ? ", " + Mathf.RoundToInt((1f - q) * 100f) + "% lost" : "");
+                    tint = CoopWindow.PingColor(rtt, q);
+                }
+                else
+                {
+                    int hostFps = Coop.Player(CCoop.Net.Session.NetSession.HostId).Fps;
+                    if (hostFps > 0 && hostFps < SlowFps)
+                    {
+                        text = "The host's game is running slowly (" + hostFps + " fps)";
+                        tint = new Color(1f, 0.7f, 0.4f);
+                    }
+                }
+            }
+            else if (Coop.WorldLive && s.PeerCount > 1 && PlayerSync.LocalFps > 0f && PlayerSync.LocalFps < SlowFps)
+            {
+                text = "Your game is running slowly (" + Mathf.RoundToInt(PlayerSync.LocalFps) + " fps); everyone's world goes through yours";
+                tint = new Color(1f, 0.7f, 0.4f);
+            }
+            if (text == null) return;
 
             if (_style == null)
             {
-                _style = new GUIStyle(GUI.skin.box) { fontSize = 12, alignment = TextAnchor.MiddleCenter };
+                _style = new GUIStyle(GUI.skin.box) { fontSize = 12, alignment = TextAnchor.MiddleCenter, wordWrap = true };
                 _style.normal.textColor = Color.white;
             }
-            string text = "Connection to host: " + rtt + " ms" + (lossy ? ", " + Mathf.RoundToInt((1f - q) * 100f) + "% lost" : "");
             var old = GUI.color;
-            GUI.color = CoopWindow.PingColor(rtt, q);
-            GUI.Box(new Rect(Screen.width - 290, 8, 280, 24), text, _style);
+            GUI.color = tint;
+            GUI.Box(new Rect(Screen.width - 330, 8, 320, 24), text, _style);
             GUI.color = old;
         }
     }

@@ -270,9 +270,11 @@ namespace CCoop.Plugin.Sync
         {
             try
             {
+                HostLeaveGuardPatch.Bypass = true;
                 if (PlayerCamera.main != null) PlayerCamera.main.ToMainMenu();
             }
             catch (Exception e) { Log.Warn("[run] could not return to the menu: " + e.Message); }
+            finally { HostLeaveGuardPatch.Bypass = false; }
         }
 
         /// <summary>Client: InstantiateWorld is starting; build a scaffold for the host's layer.</summary>

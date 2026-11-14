@@ -98,16 +98,21 @@ namespace CCoop.Plugin.Protocol
         public byte Character;
         public ulong SteamId;
 
+        /// <summary>The sender's frame rate (smoothed, capped at 255): a slow host slows everyone.</summary>
+        public byte Fps;
+
         public void Write(PacketWriter w)
         {
             w.WriteByte(Character);
             w.WriteUInt64(SteamId);
+            w.WriteByte(Fps);
         }
 
         public void Read(ref PacketReader r)
         {
             Character = r.ReadByte();
             SteamId = r.ReadUInt64();
+            Fps = r.ReadByte();
         }
     }
 
@@ -131,6 +136,9 @@ namespace CCoop.Plugin.Protocol
 
         /// <summary>Brain dying (the game slows its fast-forward to 3.5x for this).</summary>
         Dying = 64,
+
+        /// <summary>Reached an ending: on the end screen, done with the run.</summary>
+        Finished = 128,
     }
 
     /// <summary>Movement and pose, 20 times a second. Newest wins.</summary>
@@ -1608,6 +1616,8 @@ namespace CCoop.Plugin.Protocol
         GunmineFired = 12,
         MinePressed = 13,
         GeyserRumble = 14,
+        /// <summary>The End lab's escape timer ran out on some machine: the end guards come.</summary>
+        EndGuards = 15,
     }
 
     /// <summary>

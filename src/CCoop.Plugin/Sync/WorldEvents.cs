@@ -279,6 +279,16 @@ namespace CCoop.Plugin.Sync
                     if (ps != null) ps.Play();  // the shot itself (sound, tracer) arrives as a ShotFired
                     break;
                 }
+                case WorldEventKind.EndGuards:
+                {
+                    // Only the host spawns guards; its spawner sends them to whoever is in range.
+                    var g = Resolve<GuardSpawner>(m);
+                    if (g == null || !Coop.IsHost) break;
+                    if (g.guardsToSpawn < 5) g.guardsToSpawn = 5;
+                    g.openProgress = Mathf.Max(g.openProgress, 5f);
+                    Log.Info("[endlab] the end guards are released for the team");
+                    break;
+                }
                 case WorldEventKind.GeyserRumble:
                 {
                     if (quiet) break;

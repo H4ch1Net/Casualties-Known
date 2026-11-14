@@ -77,10 +77,13 @@ namespace CCoop.Plugin.Sync
             return r;
         }
 
+        internal static float LocalFps;
+
         private void OnProfile(byte origin, PlayerProfile m)
         {
             var rec = Coop.Player(origin);
             rec.Character = m.Character;
+            rec.Fps = m.Fps;
 
             // Over Steam the host knows each client's real Steam id from the connection
             // itself. A client claiming another id is lying (or broken) and is removed, so
@@ -113,6 +116,9 @@ namespace CCoop.Plugin.Sync
             rec.Conscious = (m.Flags & PlayerFlags.Conscious) != 0;
             rec.Sleeping = (m.Flags & PlayerFlags.Sleeping) != 0;
             rec.Dying = (m.Flags & PlayerFlags.Dying) != 0;
+            bool finished = (m.Flags & PlayerFlags.Finished) != 0;
+            if (finished && !rec.Finished) CoopRuntime.Notice(rec.Name + " has reached an ending" + (origin == NetSession.HostId ? "; the run goes on until you finish too" : ""));
+            rec.Finished = finished;
             rec.LastStateTime = Time.unscaledTime;
             rec.ReportedEpoch = m.Epoch;
             if (!Coop.IsHost) rec.Status = rec.HasPosition ? LifeStatus(rec) : "menu";
@@ -145,6 +151,9 @@ namespace CCoop.Plugin.Sync
             float now = Time.unscaledTime;
             var body = GameInfo.LocalBody;
 
+            // A smoothed frame rate for the player list (sent with the profile).
+            if (Time.unscaledDeltaTime > 0f) LocalFps = Mathf.Lerp(LocalFps <= 0f ? 60f : LocalFps, 1f / Time.unscaledDeltaTime, 0.02f);
+            Coop.Player(Coop.LocalId).Fps = Mathf.RoundToInt(LocalFps);
             int character = body != null ? body.charType : PreRunScript.characterSelected;
             if (now >= _nextProfile || character != _sentCharacter)
             {
@@ -152,7 +161,7 @@ namespace CCoop.Plugin.Sync
                 _sentCharacter = character;
                 Coop.Player(Coop.LocalId).Character = character;
                 Coop.Player(Coop.LocalId).SteamId = GameInfo.SteamId;
-                Session.Broadcast(new PlayerProfile { Character = (byte)Mathf.Clamp(character, 0, 255), SteamId = GameInfo.SteamId });
+                Session.Broadcast(new PlayerProfile { Character = (byte)Mathf.Clamp(character, 0, 255), SteamId = GameInfo.SteamId, Fps = (byte)Mathf.Clamp(Mathf.RoundToInt(LocalFps), 0, 255) });
             }
 
             if (now >= _nextState)
@@ -206,6 +215,7 @@ namespace CCoop.Plugin.Sync
             if (body.isRight) m.Flags |= PlayerFlags.Right;
             if (body.sleeping) m.Flags |= PlayerFlags.Sleeping;
             if (body.alive && body.brainDying) m.Flags |= PlayerFlags.Dying;
+            if (UI.TeamReceipt.EndScreenUp) m.Flags |= PlayerFlags.Finished;
             if (t.lossyScale.x < 0) m.Flags |= PlayerFlags.BodyFlip;
             m.X = t.position.x;
             m.Y = t.position.y;
