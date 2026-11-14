@@ -38,11 +38,13 @@ namespace CCoop.Plugin.Sync
         }
 
         private static bool OneShot(WorldEventKind k) =>
-            k != WorldEventKind.CoilShock && k != WorldEventKind.GunmineFired && k != WorldEventKind.ScrapFed && k != WorldEventKind.GuardSpawned;
+            k != WorldEventKind.CoilShock && k != WorldEventKind.GunmineFired && k != WorldEventKind.ScrapFed && k != WorldEventKind.GuardSpawned &&
+            k != WorldEventKind.GeyserRumble;
 
         /// <summary>Kept for late joiners: anything that leaves the world changed.</summary>
         private static bool Lasting(WorldEventKind k) =>
-            k != WorldEventKind.CoilShock && k != WorldEventKind.GunmineFired && k != WorldEventKind.MinePressed;
+            k != WorldEventKind.CoilShock && k != WorldEventKind.GunmineFired && k != WorldEventKind.MinePressed &&
+            k != WorldEventKind.GeyserRumble;
 
         private static string KeyOf(WorldEvent m) =>
             m.Id != 0 ? (int)m.Kind + ":" + m.Id + ":" + m.Path
@@ -275,6 +277,12 @@ namespace CCoop.Plugin.Sync
                     GunmineReloaded(g) = false;
                     var ps = g.GetComponentInChildren<ParticleSystem>();
                     if (ps != null) ps.Play();  // the shot itself (sound, tracer) arrives as a ShotFired
+                    break;
+                }
+                case WorldEventKind.GeyserRumble:
+                {
+                    if (quiet) break;
+                    Resolve<GeyserScript>(m)?.TryRumble();  // its own rumble, then eruption, here too
                     break;
                 }
                 case WorldEventKind.MinePressed:

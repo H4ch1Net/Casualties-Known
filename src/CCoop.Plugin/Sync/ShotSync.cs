@@ -152,6 +152,8 @@ namespace CCoop.Plugin.Sync
                 info.ignoreBody = !Physics2D.OverlapPoint(new Vector2(m.AimX, m.AimY), LayerMask.GetMask("Limb", "Body"));
             }
 
+            if (m.First && m.FromPlayer) Coop.Get<PlayerSync>()?.Find(origin)?.FlashMuzzle(pos);
+
             if (m.First && !string.IsNullOrEmpty(m.Sound))
             {
                 try

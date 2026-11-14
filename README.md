@@ -48,12 +48,13 @@ The **LAN / IP** tab hosts on port 7777 and joins by address (with the host's pa
 | | |
 |---|---|
 | **Text chat** | **Enter** (or **T** if your game doesn't use T). Your character says the line out loud, slurred if they're hurt or have a broken jaw, and it shows above their head. A brain-damaged reader sees it garbled. The dead chat only with the dead. |
-| **Voice** | Hold **V** (or set an open mic in the co-op window). Nearby players hear you, quieter with distance. The dead hear only each other. Needs Steam. |
+| **Voice** | Hold **V** (or set an open mic in the co-op window, with a threshold so it only sends when you speak). Nearby players hear you, quieter with distance and muffled through rock. A broken jaw, being under water or brain damage changes how you sound. Each teammate's volume can be set (or muted) in the player list. The dead hear only each other. Needs Steam. |
 | **Ping** | **Middle mouse** marks a spot everyone sees for a few seconds. |
 | **Gestures** | Hold **H** for the wheel: wave, come here, wait, thumbs up, no, point (a line to the spot), help (a marker everyone sees) and **hug**, which lifts both players' mood and shares warmth. Your bark (**B**) is heard by everyone. |
-| **Helping a teammate** | Right-click a teammate for their health panel: their vitals and every wound. Then:<br>• treat a limb with what's in your hand. **You play the game's own minigame**, and the effect lands on their body.<br>• set a joint, or pull shrapnel.<br>• take off a tourniquet or splint.<br>• hold CPR, or shock them with a defibrillator (it can even bring them back within 30 s of death).<br>• give them an item, or carry them while they're out.<br>• search a dead teammate's body. |
+| **Helping a teammate** | Right-click a teammate for their health panel: their vitals and every wound. Then:<br>• treat a limb with what's in your hand. **You play the game's own minigame**, and the effect lands on their body.<br>• set a joint, or pull shrapnel.<br>• take off a tourniquet or splint.<br>• hold CPR, or shock them with a defibrillator (it can even bring them back within 30 s of death).<br>• give them an item, ask them for something they carry, or carry them while they're out.<br>• search a dead teammate's body. |
 | **Moving together** | From the teammate panel: carry a downed teammate (drag, on your back or in your arms), give a leg-up, reach down and pull them up a ledge, snap them out of a deep low, or help carry a heavy item. Hold **J** under a falling teammate to catch them. |
 | **Difficulty** | The host picks **Friendly**, **Standard**, **Hard** or **Brutal**. These set the co-op rules (respawn, exits, arrows to teammates, name tags, spawning apart, voice range, friendly fire) on top of the game's own run settings. The host can also scale loot and enemy strength with the number of players. |
+| **Run presets** | On the main menu, the co-op window has a few co-op run presets (Cold snap, Glass bones, Field hospital, Lean pickings, Long haul) that fill in the game's own run settings. Save your own, or share one with friends as a line of text. |
 | **Descending** | Continuing at an exit is a vote. By default the team goes down once half of the living players are at the exit; the host can change this to "first arrives" or "all are there". A drill pod needs everyone inside. Nobody is left behind. |
 | **Milestones** | Small co-op milestones (carry a teammate 100 m, catch a fall, bring someone back...) are counted on your own machine and listed in the co-op window. They're the mod's own, not Steam achievements. |
 | **Comfort** | In the co-op window: colour-blind safe player colours, and "reduce flashes and shaking" for the mod's own screen effects. |
@@ -67,10 +68,12 @@ The **LAN / IP** tab hosts on port 7777 and joins by address (with the host's pa
 | **World** | The game has no seed, so the host streams each layer to every client: terrain, water, about 2,000 objects with their health and item state, structures, the layer modifier and fog. That's ~200 KB and loads in 1–2 s. |
 | **Descending** | Exits and drill pods are votes (see above). The host's descent brings everybody along. |
 | **Terrain** | Mining, explosions, block placement and quakes, with crack overlays and hit sounds. Every 30 s the host checks every client's terrain chunk by chunk; a chunk that has drifted apart is repaired from the host's copy. |
+| **Water** | Lakes, lava and other liquids near each player are simulated by that player's game and shared with everyone, so a flood, a drained pool or a geyser's eruption looks the same on every screen. |
+| **Hazards** | Fans, pistons, geysers and grabber plants are the same hazard on every machine: same speed, rhythm, liquid and reach. |
 | **Objects** | Damage adds up across players. The host alone decides when a crate breaks and rolls its loot, so loot never duplicates. Hit flashes, damage numbers and sounds show on every screen. |
-| **Items** | Pickup is arbitrated by the host, so two players can't grab the same item. Drops and throws keep their velocity. Containers keep their contents, and loose items settle in the same place on every screen. |
+| **Items** | Pickup is arbitrated by the host, so two players can't grab the same item. Drops and throws keep their velocity. Containers keep their contents, and loose items settle in the same place on every screen. The host decides when loose items rot or rust away, including near teammates far from the host. Crafting with items on the ground is cleared with the host, so two players can't use the same one. |
 | **Creatures** | Each creature is run by the player closest to it. Crawlers hunt and bite any player; other enemies (guards, drones, crystals) hunt the player whose machine runs them, which is usually the closest. A fight's threat music plays for teammates nearby. |
-| **Gunfire** | Every shot (players, guards, turrets, gun mines) is seen and heard by everyone: tracer, sound, puffs. A shot that passes through you wounds you on your own machine. |
+| **Gunfire** | Every shot (players, guards, turrets, gun mines) is seen and heard by everyone: tracer, sound, puffs, and the muzzle flash on a teammate's gun. A shot that passes through you wounds you on your own machine. |
 | **Traps and props** | Bear traps, spike stabbers, coils, stalactites, mines, cave-tick nests, med stations, bio terminals and scrap eaters with their doors, the drill pod repair, guard spawners and the start shuttle: set off on one machine, in the same state everywhere. Damage lands on whoever was hit. Players who join later see the world as it is now. |
 | **Traders** | One shelf for the team: buying is cleared with the host, so two players can't buy the same item. Each player has their own standing with the trader. Anger a trader and it turns on everyone. |
 | **Story** | The Blue Heart rises for the whole team, and everyone gets the cargo. |
@@ -88,11 +91,11 @@ The game's own save slot is never touched during a session: co-op saves go to th
 - If the host leaves the run, everyone returns to the menu.
 - If your connection drops, your character is saved, you go back to the menu, and the game reconnects on its own for up to a minute. You come back where you were.
 - A dead player's body can be searched by teammates (everything but what's in their hands and mouth).
-- Water is shared when a layer loads. After that, each game simulates water near its own player, so lakes far from everyone can drift apart.
+- Water is shared when a layer loads, and after that the water near each player is shared from that player's game. Liquid far from everyone (a geyser nobody is near) can differ until someone comes close.
 - Pausing or alt-tabbing pauses only your own game. Creatures you're running stop for others until you return.
 - One sleeper alone doesn't speed up time (others would be raced through their day). The sleeper's screen says time is waiting for everyone.
-- Minigames (lockpicking, surgery) and crafting are per-player. Their results, such as broken containers, items and dropped loot, are shared. Crafting with an item on the ground isn't checked with the host yet.
-- Item decay runs on each machine for loose items; the first machine where an item rots away removes it for everyone.
+- Minigames (lockpicking, surgery) and crafting are per-player. Their results, such as broken containers, items and dropped loot, are shared.
+- Batteries lying on the ground run down on each machine separately.
 - An enemy only targets the player whose machine runs it (usually the closest). Two players next to one guard: it fights one of them.
 - The surface breach, the End lab escape and merc runs are still per-machine. See [docs/game-systems.md](docs/game-systems.md) and the roadmap.
 
@@ -210,8 +213,19 @@ docs/game-systems.md    how the game works, system by system, and what each mean
 legacy/v1/              the demo-era version
 ```
 
+## For mod authors
+
+Other BepInEx mods can share their own state through a CasualtiesCoop session. Reference `CCoop.Plugin.dll` and `CCoop.Net.dll`, add `[BepInDependency("ccoop.casualtiescoop", BepInDependency.DependencyFlags.SoftDependency)]`, and register each message type once from your plugin's `Awake`:
+
+```csharp
+CCoop.CCoopApi.Register<MyMessage>("my.mod.id", CCoop.Net.Delivery.Reliable, (from, m) => { /* on the main thread */ });
+CCoop.CCoopApi.Broadcast(new MyMessage { ... });   // or SendTo(player, ...) / SendToHost(...)
+```
+
+A message implements `CCoop.Net.IMessage` (`Write` and `Read` must mirror each other). `CCoopApi` also tells you whether you're in a session or a run, whether you're the host, and who is playing. Every player needs the same mods: registered messages are part of the protocol fingerprint, so a player with a different set is turned away when joining instead of misreading packets.
+
 ## Notes
 
 - Never commit game assemblies or decompiled game source (`.gitignore` enforces this).
 - [Casualties Together](https://github.com/creaturefeaturelarry/casualties-together) (LGPL-2.1) is a separate, mature co-op mod for the same game. No code from it, or from any other co-op mod, is used here.
-- Get the developer's permission before distributing anything publicly.
+- The game's developer, Orsoniks, has allowed this mod on the condition that it is never sold. It is free and stays free: no paid builds, paywalled features or donation-locked releases.

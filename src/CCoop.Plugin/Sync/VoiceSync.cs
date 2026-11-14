@@ -28,6 +28,14 @@ namespace CCoop.Plugin.Sync
         private bool _recording;
         private bool _transmitting;
         private float _lastSent = -10f;
+        private float _lastLoud = -10f;
+        private byte[] _ownPcm = new byte[22050 * 2];
+
+        /// <summary>The local mic's recent loudness (0..1), for the threshold meter.</summary>
+        internal static float MicLevel;
+
+        /// <summary>Open mic keeps sending this long after the last loud frame, so word endings aren't cut.</summary>
+        private const float GateHold = 0.4f;
         private uint _rate;
         private byte[] _compressed = new byte[8 * 1024];
         private byte[] _pcm = new byte[64 * 1024];
@@ -87,6 +95,7 @@ namespace CCoop.Plugin.Sync
         {
             if (!Available || !Coop.InSession) { StopRecording(); return; }
 
+            MicLevel = Mathf.MoveTowards(MicLevel, 0f, Time.unscaledDeltaTime * 0.3f);  // Steam sends nothing in silence
             _transmitting = WantsToTalk() && CanSpeak();
             if (_transmitting && !_recording)
             {
@@ -106,11 +115,46 @@ namespace CCoop.Plugin.Sync
                     if (r != EVoiceResult.k_EVoiceResultOK || written == 0) break;
                     var data = new byte[written];
                     Buffer.BlockCopy(_compressed, 0, data, 0, (int)written);
+                    if (!PassesGate(data)) continue;
                     Session.Broadcast(new VoiceData { Data = data });
                     _lastSent = Time.unscaledTime;
                 }
             }
             catch (Exception e) { Log.Debug("voice capture: " + e.Message); }
+        }
+
+        /// <summary>
+        /// Open mic with a threshold: this player's own frame is decoded to measure it, and
+        /// only sent if something loud was heard within the last <see cref="GateHold"/> s.
+        /// </summary>
+        private bool PassesGate(byte[] frame)
+        {
+            float gate = CoopPlugin.Instance.VoiceGate.Value;
+            bool open = Mode == "Open";
+            if (!open && !UI.CoopWindow.MeasuringMic) return true;
+            float level = 0f;
+            try
+            {
+                if (_rate == 0) _rate = SteamUser.GetVoiceOptimalSampleRate();
+                var r = SteamUser.DecompressVoice(frame, (uint)frame.Length, _ownPcm, (uint)_ownPcm.Length, out uint written, _rate);
+                if (r == EVoiceResult.k_EVoiceResultOK)
+                {
+                    int n = (int)written / 2;
+                    double sum = 0;
+                    for (int i = 0; i < n; i++)
+                    {
+                        float x = (short)(_ownPcm[2 * i] | (_ownPcm[2 * i + 1] << 8)) / 32768f;
+                        sum += x * x;
+                    }
+                    level = n > 0 ? (float)Math.Sqrt(sum / n) : 0f;
+                }
+            }
+            catch { return true; }  // can't measure: don't drop speech
+            MicLevel = Mathf.Max(level, MicLevel * 0.8f);
+            if (!open || gate <= 0f) return true;
+            float now = Time.unscaledTime;
+            if (level >= gate) _lastLoud = now;
+            return now - _lastLoud <= GateHold;
         }
 
         private void StopRecording()
@@ -216,9 +260,24 @@ namespace CCoop.Plugin.Sync
                 bool walled = ear.HasValue && sameLayer && rec.Alive && Walled(kv.Key, ear.Value, rec.Position);
                 if (walled) volume *= 0.75f;
                 float cutoff = jaw ? 900f : walled ? 1400f : 22000f;
-                kv.Value.Set(volume * volume * master * ConditionFx.HearingFactor() * PlayerVolume(rec), pan, sameLayer && !listenerDead ? mixer : null, cutoff);
+                // The speaker's own condition, as the game garbles their words: under water
+                // their voice is a deep burble, and brain damage roughens it.
+                float rough = 0f;
+                if (vit != null && rec.Alive)
+                {
+                    if ((vit.Signs & Protocol.BodySigns.Underwater) != 0)
+                    {
+                        cutoff = Mathf.Min(cutoff, 450f);
+                        volume *= 0.7f;
+                    }
+                    if (vit.Brain < BrainDamaged) rough = Mathf.Lerp(0.25f, 0.75f, 1f - vit.Brain / BrainDamaged);
+                }
+                kv.Value.Set(volume * volume * master * ConditionFx.HearingFactor() * PlayerVolume(rec), pan, sameLayer && !listenerDead ? mixer : null, cutoff, rough);
             }
         }
+
+        /// <summary>The game's "brain damaged" line for speech (Talker.brainDamaged).</summary>
+        private const float BrainDamaged = 82.5f;
 
         // ================================================================== walls and personal volume
 
@@ -375,8 +434,9 @@ namespace CCoop.Plugin.Sync
             }
 
             private AudioLowPassFilter _muffle;
+            private AudioDistortionFilter _rough;
 
-            internal void Set(float volume, float pan, UnityEngine.Audio.AudioMixerGroup mixer, float cutoff)
+            internal void Set(float volume, float pan, UnityEngine.Audio.AudioMixerGroup mixer, float cutoff, float rough)
             {
                 if (_source == null) return;
                 _source.volume = Mathf.Clamp01(volume);
@@ -385,6 +445,12 @@ namespace CCoop.Plugin.Sync
                 if (_muffle == null) _muffle = _go.AddComponent<AudioLowPassFilter>();
                 // Glide, so walking round a corner doesn't click.
                 _muffle.cutoffFrequency = Mathf.Lerp(_muffle.cutoffFrequency, cutoff, 0.25f);
+                if (rough > 0f && _rough == null) _rough = _go.AddComponent<AudioDistortionFilter>();
+                if (_rough != null)
+                {
+                    _rough.distortionLevel = Mathf.Lerp(_rough.distortionLevel, rough, 0.1f);
+                    _rough.enabled = _rough.distortionLevel > 0.01f;
+                }
             }
 
             public void Dispose()

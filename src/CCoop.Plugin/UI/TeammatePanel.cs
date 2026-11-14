@@ -268,6 +268,7 @@ namespace CCoop.Plugin.UI
 
             GUI.enabled = true;
             if (held != null && give != null && alive && GUILayout.Button("Give " + Medic.Pretty(held.id))) give.Offer(id);
+            AskRow(id, give, alive && (v.Signs & BodySigns.Conscious) != 0);
 
             // Carrying the downed: three ways, each with its own cost.
             if (carry != null)
@@ -313,6 +314,30 @@ namespace CCoop.Plugin.UI
                 }
                 else if (heavy != null && GUILayout.Button("Help carry their " + Medic.Pretty(heavy) + " (" + weight.ToString("0") + " u)"))
                     motion.StartLifting(id);
+            }
+        }
+
+        private static bool _showAsk;
+
+        /// <summary>"Ask for…": what they visibly carry, one button each. They choose whether to hand it over.</summary>
+        private static void AskRow(byte id, GiveSync give, bool awake)
+        {
+            var kit = Coop.Get<PlayerSync>()?.Find(id)?.Kit;
+            if (give == null || !awake || kit == null) return;
+            bool any = false;
+            foreach (var k in kit) if (!string.IsNullOrEmpty(k)) { any = true; break; }
+            if (!any) return;
+            if (give.Asking(id))
+            {
+                GUILayout.Label("Waiting for them to answer…", _small);
+                return;
+            }
+            _showAsk = GUILayout.Toggle(_showAsk, " Ask them for…");
+            if (!_showAsk) return;
+            for (int slot = 0; slot < kit.Length; slot++)
+            {
+                if (string.IsNullOrEmpty(kit[slot])) continue;
+                if (GUILayout.Button(Medic.Pretty(kit[slot]))) { give.AskFor(id, slot, kit[slot]); _showAsk = false; }
             }
         }
 

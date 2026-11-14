@@ -73,6 +73,28 @@ namespace CCoop.Plugin.Dev
         internal DevHarness()
         {
             if (_autostart == "host" || _autostart == "join" || _autostart == "steamhost") _startAt = 4f;
+            // M11: a message registered the way another mod would, through the public API.
+            if (SelfTestActive)
+                CCoop.CCoopApi.Register<ApiProbe>("ccoop.selftest", CCoop.Net.Delivery.Reliable, (from, m) =>
+                {
+                    ApiReceived++;
+                    Log.Info("DEV api probe from " + CCoop.CCoopApi.PlayerName(from) + ": " + m.Text);
+                    if (CCoop.CCoopApi.IsHost && m.Text.StartsWith("ping", StringComparison.Ordinal))
+                    {
+                        CCoop.CCoopApi.SendTo(from, new ApiProbe { Text = "pong" });
+                        ApiSent++;
+                    }
+                });
+        }
+
+        internal static int ApiSent, ApiReceived;
+
+        /// <summary>What another mod's message would look like.</summary>
+        internal sealed class ApiProbe : CCoop.Net.IMessage
+        {
+            public string Text = "";
+            public void Write(CCoop.Net.Wire.PacketWriter w) => w.WriteString(Text);
+            public void Read(ref CCoop.Net.Wire.PacketReader r) => Text = r.ReadString();
         }
 
         // Ticks even without a session: it is what starts one.
@@ -218,6 +240,7 @@ namespace CCoop.Plugin.Dev
                 Log.Info("DEV selftest armed");
                 return;
             }
+            DecayCraftTick();
             if (Time.unscaledTime < _stageAt) return;
             if (_stage == 1)
             {
@@ -233,6 +256,12 @@ namespace CCoop.Plugin.Dev
                 Log.Info("DEV " + who + " wrote 25 blocks");
                 ItemTest();
                 ExplosionTest();
+                DecayCraftTest();
+                if (Coop.IsClient)
+                {
+                    CCoop.CCoopApi.SendToHost(new ApiProbe { Text = "ping from a mod" });
+                    ApiSent++;
+                }
                 var ids = new List<uint>(EntityRegistry.Ids);
                 ids.Sort();
                 if (!Coop.IsHost) ids.Reverse();
@@ -555,6 +584,187 @@ namespace CCoop.Plugin.Dev
         private float _catchReadyUntil, _nextReadyDev;
         private float _waitUntil;
         private bool _sawDrop;
+        private float _layAt = -1f, _craftAt = -1f, _bogusAt = -1f, _fireAt = -1f;
+
+        /// <summary>
+        /// M5: rot and crafting. The host leaves rotting items (one at its feet, one by the
+        /// client), and decides their rot for both; the client crafts rope from two leaves
+        /// on the ground, which the host must grant, and then asks for an item that
+        /// doesn't exist, which the host must refuse.
+        /// </summary>
+        private void DecayCraftTest()
+        {
+            var body = GameInfo.LocalBody;
+            if (body == null) return;
+            if (Coop.IsHost)
+            {
+                var at = (Vector2)body.transform.position;
+                var fast = Utils.Create("musharm", at + new Vector2(-2f, 1f), 0f)?.GetComponent<Item>();
+                var slow = Utils.Create("musharm", at + new Vector2(-3f, 1f), 0f)?.GetComponent<Item>();
+                if (fast != null) { fast.condition = 0.3f; fast.decayMultiplier = 300f; }
+                if (slow != null) { slow.condition = 0.75f; slow.decayMultiplier = 15f; }
+                Log.Info("DEV host leaves two rotting items" + (fast != null && slow != null ? "" : " (unknown id)"));
+                // A pistol shot once the client's puppet of the host holds it: its muzzle must flash there.
+                GiveHand("pistol");
+                _fireAt = Time.unscaledTime + 2f;
+                foreach (var r in Coop.Get<PlayerSync>()?.Remotes ?? (IEnumerable<RemotePlayer>)new RemotePlayer[0])
+                {
+                    if (!r.ShownAt.HasValue) continue;
+                    var by = r.ShownAt.Value + new Vector2(2f, 1f);
+                    var far = Utils.Create("musharm", by, 0f)?.GetComponent<Item>();
+                    if (far != null) { far.condition = 0.3f; far.decayMultiplier = 300f; }
+                    Log.Info("DEV host leaves a rotting item by the client (drawn here: " + ItemDecay.DrawnHere(by) + ")");
+                    break;
+                }
+                return;
+            }
+            // After the explosion test, which would scatter or burn them.
+            _layAt = Time.unscaledTime + 0.5f;
+            _craftAt = Time.unscaledTime + 2.5f;
+            _bogusAt = Time.unscaledTime + 4f;
+        }
+
+        private void DecayCraftTick()
+        {
+            float now = Time.unscaledTime;
+            if (_fireAt > 0f && now >= _fireAt)
+            {
+                _fireAt = -1f;
+                var gun = Medic.HeldItem(GameInfo.LocalBody)?.GetComponent<GunScript>();
+                if (gun == null) Log.Info("DEV host has no gun in hand");
+                else
+                {
+                    gun.Fire();
+                    Log.Info("DEV host fires a pistol");
+                }
+            }
+            if (_layAt > 0f && now >= _layAt)
+            {
+                _layAt = -1f;
+                var body = GameInfo.LocalBody;
+                if (body == null) return;
+                var p = (Vector2)body.transform.position;
+                for (int i = 0; i < 2; i++) Utils.Create("foliage", p + new Vector2(0.6f + i * 0.4f, 0.3f), 0f);
+                Log.Info("DEV client lays two leaves on the ground");
+            }
+            if (_craftAt > 0f && now >= _craftAt)
+            {
+                _craftAt = -1f;
+                var r = Recipes.recipes != null && Recipes.recipes.Count > 0 ? Recipes.recipes[0] : null;
+                if (r == null) { Log.Info("DEV client has no recipes"); return; }
+                var used = r.GetItemsForRecipe();
+                int ground = 0;
+                if (used != null) foreach (var it in used) if (it != null && it.transform.parent == null) ground++;
+                Log.Info("DEV client crafts " + r.result.id + " (" + ground + " of " + (used?.Count ?? 0) + " from the ground)");
+                r.TryMake();
+            }
+            if (_bogusAt > 0f && now >= _bogusAt)
+            {
+                _bogusAt = -1f;
+                Coop.Get<CraftSync>()?.DevAskFor(0x0FFFFFF0u);
+                Log.Info("DEV client asks to craft with an item that doesn't exist");
+            }
+        }
+
+        private static readonly HarmonyLib.AccessTools.FieldRef<FanTrap, float> FanSpin = HarmonyLib.AccessTools.FieldRefAccess<FanTrap, float>("spinSpeed");
+        private static readonly HarmonyLib.AccessTools.FieldRef<GeyserScript, byte> GeyserLiquid = HarmonyLib.AccessTools.FieldRefAccess<GeyserScript, byte>("liquidType");
+        private static readonly HarmonyLib.AccessTools.FieldRef<GrabberPlant, float> GrabberOffset = HarmonyLib.AccessTools.FieldRefAccess<GrabberPlant, float>("randOffset");
+
+        /// <summary>M5: what each fan, geyser and grabber plant rolled, hashed by position. Must match.</summary>
+        private static string HazardsLine()
+        {
+            var parts = new List<string>();
+            int fans = 0, geysers = 0, grabbers = 0;
+            foreach (var f in UnityEngine.Object.FindObjectsOfType<FanTrap>())
+            {
+                fans++;
+                parts.Add("f" + ((Vector2)f.transform.position).ToString("F0") + ":" + FanSpin(f).ToString("F2"));
+            }
+            foreach (var g in UnityEngine.Object.FindObjectsOfType<GeyserScript>())
+            {
+                geysers++;
+                parts.Add("g" + ((Vector2)g.transform.position).ToString("F0") + ":" + GeyserLiquid(g));
+            }
+            foreach (var g in UnityEngine.Object.FindObjectsOfType<GrabberPlant>())
+            {
+                grabbers++;
+                parts.Add("p" + ((Vector2)g.transform.position).ToString("F0") + ":" + GrabberOffset(g).ToString("F1"));
+            }
+            parts.Sort(StringComparer.Ordinal);
+            string hash;
+            using (var sha = SHA256.Create())
+                hash = BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(string.Join(";", parts.ToArray()))), 0, 6).Replace("-", "").ToLowerInvariant();
+            return fans + " fans, " + geysers + " geysers, " + grabbers + " grabbers " + hash + " (seeded " + SeededHazards.Seeded + ")";
+        }
+
+        /// <summary>M5: the whole layer's liquid, hashed, with how many cells hold any.</summary>
+        private static string FluidLine()
+        {
+            var fm = FluidManager.main;
+            if (fm == null || fm.fluid == null) return "none";
+            var g = fm.fluid;
+            int wet = 0;
+            uint h = 2166136261u;
+            int width = g.GetLength(0), height = g.GetLength(1);
+            for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++)
+            {
+                byte v = g[x, y];
+                if (v != 0) wet++;
+                unchecked { h = (h ^ v) * 16777619u; }
+            }
+            // Wet cells per 64-cell region, to find where two machines differ.
+            var sb = new StringBuilder();
+            for (int rx = 0; rx < width; rx += 64)
+            for (int ry = 0; ry < height; ry += 64)
+            {
+                int n = 0;
+                for (int x = rx; x < rx + 64 && x < width; x++)
+                for (int y = ry; y < ry + 64 && y < height; y++)
+                    if (g[x, y] != 0) n++;
+                if (n > 0) sb.Append(' ').Append(rx / 64).Append(',').Append(ry / 64).Append('=').Append(n);
+            }
+            Log.Info("DEV fluid regions" + sb);
+            // Near the players: 16-cell patches whose centre is within 40 cells of a living
+            // player. Far liquid nobody simulates may differ until someone comes near.
+            var w = WorldGeneration.world;
+            var near = new List<Vector2Int>();
+            var where = new StringBuilder();
+            var lb = GameInfo.LocalBody;
+            if (lb != null && lb.alive) near.Add(w.WorldToBlockPos(lb.transform.position));
+            foreach (var rec in Coop.Players.Values)
+                if (rec.Id != Coop.LocalId && rec.Alive && Coop.InLayer(rec)) near.Add(w.WorldToBlockPos(rec.Position));
+            foreach (var p in near) where.Append(' ').Append(p.x).Append(',').Append(p.y);
+            uint hn = 2166136261u;
+            int patches = 0;
+            for (int px = 0; px < width / 16; px++)
+            for (int py = 0; py < height / 16; py++)
+            {
+                var c = new Vector2Int(px * 16 + 8, py * 16 + 8);
+                bool close = false;
+                foreach (var p in near) if (Mathf.Abs(p.x - c.x) <= 40 && Mathf.Abs(p.y - c.y) <= 40) { close = true; break; }
+                if (!close) continue;
+                patches++;
+                for (int x = px * 16; x < px * 16 + 16; x++)
+                for (int y = py * 16; y < py * 16 + 16; y++)
+                    unchecked { hn = (hn ^ g[x, y]) * 16777619u; }
+            }
+            return wet + " wet cells " + h.ToString("x8") + "; near players (" + where.ToString().Trim() + ") " + patches + " patches " + hn.ToString("x8") +
+                   "; patches sent/applied " + FluidSync.Sent + "/" + FluidSync.Applied;
+        }
+
+        private static string RottingLine()
+        {
+            var parts = new List<string>();
+            foreach (var kv in EntityRegistry.All)
+            {
+                if (kv.Value == null || kv.Value.transform.parent != null) continue;
+                var it = kv.Value.GetComponent<Item>();
+                if (it != null && it.id == "musharm") parts.Add(kv.Key + ":" + it.condition.ToString("F2"));
+            }
+            parts.Sort(StringComparer.Ordinal);
+            return parts.Count == 0 ? "none" : string.Join(" ", parts.ToArray());
+        }
         private float _simEndAt;
 
         /// <summary>Plays the running treatment minigame's "hand" for the test: wraps, pushes, shocks.</summary>
@@ -678,12 +888,30 @@ namespace CCoop.Plugin.Dev
                     break;
                 case 204:
                     Verify("given");
+                    if (Coop.IsHost)
+                    {
+                        // M8: the client will ask for these; the host hands them over.
+                        GiveSync.DevAutoAccept = true;
+                        GiveHand("tweezers");
+                        Log.Info("DEV host holds tweezers");
+                    }
                     _stage = 220; _stageAt = now + 2f;
                     break;
 
                 // ---- moving as a team
                 case 220:
                     if (Coop.IsHost) { WalkOver(); Coop.Get<TeamMotion>().GiveLegUp(other); Log.Info("DEV host gives a leg-up"); }
+                    if (Coop.IsClient)
+                    {
+                        var kit = Coop.Get<PlayerSync>()?.Find(NetSession.HostId)?.Kit;
+                        int slot = kit == null ? -1 : Array.IndexOf(kit, "tweezers");
+                        if (slot < 0) Log.Info("DEV client sees no tweezers on the host to ask for");
+                        else
+                        {
+                            Coop.Get<GiveSync>().AskFor(NetSession.HostId, slot, "tweezers");
+                            Log.Info("DEV client asks the host for the tweezers");
+                        }
+                    }
                     _stage = 221; _stageAt = now + 1.5f;
                     break;
                 case 221:
@@ -1158,6 +1386,17 @@ namespace CCoop.Plugin.Dev
                      " temp " + WorldGeneration.world.ambientTemperature.ToString("F1"));
             if (tag == "team") Log.Info("VERIFY " + tag + " scaling enemy strength " + SpiderHandler.strengthMult.ToString("F2") + " (run setting " +
                                          (WorldGeneration.runSettings != null && WorldGeneration.runSettings.TryGetValue("enemystrength", out var es0) ? es0 : "-") + ")");
+            if (tag == "before")
+            {
+                // M9: a shared preset line is checked against the game's settings: unknown
+                // ones dropped, values clamped to the game's limits.
+                var p = UI.RunPresets.Decode("ccoop-run:Test|timelimit=999;bogus=1;blind=true;startingsupplies=7;healingrate=0.5");
+                var parts = new List<string>();
+                if (p != null) foreach (var kv in p.Values) parts.Add(kv.Key + "=" + Convert.ToString(kv.Value, System.Globalization.CultureInfo.InvariantCulture));
+                parts.Sort(StringComparer.Ordinal);
+                Log.Info("VERIFY " + tag + " presets " + UI.RunPresets.Builtin.Length + " built in; decoded " + (p == null ? "nothing" : p.Name + " " + string.Join(" ", parts.ToArray())) +
+                         "; round trip " + (p != null && UI.RunPresets.Decode(UI.RunPresets.Encode(p))?.Values.Count == p.Values.Count));
+            }
             if (tag == "team" && WorldGeneration.runSettings != null)
                 Log.Info("VERIFY " + tag + " runsettings " + string.Join(" | ", UI.RunSettingsReadout.Lines(WorldGeneration.runSettings).ToArray()));
             var we = Coop.Get<WorldEvents>();
@@ -1169,6 +1408,14 @@ namespace CCoop.Plugin.Dev
                      " milestones " + Milestones.Reached + " (carry " + Milestones.Count("carry").ToString("F0") + " catch " + Milestones.Count("catch") +
                      " legup " + Milestones.Count("legup") + " hug " + Milestones.Count("hug") + " treat " + Milestones.Count("treat") +
                      " revived " + Milestones.Count("revived") + " layer " + Milestones.Count("layer") + ")");
+            Log.Info("VERIFY " + tag + " hazards " + HazardsLine());
+            Log.Info("VERIFY " + tag + " fluid " + FluidLine());
+            Log.Info("VERIFY " + tag + " decay crumbled/forothers " + ItemDecay.Crumbled + "/" + ItemDecay.DecayedForOthers +
+                     " conditions " + ItemDecay.ConditionsApplied + " crumbles seen " + ItemDecay.CrumblesSeen +
+                     " rotting " + RottingLine() + " craft granted/denied " + CraftSync.Granted + "/" + CraftSync.Denied +
+                     " asks sent/given/refused " + GiveSync.AsksSent + "/" + GiveSync.AsksGiven + "/" + GiveSync.AsksRefused +
+                     " muzzle flashes " + RemotePlayer.MuzzleFlashes +
+                     " api " + CCoop.CCoopApi.Registered.Count + " registered, sent/received " + ApiSent + "/" + ApiReceived);
             var body = GameInfo.LocalBody;
             var ps = Coop.Get<PlayerSync>();
             if (ps != null && body != null)

@@ -42,7 +42,11 @@ namespace CCoop.Plugin.Sync
         {
             _self = this;
             WorldNet.Register<CreatureOwners>(s, (o, m) => { if (!Coop.IsHost) foreach (var kv in m.Owners) SetOwner(kv.Key, kv.Value); });
-            WorldNet.Register<CreatureStates>(s, (o, m) => { foreach (var b in m.Bodies) _target[b.Id] = b; }, queueWhilePending: false);
+            WorldNet.Register<CreatureStates>(s, (o, m) =>
+            {
+                foreach (var b in m.Bodies) _target[b.Id] = b;
+                if (Coop.IsHost) SendByInterest(o, m);
+            }, queueWhilePending: false, relay: false);
         }
 
         internal override void Detach() { Clear(); _self = null; }
@@ -66,7 +70,8 @@ namespace CCoop.Plugin.Sync
         {
             int mine = 0;
             foreach (var id in _creatures) if (OwnerOf(id) == Coop.LocalId) mine++;
-            return _creatures.Count + " tracked, " + mine + " simulated here, " + _puppets.Count + " puppets, " + _target.Count + " with remote state";
+            return _creatures.Count + " tracked, " + mine + " simulated here, " + _puppets.Count + " puppets, " + _target.Count + " with remote state" +
+                   (Coop.IsHost ? ", relayed " + Relayed + " filtered out " + Filtered : "");
         }
 
         private static bool IsCreature(GameObject go)
@@ -208,9 +213,41 @@ namespace CCoop.Plugin.Sync
                     VX = rb != null ? rb.velocity.x : 0f, VY = rb != null ? rb.velocity.y : 0f,
                     Spin = rb != null ? rb.angularVelocity : 0f,
                 });
-                if (msg.Bodies.Count == CreatureStates.Max) { WorldNet.Publish(msg); msg = new CreatureStates(); }
+                if (msg.Bodies.Count == CreatureStates.Max) { Send(msg); msg = new CreatureStates(); }
             }
-            if (msg.Bodies.Count > 0) WorldNet.Publish(msg);
+            if (msg.Bodies.Count > 0) Send(msg);
+        }
+
+        internal static int Relayed, Filtered;
+
+        private void Send(CreatureStates msg)
+        {
+            if (Coop.IsHost) SendByInterest(Coop.LocalId, msg);
+            else WorldNet.Publish(msg);  // to the host, which passes each player only what's near them
+        }
+
+        /// <summary>
+        /// Host: each player gets only the creatures within stream range of them (M7). The
+        /// dead get everything: they may be watching a teammate anywhere.
+        /// </summary>
+        private void SendByInterest(byte origin, CreatureStates m)
+        {
+            foreach (var rec in Coop.Players.Values)
+            {
+                if (rec.Id == NetSession.HostId || rec.Id == origin) continue;
+                if (rec.WorldEpoch != Coop.Epoch || rec.WorldEpoch == 0) continue;
+                CreatureStates part = m;
+                if (rec.HasPosition && rec.Alive)
+                {
+                    part = new CreatureStates();
+                    foreach (var b in m.Bodies)
+                        if (Vector2.Distance(new Vector2(b.X, b.Y), rec.Position) < StreamRange) part.Bodies.Add(b);
+                    Filtered += m.Bodies.Count - part.Bodies.Count;
+                    if (part.Bodies.Count == 0) continue;
+                }
+                Relayed += part.Bodies.Count;
+                Session.RelayTo(rec.Id, origin, part);
+            }
         }
 
         internal override void LateTick()

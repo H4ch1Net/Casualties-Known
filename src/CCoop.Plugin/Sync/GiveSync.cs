@@ -29,6 +29,22 @@ namespace CCoop.Plugin.Sync
         }
 
         private readonly List<Incoming> _incoming = new List<Incoming>();
+
+        private struct Ask
+        {
+            public byte From;
+            public byte Slot;
+            public string ItemId;
+            public float At;
+        }
+
+        /// <summary>Teammates asking this player for something.</summary>
+        private readonly List<Ask> _asks = new List<Ask>();
+
+        /// <summary>What this player asked each teammate for, and when: their offer of it is accepted at once.</summary>
+        private readonly Dictionary<byte, KeyValuePair<string, float>> _asked = new Dictionary<byte, KeyValuePair<string, float>>();
+
+        internal static int AsksSent, AsksGiven, AsksRefused;
         private static GUIStyle _box;
 
         /// <summary>Dev: accept every offer at once.</summary>
@@ -39,22 +55,30 @@ namespace CCoop.Plugin.Sync
             s.On<GiveOffer>(OnOffer);
             s.On<GiveAnswer>(OnAnswer);
             s.On<GiveDone>(OnDone);
+            s.On<GiveAsk>(OnAsk);
         }
 
         internal override void Detach()
         {
             _outgoing.Clear();
             _incoming.Clear();
+            _asks.Clear();
+            _asked.Clear();
         }
 
-        internal override void OnWorldLost() => _incoming.Clear();
+        internal override void OnWorldLost()
+        {
+            _incoming.Clear();
+            _asks.Clear();
+            _asked.Clear();
+        }
 
         // ------------------------------------------------------------------ giver
 
-        internal void Offer(byte to)
+        internal void Offer(byte to, Item what = null)
         {
             string why = Medic.CantTreat(to);
-            var item = Medic.HeldItem(GameInfo.LocalBody);
+            var item = what != null ? what : Medic.HeldItem(GameInfo.LocalBody);
             if (why == null && item == null) why = "Hold the item you want to give.";
             if (why != null) { CoopRuntime.Notice(why); return; }
             uint token = _nextToken++;
@@ -94,7 +118,77 @@ namespace CCoop.Plugin.Sync
             if (m.To != Coop.LocalId || origin == Coop.LocalId) return;
             _incoming.RemoveAll(i => i.From == origin);
             _incoming.Add(new Incoming { Token = m.Token, From = origin, ItemId = m.ItemId, At = Time.unscaledTime });
-            if (DevAutoAccept) Answer(_incoming[_incoming.Count - 1], true);
+            // The answer to this player's own ask: no second prompt.
+            bool asked = _asked.TryGetValue(origin, out var want) && want.Key == m.ItemId && Time.unscaledTime - want.Value < 60f;
+            if (asked) _asked.Remove(origin);
+            if (DevAutoAccept || asked) Answer(_incoming[_incoming.Count - 1], true);
+        }
+
+        // ------------------------------------------------------------------ asking
+
+        /// <summary>Asks teammate <paramref name="from"/> for the item in their slot <paramref name="slot"/>.</summary>
+        internal void AskFor(byte from, int slot, string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId) || from == Coop.LocalId) return;
+            var rec = Coop.Player(from);
+            if (!rec.Alive) { CoopRuntime.Notice(rec.Name + " can't hand anything over"); return; }
+            _asked[from] = new KeyValuePair<string, float>(itemId, Time.unscaledTime);
+            Session.Broadcast(new GiveAsk { To = from, Slot = (byte)Mathf.Clamp(slot, 0, 255), ItemId = itemId });
+            AsksSent++;
+            CoopRuntime.Notice("Asked " + rec.Name + " for their " + Medic.Pretty(itemId));
+            Log.Info("[give] asked " + rec.Name + " for " + itemId);
+        }
+
+        /// <summary>Whether this player is waiting on <paramref name="from"/> for something.</summary>
+        internal bool Asking(byte from) => _asked.TryGetValue(from, out var a) && Time.unscaledTime - a.Value < 60f;
+
+        private void OnAsk(byte origin, GiveAsk m)
+        {
+            if (m.To != Coop.LocalId || origin == Coop.LocalId) return;
+            if (m.Refused)
+            {
+                if (_asked.Remove(origin)) CoopRuntime.Notice(Coop.Player(origin).Name + " is keeping their " + Medic.Pretty(m.ItemId));
+                return;
+            }
+            _asks.RemoveAll(a => a.From == origin);
+            _asks.Add(new Ask { From = origin, Slot = m.Slot, ItemId = m.ItemId, At = Time.unscaledTime });
+            if (DevAutoAccept) GiveAsked(_asks[_asks.Count - 1]);
+        }
+
+        private void GiveAsked(Ask a)
+        {
+            _asks.RemoveAll(x => x.From == a.From);
+            var item = FindOwn(a.Slot, a.ItemId);
+            if (item == null)
+            {
+                CoopRuntime.Notice("You no longer have the " + Medic.Pretty(a.ItemId));
+                Refuse(a);
+                return;
+            }
+            AsksGiven++;
+            Offer(a.From, item);
+        }
+
+        private void Refuse(Ask a)
+        {
+            _asks.RemoveAll(x => x.From == a.From);
+            AsksRefused++;
+            Session.Broadcast(new GiveAsk { To = a.From, Slot = a.Slot, ItemId = a.ItemId, Refused = true });
+        }
+
+        /// <summary>The asked-for item: in the slot they saw, else anywhere on this player.</summary>
+        private static Item FindOwn(int slot, string id)
+        {
+            var body = GameInfo.LocalBody;
+            if (body == null || !body.alive) return null;
+            if (slot < body.slots.Length)
+            {
+                var inSlot = body.GetItem(slot);
+                if (inSlot != null && inSlot.id == id) return inSlot;
+            }
+            foreach (var it in body.GetAllItemsThorough())
+                if (it != null && it.id == id) return it;
+            return null;
         }
 
         private void Answer(Incoming offer, bool accept)
@@ -138,11 +232,13 @@ namespace CCoop.Plugin.Sync
         /// <summary>Accept / decline prompts, newest first, under the notices.</summary>
         internal override void Gui()
         {
-            if (_incoming.Count == 0) return;
             float now = Time.unscaledTime;
+            foreach (var a in _asks.ToArray())
+                if (now - a.At > OfferLifetime) Refuse(a);
+            if (_incoming.Count == 0 && _asks.Count == 0) return;
             foreach (var o in _incoming.ToArray())
                 if (now - o.At > OfferLifetime) Answer(o, false);
-            if (_incoming.Count == 0) return;
+            if (_incoming.Count == 0 && _asks.Count == 0) return;
             if (_box == null) _box = new GUIStyle(GUI.skin.box) { fontSize = 14, alignment = TextAnchor.UpperCenter };
 
             float k = UI.CoopWindow.Scale;
@@ -158,6 +254,14 @@ namespace CCoop.Plugin.Sync
                     GUI.Box(r, Coop.Player(o.From).Name + " offers you " + Medic.Pretty(o.ItemId), _box);
                     if (GUI.Button(new Rect(r.x + 40f, r.y + 32f, 140f, 26f), "Take it")) Answer(o, true);
                     if (GUI.Button(new Rect(r.x + 200f, r.y + 32f, 140f, 26f), "No thanks")) Answer(o, false);
+                    y += 74f;
+                }
+                foreach (var a in _asks.ToArray())
+                {
+                    var r = new Rect(w / 2f - 190f, y, 380f, 66f);
+                    GUI.Box(r, Coop.Player(a.From).Name + " asks for your " + Medic.Pretty(a.ItemId), _box);
+                    if (GUI.Button(new Rect(r.x + 40f, r.y + 32f, 140f, 26f), "Give it")) GiveAsked(a);
+                    if (GUI.Button(new Rect(r.x + 200f, r.y + 32f, 140f, 26f), "Keep it")) Refuse(a);
                     y += 74f;
                 }
             }

@@ -181,7 +181,11 @@ namespace CCoop.Plugin.Sync
                     if (wasClient && SuppressLoot > 0) SuppressLoot--;
                 }
             }
-            else UnityEngine.Object.Destroy(go);
+            else
+            {
+                if (m.Broken && go.GetComponent<Item>() != null) ItemDecay.CrumbleEffect(go);
+                UnityEngine.Object.Destroy(go);
+            }
             Destroyed++;
         }
 

@@ -64,6 +64,14 @@ namespace CCoop.Plugin.Runtime
 
         internal static readonly Dictionary<byte, PlayerRecord> Players = new Dictionary<byte, PlayerRecord>();
 
+        /// <summary>
+        /// The player is playing in this machine's layer and has a position. The host
+        /// tracks <see cref="PlayerRecord.InWorld"/> from layer status; clients only see
+        /// teammates' states, so there it is their reported layer.
+        /// </summary>
+        internal static bool InLayer(PlayerRecord rec) =>
+            rec != null && rec.HasPosition && (IsHost ? rec.InWorld : rec.ReportedEpoch == Epoch);
+
         internal static PlayerRecord Player(byte id)
         {
             if (!Players.TryGetValue(id, out var r))

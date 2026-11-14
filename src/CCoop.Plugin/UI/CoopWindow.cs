@@ -233,6 +233,7 @@ namespace CCoop.Plugin.UI
             }
             RulesEditor(rt, null);
 
+            RunPresets.Section(_box, _small);
             SavedRuns();
 
             GUILayout.Space(4);
@@ -551,6 +552,7 @@ namespace CCoop.Plugin.UI
                     RulesEditor(rt, s);
                     GUILayout.EndVertical();
                 }
+                RunPresets.Section(_box, _small);  // only before the run starts
             }
 
             if (GameInfo.InRunScene && WorldGeneration.runSettings != null)
@@ -606,6 +608,9 @@ namespace CCoop.Plugin.UI
 
         private static readonly string[] VoiceModes = { "PushToTalk", "Open", "Off" };
 
+        /// <summary>The voice row is showing the mic meter (open mic).</summary>
+        internal static bool MeasuringMic;
+
         private static void VoiceRow()
         {
             var cfg = CoopPlugin.Instance;
@@ -620,6 +625,23 @@ namespace CCoop.Plugin.UI
             int pick = GUILayout.Toolbar(cur, new[] { "Hold " + cfg.VoiceKey.Value, "Open mic", "Off" });
             if (pick != cur) cfg.VoiceMode.Value = VoiceModes[pick];
             GUILayout.EndHorizontal();
+            MeasuringMic = cfg.VoiceMode.Value == "Open";
+            if (MeasuringMic)
+            {
+                // Open mic threshold, with this player's live mic level beside it.
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Send above", _small, GUILayout.Width(70));
+                cfg.VoiceGate.Value = GUILayout.HorizontalSlider(cfg.VoiceGate.Value, 0f, 0.3f, GUILayout.Width(140));
+                GUILayout.Label(cfg.VoiceGate.Value <= 0.001f ? "everything" : Mathf.RoundToInt(cfg.VoiceGate.Value / 0.3f * 100f) + "%", _small, GUILayout.Width(70));
+                var bar = GUILayoutUtility.GetRect(100f, 10f, GUILayout.Width(100f));
+                GUI.Box(bar, GUIContent.none);
+                float lvl = Mathf.Clamp01(VoiceSync.MicLevel / 0.3f);
+                var oldColor = GUI.color;
+                GUI.color = VoiceSync.MicLevel >= cfg.VoiceGate.Value ? new Color(0.5f, 1f, 0.5f) : new Color(0.7f, 0.7f, 0.7f);
+                GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * lvl, bar.height), Texture2D.whiteTexture);
+                GUI.color = oldColor;
+                GUILayout.EndHorizontal();
+            }
             GUILayout.Label("Nearby players hear you, quieter with distance; the dead hear only each other. Text chat: press " +
                             cfg.ChatKey.Value + ".", _small);
             if (HostRules.Current.Arrows)

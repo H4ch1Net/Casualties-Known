@@ -15,7 +15,7 @@ namespace CCoop.Plugin.Protocol
         public static MessageRegistry Build()
         {
             ushort b = MessageRegistry.FirstUserId;
-            return new MessageRegistry()
+            var registry = new MessageRegistry()
                 // players
                 .Add<PlayerProfile>((ushort)(b + 0), Delivery.Reliable)
                 .Add<PlayerState>((ushort)(b + 1), Delivery.Unreliable)
@@ -81,7 +81,13 @@ namespace CCoop.Plugin.Protocol
                 .Add<ShotFired>((ushort)(b + 75), Delivery.Reliable)
                 .Add<TraderTrade>((ushort)(b + 76), Delivery.Reliable)
                 .Add<WorldFingerprint>((ushort)(b + 77), Delivery.Reliable)
-                .Add<ChunkResync>((ushort)(b + 78), Delivery.Reliable);
+                .Add<ChunkResync>((ushort)(b + 78), Delivery.Reliable)
+                .Add<ItemConditions>((ushort)(b + 79), Delivery.Reliable)
+                .Add<CraftClaim>((ushort)(b + 80), Delivery.Reliable)
+                .Add<GiveAsk>((ushort)(b + 81), Delivery.Reliable)
+                .Add<FluidChunks>((ushort)(b + 82), Delivery.Reliable);
+            // Other mods' messages (CCoopApi), after ours, so they share the fingerprint.
+            return CCoop.CCoopApi.AddTo(registry);
         }
     }
 
@@ -532,6 +538,105 @@ namespace CCoop.Plugin.Protocol
         public void Read(ref PacketReader r) => Id = r.ReadUInt32();
     }
 
+    internal struct FluidChunk
+    {
+        public ushort X, Y;
+        /// <summary>Run-length pairs (count, liquid) over the 16x16 cells, column by column.</summary>
+        public byte[] Cells;
+    }
+
+    /// <summary>Liquid patches that changed on the machine simulating them.</summary>
+    internal sealed class FluidChunks : IMessage
+    {
+        public const int Max = 64;
+        public List<FluidChunk> Chunks = new List<FluidChunk>();
+
+        public void Write(PacketWriter w)
+        {
+            w.WriteUInt16((ushort)Chunks.Count);
+            foreach (var c in Chunks)
+            {
+                w.WriteUInt16(c.X);
+                w.WriteUInt16(c.Y);
+                w.WriteBlob(c.Cells);
+            }
+        }
+
+        public void Read(ref PacketReader r)
+        {
+            int n = r.ReadCount(Max);
+            Chunks.Clear();
+            for (int i = 0; i < n; i++) Chunks.Add(new FluidChunk { X = r.ReadUInt16(), Y = r.ReadUInt16(), Cells = r.ReadBlob() });
+        }
+    }
+
+    internal struct ConditionEntry
+    {
+        public uint Id;
+        public float Condition;
+    }
+
+    /// <summary>Host -> all: loose items whose condition changed (rot, rust), decided by the host.</summary>
+    internal sealed class ItemConditions : IMessage
+    {
+        public const int Max = 400;
+        public List<ConditionEntry> Items = new List<ConditionEntry>();
+
+        public void Write(PacketWriter w)
+        {
+            w.WriteUInt16((ushort)Items.Count);
+            foreach (var e in Items)
+            {
+                w.WriteUInt32(e.Id);
+                float c = e.Condition < 0f ? 0f : e.Condition > 1f ? 1f : e.Condition;
+                w.WriteUInt16((ushort)(c * 65535f + 0.5f));
+            }
+        }
+
+        public void Read(ref PacketReader r)
+        {
+            int n = r.ReadCount(Max);
+            Items.Clear();
+            for (int i = 0; i < n; i++) Items.Add(new ConditionEntry { Id = r.ReadUInt32(), Condition = r.ReadUInt16() / 65535f });
+        }
+    }
+
+    internal enum CraftOp : byte
+    {
+        Ask,
+        Granted,
+        Denied,
+    }
+
+    /// <summary>
+    /// Crafting with items on the ground: a client asks the host for them first, so two
+    /// players can't use up the same item.
+    /// </summary>
+    internal sealed class CraftClaim : IMessage
+    {
+        public const int Max = 32;
+        public CraftOp Op;
+        public byte Request;
+        public List<uint> Ids = new List<uint>();
+
+        public void Write(PacketWriter w)
+        {
+            w.WriteByte((byte)Op);
+            w.WriteByte(Request);
+            w.WriteUInt16((ushort)Ids.Count);
+            foreach (var id in Ids) w.WriteUInt32(id);
+        }
+
+        public void Read(ref PacketReader r)
+        {
+            Op = (CraftOp)r.ReadByte();
+            Request = r.ReadByte();
+            int n = r.ReadCount(Max);
+            Ids.Clear();
+            for (int i = 0; i < n; i++) Ids.Add(r.ReadUInt32());
+        }
+    }
+
     /// <summary>An object is gone. Broken plays the game's own break effects.</summary>
     internal sealed class EntityDespawn : IMessage
     {
@@ -901,6 +1006,8 @@ namespace CCoop.Plugin.Protocol
         Fever = 2048,
         Standing = 4096,
         Climbing = 8192,
+        /// <summary>Head in water without scuba gear: the game garbles their speech.</summary>
+        Underwater = 16384,
     }
 
     [System.Flags]
@@ -1114,6 +1221,21 @@ namespace CCoop.Plugin.Protocol
 
         public void Write(PacketWriter w) { w.WriteUInt32(Token); w.WriteByte(Giver); w.WriteBool(Accept); w.WriteString(Reason); }
         public void Read(ref PacketReader r) { Token = r.ReadUInt32(); Giver = r.ReadByte(); Accept = r.ReadBool(); Reason = r.ReadString(); }
+    }
+
+    /// <summary>
+    /// Asking a teammate for something they carry (from the teammate panel). Refused is
+    /// their "keep it"; a yes comes back as an ordinary give offer.
+    /// </summary>
+    internal sealed class GiveAsk : IMessage
+    {
+        public byte To;
+        public byte Slot;
+        public string ItemId = "";
+        public bool Refused;
+
+        public void Write(PacketWriter w) { w.WriteByte(To); w.WriteByte(Slot); w.WriteString(ItemId); w.WriteBool(Refused); }
+        public void Read(ref PacketReader r) { To = r.ReadByte(); Slot = r.ReadByte(); ItemId = r.ReadString(); Refused = r.ReadBool(); }
     }
 
     /// <summary>Giver -> receiver: the item itself (empty if it was gone by the time you said yes).</summary>
@@ -1485,6 +1607,7 @@ namespace CCoop.Plugin.Protocol
         BlueHeart = 11,
         GunmineFired = 12,
         MinePressed = 13,
+        GeyserRumble = 14,
     }
 
     /// <summary>

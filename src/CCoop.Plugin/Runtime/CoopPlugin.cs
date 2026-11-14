@@ -48,6 +48,7 @@ namespace CCoop.Plugin.Runtime
         internal ConfigEntry<KeyCode> VoiceKey;
         internal ConfigEntry<float> VoiceVolume;
         internal ConfigEntry<float> VoiceRange;
+        internal ConfigEntry<float> VoiceGate;
         internal ConfigEntry<bool> VerboseLog;
         internal ConfigEntry<bool> UpdateCheckEnabled;
         internal ConfigEntry<string> UpdateRepository;
@@ -115,6 +116,9 @@ namespace CCoop.Plugin.Runtime
             VoiceRange = Config.Bind("Voice", "Range", 35f,
                 new ConfigDescription("Distance (world units) at which a voice fades out completely. Full volume within 5.",
                                       new AcceptableValueRange<float>(10f, 200f)));
+            VoiceGate = Config.Bind("Voice", "OpenMicThreshold", 0f,
+                new ConfigDescription("Open mic only sends sound louder than this (0 = send everything Steam passes on). Set it from the co-op window, which shows your mic level.",
+                                      new AcceptableValueRange<float>(0f, 0.3f)));
             UiScale = Config.Bind("UI", "UiScale", 0f,
                 new ConfigDescription("Size of the co-op window. 0 picks one from the screen (larger on Steam Deck).", new AcceptableValueRange<float>(0f, 3f)));
             SteamTimeline = Config.Bind("UI", "SteamTimeline", true,

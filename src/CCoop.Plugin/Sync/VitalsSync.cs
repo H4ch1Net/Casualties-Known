@@ -96,6 +96,7 @@ namespace CCoop.Plugin.Sync
             if (b.temperature > 38.5f) s |= BodySigns.Fever;
             if (b.standing) s |= BodySigns.Standing;
             if (b.currentClimbable != null) s |= BodySigns.Climbing;
+            if (b.inWater && !b.hasScubaGear) s |= BodySigns.Underwater;
             v.Signs = s;
 
             if (b.limbs != null)

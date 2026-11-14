@@ -88,6 +88,9 @@ namespace CCoop.Plugin.Runtime
             Add(new TraderSync());
             Add(new WorldCheck());
             Add(new Milestones());
+            Add(new ItemDecay());
+            Add(new CraftSync());
+            Add(new FluidSync());
             Add(new TeamReceipt());
             Add(new ExplosionSync());
             Add(new SteamMoments());
@@ -268,6 +271,8 @@ namespace CCoop.Plugin.Runtime
             session.PeerLeftEvent += OnPeerLeft;
 
             foreach (var m in _modules) Safe(() => m.Attach(session), m, "attach");
+            try { CCoop.CCoopApi.Attach(session); }
+            catch (Exception e) { Log.Warn("[api] could not attach mod messages: " + e.Message); }
 
             if (session.IsHost)
             {

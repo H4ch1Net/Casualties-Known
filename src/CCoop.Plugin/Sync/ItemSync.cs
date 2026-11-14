@@ -129,6 +129,12 @@ namespace CCoop.Plugin.Sync
             if (root.parent == null && EntityRegistry.TryGetId(root.gameObject, out var id)) _dirtyContainers.Add(id);
         }
 
+        /// <summary>A loose networked item's state changed here (worn, drained): send it again.</summary>
+        internal void MarkChanged(GameObject go)
+        {
+            if (go != null && go.transform.parent == null && EntityRegistry.TryGetId(go, out var id)) _dirtyContainers.Add(id);
+        }
+
         // ------------------------------------------------------------------ motion
 
         internal override void LateTick()

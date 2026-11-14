@@ -50,6 +50,9 @@ namespace CCoop.Plugin.Sync
         /// <summary>The item ids in the player's two hand slots (0 and 1), as last seen.</summary>
         internal string[] HeldIds => _shownKit.Length >= 2 ? new[] { _shownKit[0], _shownKit[1] } : new string[0];
 
+        /// <summary>Every item seen on them, by slot (hands, back, belt...); empty slots are null.</summary>
+        internal string[] Kit => _shownKit;
+
         internal Vector2? LimbPosition(int i) =>
             Visible && _rig.Limbs != null && i >= 0 && i < _rig.Limbs.Length && _rig.Limbs[i] != null ? (Vector2)_rig.Limbs[i].position : (Vector2?)null;
 
@@ -240,6 +243,36 @@ namespace CCoop.Plugin.Sync
             var sr = go.GetComponent<SpriteRenderer>();
             if (sr != null) sr.sortingOrder = _rig.SlotSort[slot];
             go.SetActive(true);
+        }
+
+        internal static int MuzzleFlashes;
+
+        /// <summary>
+        /// This teammate fired from <paramref name="at"/>: their held gun flashes. The held
+        /// copy keeps the gun's particle systems (only its scripts are stripped), and the
+        /// muzzle is the one nearest the shot's start.
+        /// </summary>
+        internal void FlashMuzzle(Vector2 at)
+        {
+            if (!Visible) return;
+            ParticleSystem best = null;
+            float bestDist = float.MaxValue;
+            foreach (var go in _heldItems.Values)
+            {
+                if (go == null) continue;
+                foreach (var ps in go.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    float d = Vector2.Distance(ps.transform.position, at);
+                    if (d < bestDist) { bestDist = d; best = ps; }
+                }
+            }
+            if (best == null || bestDist > 4f) return;
+            try
+            {
+                best.Play(true);
+                MuzzleFlashes++;
+            }
+            catch (Exception e) { Log.Debug("muzzle flash: " + e.Message); }
         }
 
         internal void PlayAttack(PlayerAttack m)

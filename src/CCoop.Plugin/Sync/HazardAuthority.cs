@@ -20,7 +20,7 @@ namespace CCoop.Plugin.Sync
             float mine = body != null && body.alive ? Vector2.Distance(at, body.transform.position) : float.MaxValue;
             foreach (var rec in Coop.Players.Values)
             {
-                if (rec.Id == Coop.LocalId || !rec.InWorld || !rec.HasPosition || !rec.Alive) continue;
+                if (rec.Id == Coop.LocalId || !Coop.InLayer(rec) || !rec.Alive) continue;
                 float d = Vector2.Distance(at, rec.Position);
                 if (d < mine || (d == mine && rec.Id < Coop.LocalId)) return false;
             }
