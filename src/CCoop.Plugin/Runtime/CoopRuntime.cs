@@ -88,6 +88,7 @@ namespace CCoop.Plugin.Runtime
             Add(new TraderSync());
             Add(new WorldCheck());
             Add(new Milestones());
+            Add(new TeamReceipt());
             Add(new ExplosionSync());
             Add(new SteamMoments());
             Add(new DevHarness());

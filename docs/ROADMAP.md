@@ -252,8 +252,13 @@ Playtest ideas: the team should feel physical together, not just side by side.
 - [ ] **S** **Crafting** consumes networked ground items through the host.
 - [ ] **M** **Water after load.** Each peer publishes changed cells inside its own simulated window. Also hook the direct writers: drinking, space drain, traders, geysers, auto-filling containers.
 - [x] **S** **Guns.** Tracer, sound, puffs and creature reactions on every screen; muzzle flash on puppets not yet. Plus a **friendly fire** host rule (on in Hard and Brutal).
-- [ ] **M** **Story and endings as a team:**
-  - Blue Heart cargo embedding.
+- [~] **M** **Story and endings as a team:** (the Blue Heart is done; the endings need a hands-on playthrough before any code)
+  - [x] Blue Heart cargo embedding.
+  - The End lab is a single-player sequence on each machine: walk to (250, 234), get moved into the surgery room, numb your torso with the lab's one injector, do the cargo surgery on yourself, then walk out to the ending. In co-op it needs:
+    - one injector per player (spawn extras on the host when the escape starts);
+    - the escape timer and the end guards owned by the host (guard spawners already react to every player);
+    - the escape starting for everyone (it starts when a shot hits the scientist, and shots are now replayed everywhere, so it may already start everywhere; to be confirmed);
+    - a finished player treated like a spectator until the whole team is done, and the host finishing first must not send everyone back to the menu (today it would, through "the host left the run").
   - The surface-breach cutscene at the top of layer 11, plus the scientist script and escape timer on layer 12, all driven by the host.
   - Each player unlocks their own wins (`wonchar`).
   - Merc runs: the host decides `canStartMercRun` and spawns the techball and chip, and sends `isMercRun`.
@@ -333,7 +338,7 @@ Small things that make four people in a cave feel like a squad.
   - Deafness (`hearingLoss`) quiets voices.
   - Losing your eyes hides pings and name tags.
 - [x] **S** **Screen effects for co-op states.** *(Being carried has no sway yet.)* Spectating gets its own look: a cold desaturated tint, a slow vignette pulse, a faint grain. A short flash and heartbeat when a teammate dies nearby, a gasp and colour return when you're revived, a gentle sway while you're carried.
-- [ ] **S** **Co-op death receipt.** The end screen's receipt (`PlayerCamera.EndSequence`) gets a line per teammate: character, time alive, how they died, calories. Add a "copy run summary" button, like the game's own clipboard copy.
+- [x] **S** **Co-op death receipt.** The end screen's receipt (`PlayerCamera.EndSequence`) gets a line per teammate: character, time alive, how they died, calories. Add a "copy run summary" button, like the game's own clipboard copy. (Built as a "Your team" box beside the game's receipt: character, the layer reached or died on, and a likely cause from the last vital signs (froze, overheated, bled out, ran out of air, heart stopped). Time alive and calories aren't included.)
 - [x] **S** **Co-op milestones.** Mod-local, never Steam achievements: carried a teammate 100 m, revived someone after death, descended 10 layers together, survived a layer with everyone at under 20% blood. Shown in the co-op window. (Built: Pack mule, Safe hands, Stepping stone, Warm company, Field medic, Second chance, Deeper together. They are kept in `CasualtiesCoop/milestones.txt`, and self-tests never write it.)
 - [ ] **S** **Ask for an item.** From the teammate panel (M4), "Ask for…" an item they carry. They see a prompt and can hand it over with M4's give.
 
