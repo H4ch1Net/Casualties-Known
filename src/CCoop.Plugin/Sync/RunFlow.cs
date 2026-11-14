@@ -266,7 +266,7 @@ namespace CCoop.Plugin.Sync
             finally { BypassRegen = false; }
         }
 
-        private static void ReturnToMenu()
+        internal static void ReturnToMenu()
         {
             try
             {

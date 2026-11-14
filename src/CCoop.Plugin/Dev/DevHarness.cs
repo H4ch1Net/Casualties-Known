@@ -340,11 +340,15 @@ namespace CCoop.Plugin.Dev
                 _stageAt = Time.unscaledTime + 5f;
                 Verify("awake");
                 _descentEpoch = Coop.Epoch;  // before anyone votes: the descent may come before stage 101
+                _waitUntil = Time.unscaledTime + 25f;
                 M3Actions();
                 return;
             }
             if (_stage == 101)
             {
+                // The client can be seconds behind (it wakes up later): the host votes only
+                // once the client's own actions (its chat line first) have arrived.
+                if (Coop.IsHost && Chat.Count == 0 && Time.unscaledTime < _waitUntil) return;
                 _stage = 102;
                 Verify("team");
                 if (Coop.IsHost)
@@ -363,10 +367,54 @@ namespace CCoop.Plugin.Dev
             }
             if (_stage == 103)
             {
+                _stage = 300;
+                _stageAt = Time.unscaledTime + 3f;
+                Verify("exited");
+                return;
+            }
+            if (_stage == 300)
+            {
+                // M10: the client's connection drops as a network failure would. It must
+                // save, go back to the menu, reconnect on its own and rejoin the run where
+                // it was. Then the care tests go on.
+                _stage = 301;
+                _sawDrop = false;
+                _waitUntil = Time.unscaledTime + 90f;
+                if (Coop.IsClient)
+                {
+                    Log.Info("DEV client's connection drops");
+                    Coop.Session.SimulateDrop();
+                }
+                return;
+            }
+            if (_stage == 301)
+            {
+                if (Coop.IsHost)
+                {
+                    bool present = false, back = false;
+                    foreach (var r in Coop.Players.Values)
+                    {
+                        if (r.Id == NetSession.HostId) continue;
+                        if (r.InWorld) present = true;
+                        if (r.InWorld && r.WorldEpoch == Coop.Epoch && r.HasPosition) back = true;
+                    }
+                    if (!_sawDrop)
+                    {
+                        // The client is a couple of seconds behind: first see it go.
+                        if (present && Time.unscaledTime < _waitUntil) return;
+                        _sawDrop = true;
+                        Log.Info("DEV host sees the client drop");
+                        return;
+                    }
+                    if (!back && Time.unscaledTime < _waitUntil) return;
+                    Log.Info("DEV host sees the client " + (back ? "back in the layer" : "not back in time"));
+                }
+                else if (!Coop.WorldLive && Time.unscaledTime < _waitUntil) return;
+
                 _stage = 200;
                 _stageAt = Time.unscaledTime + 3f;
                 _waitUntil = Time.unscaledTime + 25f;
-                Verify("exited");
+                Verify("reconnected");
                 M4Setup();
                 return;
             }
@@ -487,6 +535,7 @@ namespace CCoop.Plugin.Dev
         private int _simSteps;
         private float _catchReadyUntil, _nextReadyDev;
         private float _waitUntil;
+        private bool _sawDrop;
         private float _simEndAt;
 
         /// <summary>Plays the running treatment minigame's "hand" for the test: wraps, pushes, shocks.</summary>
@@ -1085,6 +1134,8 @@ namespace CCoop.Plugin.Dev
                      (ex != null ? ex.Authored + "/" + ex.Replayed + "/" + ex.Deduped : "-") +
                      " vanished " + (es != null ? es.Vanished : 0) + " gravity " + Physics2D.gravity.y.ToString("F1") +
                      " temp " + WorldGeneration.world.ambientTemperature.ToString("F1"));
+            if (tag == "team" && WorldGeneration.runSettings != null)
+                Log.Info("VERIFY " + tag + " runsettings " + string.Join(" | ", UI.RunSettingsReadout.Lines(WorldGeneration.runSettings).ToArray()));
             var we = Coop.Get<WorldEvents>();
             var ss = Coop.Get<ShotSync>();
             Log.Info("VERIFY " + tag + " world events sent/applied " + (we != null ? we.Sent + "/" + we.Applied : "-") +

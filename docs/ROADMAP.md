@@ -320,7 +320,7 @@ These were cut to keep milestones shippable. Each slots into the milestone named
 Small things that make four people in a cave feel like a squad.
 
 - [x] **S** **Teammate markers.** An arrow at the screen edge for each teammate who is off screen, with distance and state (dead, out cold, bleeding from M4 vitals). Players can turn them off, and harder difficulty presets remove them.
-- [ ] **M** **Shared map knowledge.** The layer's fog is revealed where *any* teammate has been. The host merges each player's revealed area periodically and pushes it with `SetFog`. This also makes late joiners' fog match.
+- [-] **M** **Shared map knowledge.** The layer's fog is revealed where *any* teammate has been. The host merges each player's revealed area periodically and pushes it with `SetFog`. This also makes late joiners' fog match. *Dropped:* the game has no explored-area map. Its fog is one haze value for the whole layer (`fogAmount`), which the snapshot already carries.
 - [x] **M** **Gesture wheel.** Hold a key for a radial wheel:
   - **Bark** (the game's `PantSound.Bark`, now heard by everyone).
   - **Point**: a line from your hand to the cursor that teammates see.
@@ -360,7 +360,7 @@ The base game is balanced for one. Four players trivialise some layers and starv
   Any rule changed by hand shows the preset as "Custom". The preset shows in the lobby browser.
 - [x] **M** **Spawn apart.** *(Not yet exercised by the self-test.)* On a new layer, each player arrives at a different point across the same depth (sideways, never deeper), spread out over the layer's width. The host picks open spots and sends each player theirs. Finding each other becomes part of the layer.
 - [ ] **S** **Co-op run presets.** Name and share the game's `runSettings` as presets ("Long night", "Glass bones").
-- [ ] **S** **Per-player difficulty readout.** In the co-op window, show which run settings the host chose, since clients can't open the host's run-settings screen.
+- [x] **S** **Per-player difficulty readout.** In the co-op window, show which run settings the host chose, since clients can't open the host's run-settings screen. (A "Run settings" foldout names the game's preset they match, or lists what differs from normal, in the game's own words.)
 
 **Done when:** a four-player run on default rules feels as tense as a solo run.
 
@@ -374,7 +374,9 @@ What happens when real networks and real crashes meet a two-hour run.
   - Why it's feasible: every client already holds the whole layer (it's streamed), entity ids are host-assigned and identical everywhere, and Steam hands lobby ownership to another member when the owner leaves.
   - What happens: when the host drops, the best-connected client promotes its copy to authoritative. It re-registers runtime ids, reassigns creature ownership and takes over the clock. The others reconnect to it through the same lobby.
   - Done when the host can quit mid-layer and the others keep playing.
-- [ ] **M** **Reconnect after a drop.** A client that loses the connection keeps its world for 60 s and reconnects to the same lobby. It receives only what changed since its last state (by epoch and change sequence), not a full snapshot.
+- [x] **M** **Reconnect after a drop.** A client that loses the connection keeps its world for 60 s and reconnects to the same lobby. It receives only what changed since its last state (by epoch and change sequence), not a full snapshot.
+  - As built, simpler: the dropped client saves its character (before the layer goes offline), goes back to the menu and retries the same host or lobby every 5 s for 60 s. The normal join then loads its saved character and the host puts it back where it was. A full layer snapshot is sent (200–300 KB, about 2 s), not a delta. A "Reconnecting… Stop" row shows in the co-op window.
+  - Self-test: a simulated drop (`NetSession.SimulateDrop`) reconnects on the first attempt and is back in the layer about 7 s later.
 - [ ] **M** **Delta and progressive snapshots.** Send terrain and the objects near the joiner first, then the rest. This cuts the 1–2 s join stall on big layers and makes reconnects cheap.
 - [x] **S** **Desync report.** (the Bug report button in the co-op window) One button bundles the logs, the last VERIFY-style fingerprints and the session info into a zip on the desktop, ready to attach to a GitHub issue. Nothing is uploaded automatically.
 - [x] **S** **Game-update guard.** (`GameCheck` at start-up)

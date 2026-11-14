@@ -84,6 +84,7 @@ The game's own save slot is never touched during a session: co-op saves go to th
 ## Known limits
 
 - If the host leaves the run, everyone returns to the menu.
+- If your connection drops, your character is saved, you go back to the menu, and the game reconnects on its own for up to a minute. You come back where you were.
 - A dead player's body can be searched by teammates (everything but what's in their hands and mouth).
 - Water is shared when a layer loads. After that, each game simulates water near its own player, so lakes far from everyone can drift apart.
 - Pausing or alt-tabbing pauses only your own game. Creatures you're running stop for others until you return.

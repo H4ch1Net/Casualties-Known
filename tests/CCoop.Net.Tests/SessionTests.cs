@@ -145,6 +145,26 @@ namespace CCoop.Net.Tests
         }
 
         [Fact]
+        public void Simulated_drop_ends_the_client_as_a_lost_connection()
+        {
+            var hub = new LoopbackHub();
+            var host = NetSession.CreateHost(hub.Host, Registry(), Cfg("Host"));
+            var a = NetSession.CreateClient(hub.Connect(), Registry(), Cfg("Alice"));
+            Pump(host, a);
+            string reason = null;
+            a.Ended += r => reason = r;
+            var left = new List<byte>();
+            host.PeerLeftEvent += (p, r) => left.Add(p.Id);
+
+            a.SimulateDrop();
+            Pump(host, a);
+
+            Assert.NotNull(reason);
+            Assert.StartsWith("lost connection to the host", reason);
+            Assert.Contains((byte)1, left);
+        }
+
+        [Fact]
         public void Directed_message_reaches_only_its_target()
         {
             var hub = new LoopbackHub();

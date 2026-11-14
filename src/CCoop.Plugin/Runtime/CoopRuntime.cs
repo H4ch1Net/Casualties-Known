@@ -28,6 +28,24 @@ namespace CCoop.Plugin.Runtime
         private ulong _pendingJoinLobby;
         private string _joinPassword = "";
         private LobbyInfo _joiningLobby;
+
+        // ---- reconnect after a dropped connection (M10)
+        private sealed class ReconnectTarget
+        {
+            public string Address;      // LAN/IP, or null for Steam
+            public ulong Lobby;         // Steam lobby, or 0
+            public string Password = "";
+            public float Until, NextTry;
+            public int Attempts;
+        }
+
+        private ReconnectTarget _reconnect;
+        private string _lastLanAddress;
+
+        /// <summary>Seconds a dropped client keeps trying to get back in.</summary>
+        internal const float ReconnectWindow = 60f;
+
+        internal bool Reconnecting => _reconnect != null;
         private float _nextAdvert;
 
         /// <summary>A locked lobby the player is being asked the password for.</summary>
@@ -178,6 +196,7 @@ namespace CCoop.Plugin.Runtime
             int colon = host.LastIndexOf(':');
             if (colon > 0 && int.TryParse(host.Substring(colon + 1), out var p)) { port = p; host = host.Substring(0, colon); }
             if (host.Length == 0) { LastMessage = "Enter the host's address."; return; }
+            _lastLanAddress = address.Trim();
             try
             {
                 CoopPlugin.Instance.LastAddress.Value = address.Trim();
@@ -261,6 +280,12 @@ namespace CCoop.Plugin.Runtime
         {
             var s = Coop.Session;
             if (s == null) return;
+            if (_reconnect != null)
+            {
+                Log.Info("[session] reconnected after " + _reconnect.Attempts + " attempt(s)");
+                Notice("Reconnected");
+                _reconnect = null;
+            }
             var me = Coop.Player(s.LocalId);
             me.Name = s.LocalPeer?.Name ?? GameInfo.PlayerName;
             if (!s.IsHost) LastMessage = "Connected as " + me.Name + ".";
@@ -290,7 +315,29 @@ namespace CCoop.Plugin.Runtime
             LastMessage = reason;
             bool wrongPassword = reason != null && reason.IndexOf("Wrong password", StringComparison.OrdinalIgnoreCase) >= 0;
             var retry = _joiningLobby;
+            // A client that lost the host (not kicked, not the host closing on purpose)
+            // tries to get back in: its character is saved below, it goes back to the
+            // menu, and the normal join brings it back into the run where it was.
+            bool dropped = Coop.Session != null && !Coop.Session.IsHost && reason != null && reason.StartsWith("lost connection to the host", StringComparison.OrdinalIgnoreCase);
+            ReconnectTarget target = null;
+            if (dropped && (_lastLanAddress != null || retry != null))
+                target = new ReconnectTarget
+                {
+                    Address = TransportKind == "LAN/IP" ? _lastLanAddress : null,
+                    Lobby = TransportKind == "Steam" && retry != null ? retry.Id : 0,
+                    Password = _joinPassword ?? "",
+                    Until = Time.unscaledTime + ReconnectWindow,
+                    NextTry = Time.unscaledTime + 3f,
+                };
+            bool inRun = GameInfo.InRunScene;
             Teardown();
+            if (target != null && (target.Address != null || target.Lobby != 0))
+            {
+                _reconnect = target;
+                Notice("Lost the host. Reconnecting...");
+                Log.Info("[session] lost the host; reconnecting for " + (int)ReconnectWindow + " s");
+                if (inRun) RunFlow.ReturnToMenu();
+            }
             if (wrongPassword && retry != null)
             {
                 PasswordPrompt = retry;
@@ -323,7 +370,13 @@ namespace CCoop.Plugin.Runtime
             _tearingDown = true;
             try
             {
-                if (Coop.WorldLive) Coop.SetWorldLive(false);
+                if (Coop.WorldLive)
+                {
+                    // Before the layer goes offline: the save needs a live layer.
+                    try { CoopSaves.SaveNow("leaving the session"); }
+                    catch (Exception e) { Log.Warn("[save] " + e.Message); }
+                    Coop.SetWorldLive(false);
+                }
                 foreach (var m in _modules) Safe(() => m.Detach(), m, "detach");
                 Lobby.Leave();
                 WorldNet.Clear();
@@ -355,6 +408,7 @@ namespace CCoop.Plugin.Runtime
                 EnsureGuiHost();
                 Lobby.EnsureInitialized();
                 HandlePendingJoins();
+                TickReconnect();
                 CoopWindow.HandleHotkeys(this);
                 Get<DevHarness>()?.Pump();
 
@@ -370,6 +424,29 @@ namespace CCoop.Plugin.Runtime
                 Log.Error("runtime: " + e);
             }
         }
+
+        private void TickReconnect()
+        {
+            var r = _reconnect;
+            if (r == null || Coop.Session != null || Connecting) return;
+            float now = Time.unscaledTime;
+            if (now > r.Until)
+            {
+                _reconnect = null;
+                Notice("Could not reach the host again");
+                Log.Info("[session] gave up reconnecting after " + r.Attempts + " attempt(s)");
+                return;
+            }
+            if (now < r.NextTry || !GameInfo.OnMainMenu) return;
+            r.NextTry = now + 5f;
+            r.Attempts++;
+            Log.Info("[session] reconnect attempt " + r.Attempts);
+            if (r.Address != null) JoinLan(r.Address, r.Password);
+            else JoinSteamLobby(r.Lobby, r.Password.Length > 0 ? r.Password : null);
+        }
+
+        /// <summary>Stops trying to reconnect (the player chose something else).</summary>
+        internal void CancelReconnect() => _reconnect = null;
 
         private void FixedUpdate()
         {

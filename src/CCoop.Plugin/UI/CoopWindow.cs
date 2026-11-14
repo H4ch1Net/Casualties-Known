@@ -32,6 +32,7 @@ namespace CCoop.Plugin.UI
         private static bool _browsedOnce;
         private static bool _showBans;
         private static bool _showRules;
+        private static bool _showRunSettings;
 
         private static string _lastFocus = "";
         private static readonly Dictionary<string, Rect> FieldRects = new Dictionary<string, Rect>();
@@ -186,6 +187,14 @@ namespace CCoop.Plugin.UI
 
         private static void Offline(CoopRuntime rt)
         {
+            if (rt.Reconnecting)
+            {
+                GUILayout.BeginHorizontal(_box);
+                GUILayout.Label("Lost the host. Reconnecting (your character is saved)...", _small);
+                if (GUILayout.Button("Stop", GUILayout.Width(60))) rt.CancelReconnect();
+                GUILayout.EndHorizontal();
+            }
+
             GUILayout.Label("Play a run together", _title);
 
             GUILayout.BeginHorizontal();
@@ -527,6 +536,17 @@ namespace CCoop.Plugin.UI
                 {
                     GUILayout.BeginVertical(_box);
                     RulesEditor(rt, s);
+                    GUILayout.EndVertical();
+                }
+            }
+
+            if (GameInfo.InRunScene && WorldGeneration.runSettings != null)
+            {
+                _showRunSettings = GUILayout.Toggle(_showRunSettings, " Run settings" + (s.IsHost ? "" : " (the host's)"));
+                if (_showRunSettings)
+                {
+                    GUILayout.BeginVertical(_box);
+                    foreach (var line in RunSettingsReadout.Lines(WorldGeneration.runSettings)) GUILayout.Label(line, _small);
                     GUILayout.EndVertical();
                 }
             }

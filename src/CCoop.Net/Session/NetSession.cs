@@ -283,6 +283,18 @@ namespace CCoop.Net.Session
             End(reason);
         }
 
+        /// <summary>
+        /// Testing: drops the connection to the host as a network failure would, so the
+        /// session ends with "lost connection to the host" and the game's reconnect runs.
+        /// </summary>
+        public void SimulateDrop()
+        {
+            if (IsHost || _hostConnection < 0 || State != SessionState.Established) return;
+            int c = _hostConnection;
+            try { _transport.Disconnect(c, "simulated drop"); } catch { /* best effort */ }
+            if (State == SessionState.Established) OnDisconnected(c, "simulated drop");
+        }
+
         private void End(string reason)
         {
             if (State == SessionState.Ended) return;
