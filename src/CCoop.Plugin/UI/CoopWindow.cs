@@ -552,6 +552,7 @@ namespace CCoop.Plugin.UI
             }
 
             VoiceRow();
+            ComfortRow();
 
             GUILayout.Space(6);
             GUILayout.Label("Players (" + s.PeerCount + "/" + HostRules.Current.MaxPlayers + ")");
@@ -609,6 +610,16 @@ namespace CCoop.Plugin.UI
                             cfg.ChatKey.Value + ".", _small);
             if (HostRules.Current.Arrows)
                 cfg.ShowArrows.Value = GUILayout.Toggle(cfg.ShowArrows.Value, " Show arrows to teammates who are off screen");
+        }
+
+        /// <summary>Personal display options: these never change anything for anyone else.</summary>
+        private static void ComfortRow()
+        {
+            var cfg = CoopPlugin.Instance;
+            GUILayout.BeginHorizontal();
+            cfg.ReduceFlashes.Value = GUILayout.Toggle(cfg.ReduceFlashes.Value, " Reduce flashes and shaking", GUILayout.Width(220));
+            cfg.ColorBlindColors.Value = GUILayout.Toggle(cfg.ColorBlindColors.Value, " Colour-blind safe colours");
+            GUILayout.EndHorizontal();
         }
 
         private static void PlayerRow(CoopRuntime rt, NetSession s, PeerInfo p, PlayerRecord rec)

@@ -31,6 +31,8 @@ namespace CCoop.Plugin.Runtime
         internal ConfigEntry<bool> FriendlyFire;
         internal ConfigEntry<int> VoiceRangePercent;
         internal ConfigEntry<bool> ShowArrows;
+        internal ConfigEntry<bool> ReduceFlashes;
+        internal ConfigEntry<bool> ColorBlindColors;
         internal ConfigEntry<float> UiScale;
         internal ConfigEntry<bool> SteamTimeline;
         internal ConfigEntry<bool> AllowSpeedUp;
@@ -92,6 +94,10 @@ namespace CCoop.Plugin.Runtime
                 "Also opens chat, but only while none of the game's own controls is bound to it (by default the game throws with T).");
             ShowNames = Config.Bind("UI", "ShowNames", true, "Show names above other players.");
             ShowArrows = Config.Bind("UI", "TeammateArrows", true, "Arrows at the screen edge pointing to teammates who are off screen (when the host allows them).");
+            ReduceFlashes = Config.Bind("UI", "ReduceFlashes", false,
+                "Softer co-op screen effects: no screen flashes or shakes from the mod (a teammate dying nearby, a revival), no pulsing in the spectator view, and still ping markers.");
+            ColorBlindColors = Config.Bind("UI", "ColorBlindColors", false,
+                "Player colours (pings, arrows, gestures) from a palette that stays distinct with common colour blindness.");
             VoiceMode = Config.Bind("Voice", "Mode", "PushToTalk",
                 new ConfigDescription("Proximity voice over Steam: hold a key to talk, an always-open mic (Steam filters silence), or off (you also hear nobody).",
                                       new AcceptableValueList<string>("PushToTalk", "Open", "Off")));

@@ -103,8 +103,11 @@ namespace CCoop.Plugin.Sync
         private static Color _flash;
         private static float _flashAt = -10f, _flashLength = 1f;
 
+        internal static bool Reduced => CoopPlugin.Instance != null && CoopPlugin.Instance.ReduceFlashes.Value;
+
         internal static void Flash(Color color, float seconds)
         {
+            if (Reduced) { color.a *= 0.2f; seconds *= 1.5f; }  // a gentle tint instead of a flash
             _flash = color;
             _flashAt = Time.unscaledTime;
             _flashLength = Mathf.Max(0.1f, seconds);
@@ -122,6 +125,7 @@ namespace CCoop.Plugin.Sync
 
         internal static void Shake(float amount)
         {
+            if (Reduced) return;
             try { PlayerCamera.main?.shaker?.Shake(amount); }
             catch { /* no camera */ }
         }

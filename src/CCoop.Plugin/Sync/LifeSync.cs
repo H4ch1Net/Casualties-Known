@@ -377,7 +377,7 @@ namespace CCoop.Plugin.Sync
             if (__instance.sleepFill != null) __instance.sleepFill.color = Color.clear;
             if (__instance.consciousnessText != null) __instance.consciousnessText.color = Color.clear;
             if (__instance.consciousnessVignette != null)
-                __instance.consciousnessVignette.color = new Color(Vignette.r, Vignette.g, Vignette.b, Vignette.a + 0.08f * Mathf.Sin(Time.unscaledTime * 1.4f));
+                __instance.consciousnessVignette.color = new Color(Vignette.r, Vignette.g, Vignette.b, Vignette.a + (ConditionFx.Reduced ? 0f : 0.08f * Mathf.Sin(Time.unscaledTime * 1.4f)));
             if (__instance.consciousnessECG != null)
             {
                 __instance.consciousnessECG.active = false;

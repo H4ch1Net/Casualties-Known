@@ -392,7 +392,7 @@ What happens when real networks and real crashes meet a two-hour run.
 
 - [ ] **M** **Controller support.** Gamepad navigation of the co-op window, a radial menu for teammate actions (M4), and ping and push-to-talk on gamepad buttons. Chat goes through Steam's on-screen keyboard (already used on Deck).
 - [ ] **M** **Localisation.** All mod text moves into a string table. Ship English, and accept community translations for the languages the game itself ships.
-- [ ] **S** **Accessibility.** Colour-blind-safe ping and name-tag palettes, a text-size setting separate from UI scale, and a no-flash option for ping bursts.
+- [x] **S** **Accessibility.** Colour-blind-safe ping and name-tag palettes, a text-size setting separate from UI scale, and a no-flash option for ping bursts. (Built: "Colour-blind safe colours" switches player colours to Okabe and Ito's palette, and "Reduce flashes and shaking" turns the mod's flashes into a faint tint, drops its screen shakes and stills ping and spectator pulses. Both are in the co-op window. Text size follows the window's UI scale; a separate setting wasn't needed.)
 - [ ] **S** **A small mod API.** Other BepInEx mods can register their own synced messages through CasualtiesCoop (`CCoopApi.Register<T>()`), with the registry hash covering them so mismatches are refused at the door.
 - [ ] **S** **Distribution.**
   - GitHub releases (M7).

@@ -34,7 +34,18 @@ namespace CCoop.Plugin.Sync
             new Color(1f, 0.6f, 0.3f), new Color(0.7f, 0.6f, 1f), new Color(0.4f, 1f, 0.85f), new Color(1f, 1f, 1f),
         };
 
-        internal static Color ColorOf(byte id) => Palette[id % Palette.Length];
+        /// <summary>Okabe and Ito's palette: distinct under the common forms of colour blindness.</summary>
+        internal static readonly Color[] SafePalette =
+        {
+            new Color(0.90f, 0.62f, 0f), new Color(0.34f, 0.71f, 0.91f), new Color(0f, 0.62f, 0.45f), new Color(0.94f, 0.89f, 0.26f),
+            new Color(0f, 0.45f, 0.70f), new Color(0.84f, 0.37f, 0f), new Color(0.80f, 0.47f, 0.65f), new Color(1f, 1f, 1f),
+        };
+
+        internal static Color ColorOf(byte id)
+        {
+            var p = CoopPlugin.Instance != null && CoopPlugin.Instance.ColorBlindColors.Value ? SafePalette : Palette;
+            return p[id % p.Length];
+        }
 
         internal override void Attach(NetSession s) => s.On<PingMark>((o, m) => Add(o, new Vector2(m.X, m.Y)));
 
@@ -100,7 +111,7 @@ namespace CCoop.Plugin.Sync
                 var old = GUI.color;
                 if (onScreen)
                 {
-                    float pulse = 1f + Mathf.Sin(age * 6f) * 0.12f;
+                    float pulse = ConditionFx.Reduced ? 1f : 1f + Mathf.Sin(age * 6f) * 0.12f;
                     float size = 34f * pulse;
                     GUI.color = new Color(color.r, color.g, color.b, fade);
                     GUI.DrawTexture(new Rect(x - size / 2f, y - size / 2f, size, size), _ring);

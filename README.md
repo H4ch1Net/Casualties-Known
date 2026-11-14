@@ -55,6 +55,7 @@ The **LAN / IP** tab hosts on port 7777 and joins by address (with the host's pa
 | **Moving together** | From the teammate panel: carry a downed teammate (drag, on your back or in your arms), give a leg-up, reach down and pull them up a ledge, snap them out of a deep low, or help carry a heavy item. Hold **J** under a falling teammate to catch them. |
 | **Difficulty** | The host picks **Friendly**, **Standard**, **Hard** or **Brutal**. These set the co-op rules (respawn, exits, arrows to teammates, name tags, spawning apart, voice range, friendly fire) on top of the game's own run settings. |
 | **Descending** | Continuing at an exit is a vote. By default the team goes down once half of the living players are at the exit; the host can change this to "first arrives" or "all are there". A drill pod needs everyone inside. Nobody is left behind. |
+| **Comfort** | In the co-op window: colour-blind safe player colours, and "reduce flashes and shaking" for the mod's own screen effects. |
 | **Host rules** | The host can change the rules mid-session in the co-op window, under **Rules**: who can join, max players, password, respawn rule, exit rule, speed-up and friendly fire (off by default: in the game itself a player's shot never hits a body). |
 | **Saved runs** | Each player's character is saved with the run on every new layer and when leaving. The host can continue a saved run from the Host tab; returning players get their own character back. A team wipe ends the run and deletes its save, like the game. |
 
