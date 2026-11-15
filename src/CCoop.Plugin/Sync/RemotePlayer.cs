@@ -41,9 +41,7 @@ namespace CCoop.Plugin.Sync
         internal Vector2? ShownAt => Visible && _rig.BodyRoot != null ? (Vector2)_rig.BodyRoot.position : (Vector2?)null;
 
         /// <summary>A readable name for limb <paramref name="i"/>, from the character's own limb objects.</summary>
-        internal string LimbName(int i) =>
-            _rig != null && _rig.Limbs != null && i >= 0 && i < _rig.Limbs.Length && _rig.Limbs[i] != null
-                ? Medic.Pretty(_rig.Limbs[i].name) : UI.Lang.F("Limb {0}", i);
+        internal string LimbName(int i) => Medic.LimbTitle(i);
 
         internal bool FacingRight => _latest != null && (_latest.Flags & PlayerFlags.Right) != 0;
 

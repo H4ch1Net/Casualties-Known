@@ -57,9 +57,22 @@ namespace CCoop.Plugin.Sync
     [HarmonyPatch(typeof(KeyBinds), nameof(KeyBinds.GetBind))]
     internal static class KeyBindsBlockPatch
     {
+        private static bool _raw;
+
+        /// <summary>The key bound to an action, even while the mod holds the game's keys off.</summary>
+        internal static KeyCode Raw(string action)
+        {
+            _raw = true;
+            try { return KeyBinds.GetBind(action); }
+            finally { _raw = false; }
+        }
+
         private static bool Prefix(string action, ref KeyCode __result)
         {
-            if (InputBlock.HoldGame || ((action == "attack" || action == "iteminteract") && (UI.UiMouse.Over || UI.TeammateView.Showing)))
+            if (_raw) return true;
+            bool click = action == "attack" || action == "iteminteract";
+            if (InputBlock.HoldGame || (click && (UI.UiMouse.Over || UI.TeammatePanel.MenuUp)) ||
+                (action == "iteminteract" && UI.TeammatePanel.ClaimsPress) || (action == "pause" && UI.TeammatePanel.Captures))
             {
                 __result = KeyCode.None;
                 return false;

@@ -589,11 +589,40 @@ namespace CCoop.Plugin.Sync
             }
         }
 
-        internal static string LimbName(Limb limb) => limb == null ? Lang.T("limb") : Pretty(limb.name);
+        /// <summary>A limb in a sentence ("your right forearm"), the game's own name for it, as the game writes them.</summary>
+        internal static string LimbName(Limb limb) =>
+            limb == null ? Lang.T("limb") : !string.IsNullOrEmpty(limb.fullName) ? limb.fullName.ToLower() : LimbTitle(Array.IndexOf(limb.body != null ? limb.body.limbs : new Limb[0], limb)).ToLower();
 
+        /// <summary>
+        /// A limb's name as the game's health view shows it ("Right forearm", "Thorax"), in the
+        /// game's language: the local body's limbs carry them, and every body's limbs come in the same order.
+        /// </summary>
+        internal static string LimbTitle(int index)
+        {
+            var body = GameInfo.LocalBody;
+            if (body != null && body.limbs != null && index >= 0 && index < body.limbs.Length && body.limbs[index] != null && !string.IsNullOrEmpty(body.limbs[index].fullName))
+                return body.limbs[index].fullName;
+            return index >= 0 && index < LimbTitles.Length ? Lang.T(LimbTitles[index]) : Lang.T("limb");
+        }
+
+        private static readonly string[] LimbTitles =
+        {
+            "Head", "Thorax", "Abdomen",
+            "Upper right arm", "Right forearm", "Right hand", "Upper left arm", "Left forearm", "Left hand",
+            "Right thigh", "Right crus", "Right foot", "Left thigh", "Left crus", "Left foot",
+        };
+
+        /// <summary>An item's name as the game writes it ("Emergency light"), in its language; else made from the id.</summary>
         internal static string Pretty(string id)
         {
             if (string.IsNullOrEmpty(id)) return "";
+            string key = id.Replace("(Clone)", "").Trim();
+            try
+            {
+                string name = Locale.GetItem(key);
+                if (!string.IsNullOrEmpty(name) && name != key) return name;
+            }
+            catch { /* the game's language isn't loaded */ }
             var sb = new System.Text.StringBuilder();
             for (int i = 0; i < id.Length; i++)
             {

@@ -8,15 +8,16 @@ using UnityEngine.UI;
 namespace CCoop.Plugin.UI
 {
     /// <summary>
-    /// A teammate's body in the game's own health view. The figure is a copy of the
-    /// game's real one (the WoundView's limb images, same sprites, same layout, same
-    /// place and size on screen), on a canvas of the mod's own with the game's canvas
-    /// scaling. Every frame it is coloured by the game's own rules (WoundView.UpdateView),
-    /// fed from the teammate's synced body instead of the local one:
+    /// A teammate's body in the game's own health view, drawn inside their panel. The
+    /// figure is a copy of the game's real one (the WoundView's limb images: same sprites,
+    /// same layout), on a canvas of the mod's own with the game's canvas scaling, seen by a
+    /// small camera of its own into a texture that the panel shows. Every frame it is
+    /// coloured by the game's own rules (WoundView.UpdateView), fed from the teammate's
+    /// synced body instead of the local one:
     ///
     ///  * outline white -> red with skin (muscle on a prosthetic), the fill black -> red
     ///    with muscle, blinking under 10; a prosthetic grey at half alpha; a lost limb gone;
-    ///  * the top-to-bottom wipe as it opens, the shake with pain, the flash on hover;
+    ///  * the wipe as it opens, the shake with pain, the flash on hover;
     ///  * the icons beside each limb, rebuilt every 0.1 s in the game's order, spreading
     ///    out for the limb you look at; splint and tourniquet marks on the limb.
     ///
@@ -25,10 +26,24 @@ namespace CCoop.Plugin.UI
     /// </summary>
     internal sealed class TeammateView : MonoBehaviour
     {
+        /// <summary>The layer the copy lives on, seen only by its own camera.</summary>
+        private const int Layer = 31;
+        /// <summary>Room round the body for the icons (in the game's 1080p units).</summary>
+        private const float PadX = 70f, PadY = 34f;
+
         private static TeammateView _view;
         private static float _retryAt;
 
-        private RectTransform _root;
+        private RectTransform _canvasRect;
+        private Camera _cam;
+        private RenderTexture _rt;
+        private Rect _uv;
+        private bool _measured;
+        private int _resizes;
+        private float _displayPx = 660f;
+        private float _aspect = 0.6f;
+        private float _refHeight = 1080f;
+
         private Image[] _limbs;
         private Image[] _fills;
         private Vector2[] _orig;
@@ -50,12 +65,16 @@ namespace CCoop.Plugin.UI
         /// <summary>The figure is up.</summary>
         internal static bool Showing => _view != null && _view.gameObject.activeSelf;
 
+        /// <summary>Width over height of the drawn figure, to lay out the panel.</summary>
+        internal static float Aspect => _view != null ? _view._aspect : 0.6f;
+
         /// <summary>Opens (or keeps open) the view for this teammate. False if the game's view can't be borrowed.</summary>
         internal static bool Show(byte id)
         {
             if (_view == null && !Build()) return false;
             if (!_view.gameObject.activeSelf || Teammate != id)
             {
+                if (Teammate != id) _view._measured = false;
                 Teammate = id;
                 Selected = -1;
                 _view._timeOpen = 0f;
@@ -70,13 +89,38 @@ namespace CCoop.Plugin.UI
             Hovered = -1;
         }
 
-        /// <summary>Screen rectangle (GUI coordinates) the figure covers, for the click guard.</summary>
-        internal static Rect ScreenArea { get; private set; }
+        /// <summary>
+        /// Draws the figure into <paramref name="r"/> (inside a GUI window) and works out the
+        /// limb under the mouse; a click picks a limb, or drops the pick. Returns the limb hovered.
+        /// </summary>
+        internal static int Draw(Rect r)
+        {
+            var view = _view;
+            if (view == null || !view.gameObject.activeSelf) return -1;
+            var e = Event.current;
+            view._displayPx = r.height * GUI.matrix.m11;
+            if (e.type == EventType.Repaint && view._measured && view._rt != null)
+                GUI.DrawTextureWithTexCoords(r, view._rt, view._uv);
+            if (e.type != EventType.Repaint && e.type != EventType.MouseMove && e.type != EventType.MouseDown) return Hovered;
+
+            int hover = -1;
+            if (view._measured && r.Contains(e.mousePosition))
+                hover = view.Pick(new Vector2((e.mousePosition.x - r.x) / r.width, 1f - (e.mousePosition.y - r.y) / r.height));
+            if (hover >= 0 && hover != Hovered && view._flash != null && hover < view._flash.Length) view._flash[hover] = 1f;
+            Hovered = hover;
+            if (e.type == EventType.MouseDown && e.button == 0 && r.Contains(e.mousePosition))
+            {
+                Selected = hover >= 0 && hover != Selected ? hover : -1;
+                e.Use();
+            }
+            return hover;
+        }
 
         private static bool Build()
         {
             if (Time.unscaledTime < _retryAt) return false;
             _retryAt = Time.unscaledTime + 3f;
+            GameObject cgo = null, camGo = null;
             try
             {
                 WoundView wv = WoundView.view;
@@ -85,11 +129,30 @@ namespace CCoop.Plugin.UI
                 var gameCanvas = wv.GetComponentInParent<Canvas>(true);
                 if (gameCanvas != null) gameCanvas = gameCanvas.rootCanvas;
 
-                // Our own canvas, scaled as the game's is.
-                var cgo = new GameObject("CasualtiesCoop.TeammateView", typeof(RectTransform));
+                // A camera of our own, far from the world, that sees only the copy.
+                camGo = new GameObject("CasualtiesCoop.TeammateViewCamera");
+                camGo.transform.position = new Vector3(0f, -30000f, -10f);
+                var cam = camGo.AddComponent<Camera>();
+                cam.orthographic = true;
+                cam.orthographicSize = 5f;
+                cam.nearClipPlane = 0.1f;
+                cam.farClipPlane = 40f;
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = new Color(0f, 0f, 0f, 0f);
+                cam.cullingMask = 1 << Layer;
+                cam.depth = -50f;
+                cam.allowHDR = false;
+                cam.allowMSAA = false;
+                cam.useOcclusionCulling = false;
+                camGo.SetActive(false);
+
+                // Our own canvas, scaled as the game's is, in front of that camera.
+                cgo = new GameObject("CasualtiesCoop.TeammateView", typeof(RectTransform));
+                cgo.layer = Layer;
                 var canvas = cgo.AddComponent<Canvas>();
-                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvas.sortingOrder = (gameCanvas != null ? gameCanvas.sortingOrder : 0) + 5;
+                canvas.renderMode = RenderMode.ScreenSpaceCamera;
+                canvas.worldCamera = cam;
+                canvas.planeDistance = 10f;
                 var scaler = cgo.AddComponent<CanvasScaler>();
                 var gameScaler = gameCanvas != null ? gameCanvas.GetComponent<CanvasScaler>() : null;
                 if (gameScaler != null)
@@ -100,6 +163,12 @@ namespace CCoop.Plugin.UI
                     scaler.matchWidthOrHeight = gameScaler.matchWidthOrHeight;
                     scaler.scaleFactor = gameScaler.scaleFactor;
                     scaler.referencePixelsPerUnit = gameScaler.referencePixelsPerUnit;
+                }
+                else
+                {
+                    scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                    scaler.referenceResolution = new Vector2(1920f, 1080f);
+                    scaler.matchWidthOrHeight = 1f;
                 }
 
                 // Copy the game's view while it can't wake up (under an inactive holder), so
@@ -162,9 +231,12 @@ namespace CCoop.Plugin.UI
                 clone.SetActive(true);  // copied from the game's view while it was shut
                 for (var t = container; t != null && t != clone.transform.parent; t = t.parent) t.gameObject.SetActive(true);
                 Destroy(holder);
+                foreach (var t in cgo.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = Layer;
 
                 var view = cgo.AddComponent<TeammateView>();
-                view._root = (RectTransform)clone.transform;
+                view._canvasRect = (RectTransform)cgo.transform;
+                view._cam = cam;
+                view._refHeight = scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize && scaler.referenceResolution.y > 1f ? scaler.referenceResolution.y : 1080f;
                 view._limbs = limbs;
                 view._fills = fills;
                 view._orig = wv.origPositions != null && wv.origPositions.Length == limbs.Length ? (Vector2[])wv.origPositions.Clone() : null;
@@ -181,6 +253,7 @@ namespace CCoop.Plugin.UI
                 int localChar = GameInfo.LocalBody != null ? GameInfo.LocalBody.charType : 0;
                 view._head0 = localChar == 0 || view._heads == null || view._heads.Length < 2 ? limbs[0]?.sprite : view._heads[0];
                 view._headFill0 = localChar == 0 || view._heads == null || view._heads.Length < 2 ? fills[0]?.sprite : view._heads[1];
+                view.Target(Mathf.Clamp(Screen.height, 540, 2160));
                 cgo.SetActive(false);
                 _view = view;
                 Log.Info("[ui] teammate view from the game's health view: " + limbs.Length + " limbs, canvas " + (gameCanvas != null ? gameCanvas.name : "?") +
@@ -189,9 +262,102 @@ namespace CCoop.Plugin.UI
             }
             catch (Exception e)
             {
+                if (cgo != null) Destroy(cgo);
+                if (camGo != null) Destroy(camGo);
                 Log.Warn("[ui] couldn't copy the game's health view: " + e.Message);
                 return false;
             }
+        }
+
+        /// <summary>The texture the camera draws into, <paramref name="height"/> pixels tall, the canvas's shape.</summary>
+        private void Target(int height)
+        {
+            height = Mathf.Clamp(height, 256, 4096);
+            var scaler = GetComponent<CanvasScaler>();
+            float aspect = scaler != null && scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize && scaler.referenceResolution.y > 1f
+                ? scaler.referenceResolution.x / scaler.referenceResolution.y
+                : (float)Screen.width / Mathf.Max(1, Screen.height);
+            int width = Mathf.Clamp(Mathf.RoundToInt(height * aspect), 256, 8192);
+            if (_rt != null && _rt.width == width && _rt.height == height) return;
+            if (_cam != null) _cam.targetTexture = null;
+            if (_rt != null) { _rt.Release(); Destroy(_rt); }
+            _rt = new RenderTexture(width, height, 16, RenderTextureFormat.ARGB32)
+            {
+                name = "CasualtiesCoop.TeammateView",
+                useMipMap = true,
+                autoGenerateMips = true,
+                filterMode = FilterMode.Trilinear,
+                wrapMode = TextureWrapMode.Clamp,
+                antiAliasing = 1,
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+            _rt.Create();
+            if (_cam != null) _cam.targetTexture = _rt;
+            _measured = false;
+        }
+
+        /// <summary>
+        /// Where the body lies in the texture (with room for the icons). The texture is
+        /// resized until the body comes out at twice the size the panel shows it, so the
+        /// panel's copy is drawn down from a sharper one.
+        /// </summary>
+        private void Measure()
+        {
+            Canvas.ForceUpdateCanvases();
+            var corners = new Vector3[4];
+            float xMin = float.MaxValue, yMin = float.MaxValue, xMax = float.MinValue, yMax = float.MinValue;
+            foreach (var img in _limbs)
+            {
+                if (img == null) continue;
+                img.rectTransform.GetWorldCorners(corners);
+                foreach (var c in corners)
+                {
+                    var s = _cam.WorldToScreenPoint(c);
+                    xMin = Mathf.Min(xMin, s.x); xMax = Mathf.Max(xMax, s.x);
+                    yMin = Mathf.Min(yMin, s.y); yMax = Mathf.Max(yMax, s.y);
+                }
+            }
+            if (xMax <= xMin || yMax <= yMin) return;
+
+            // Texture pixels per canvas unit.
+            float ppu = (_cam.WorldToScreenPoint(_canvasRect.TransformPoint(new Vector3(100f, 0f, 0f))) -
+                         _cam.WorldToScreenPoint(_canvasRect.TransformPoint(Vector3.zero))).magnitude / 100f;
+            if (ppu <= 0f) ppu = _rt.height / _refHeight;
+            var crop = Rect.MinMaxRect(Mathf.Max(0f, xMin - PadX * ppu), Mathf.Max(0f, yMin - PadY * ppu),
+                                       Mathf.Min(_rt.width, xMax + PadX * ppu), Mathf.Min(_rt.height, yMax + PadY * ppu));
+
+            float want = Mathf.Clamp(_displayPx * 2f, 128f, 4096f);
+            float ratio = want / crop.height;
+            if ((ratio < 0.87f || ratio > 1.15f) && _resizes < 4)
+            {
+                _resizes++;
+                Target(Mathf.RoundToInt(_rt.height * ratio));
+                return;  // laid out again for the new size next frame
+            }
+            _uv = new Rect(crop.x / _rt.width, crop.y / _rt.height, crop.width / _rt.width, crop.height / _rt.height);
+            _aspect = crop.width / crop.height;
+            _measured = true;
+        }
+
+        /// <summary>The limb at a point of the drawn figure (0..1 from its bottom left), the smallest that holds it.</summary>
+        private int Pick(Vector2 uv)
+        {
+            if (_rt == null || _limbs == null) return -1;
+            var v = Coop.Get<Sync.VitalsSync>()?.Of(Teammate);
+            var p = new Vector2((_uv.x + uv.x * _uv.width) * _rt.width, (_uv.y + uv.y * _uv.height) * _rt.height);
+            int best = -1;
+            float bestArea = float.MaxValue;
+            for (int k = 0; k < _limbs.Length; k++)
+            {
+                var img = _limbs[k];
+                if (img == null) continue;
+                if (v != null && k < v.Limbs.Count && (v.Limbs[k].Signs & LimbSigns.Missing) != 0) continue;
+                if (!RectTransformUtility.RectangleContainsScreenPoint(img.rectTransform, p, _cam)) continue;
+                var size = img.rectTransform.rect.size;
+                float a = size.x * size.y;
+                if (a < bestArea) { bestArea = a; best = k; }
+            }
+            return best;
         }
 
         private static int[] PathFrom(Transform root, Transform t)
@@ -212,9 +378,21 @@ namespace CCoop.Plugin.UI
             return t;
         }
 
+        private void OnEnable()
+        {
+            if (_cam != null) _cam.gameObject.SetActive(true);
+        }
+
+        private void OnDisable()
+        {
+            if (_cam != null) _cam.gameObject.SetActive(false);
+        }
+
         private void OnDestroy()
         {
             if (_view == this) _view = null;
+            if (_cam != null) Destroy(_cam.gameObject);
+            if (_rt != null) { _rt.Release(); Destroy(_rt); }
         }
 
         private void Update()
@@ -222,8 +400,9 @@ namespace CCoop.Plugin.UI
             var v = Coop.Get<Sync.VitalsSync>()?.Of(Teammate);
             if (v == null || !Coop.WorldLive) { gameObject.SetActive(false); return; }
             SetHead(Coop.Player(Teammate).Character);
+            if (!_measured) Measure();
+            else if (Mathf.Abs(_uv.height * _rt.height - _displayPx * 2f) > _displayPx * 0.3f && _resizes < 8) { _resizes++; Target(Mathf.RoundToInt(_rt.height * _displayPx * 2f / (_uv.height * _rt.height))); }
             _timeOpen += Time.unscaledDeltaTime;
-            Hover(v);
 
             // WoundView.UpdateView, for the teammate.
             for (int i = 0; i < _lerp.Length; i++)
@@ -231,8 +410,6 @@ namespace CCoop.Plugin.UI
                 _lerp[i] = Mathf.Lerp(_lerp[i], (Selected == i || Hovered == i) ? 1f : 0f, Time.unscaledDeltaTime * 7f);
                 _flash[i] = Mathf.Lerp(_flash[i], 0f, Time.unscaledDeltaTime * 4f);
             }
-            var area = new Rect();
-            bool first = true;
             for (int k = 0; k < _limbs.Length && k < v.Limbs.Count; k++)
             {
                 var img = _limbs[k];
@@ -242,7 +419,9 @@ namespace CCoop.Plugin.UI
                 bool gone = (l.Signs & LimbSigns.Missing) != 0;
                 var baseColor = prosthetic ? new Color(0.5f, 0.5f, 0.5f, 0.5f) : new Color(0f, 0f, 0f, 1f);
                 float num4 = _flash[k] * 0.6f;
-                float value = Mathf.Clamp01(((_timeOpen + 0.15f) * 12f - img.transform.position.y / Screen.height * 1080f * 0.01f) * 0.25f);
+                // The game measures the wipe in 1080p screen pixels; here the texture is the screen.
+                float y1080 = _rt != null ? _cam.WorldToScreenPoint(img.transform.position).y / _rt.height * 1080f : 540f;
+                float value = Mathf.Clamp01(((_timeOpen + 0.15f) * 12f - y1080 * 0.01f) * 0.25f);
                 if (gone) value = 0f;
                 value *= baseColor.a;
                 float h = prosthetic ? l.Muscle : l.Skin;
@@ -255,14 +434,7 @@ namespace CCoop.Plugin.UI
                 if (_orig != null)
                     img.rectTransform.anchoredPosition = _orig[k] + new Vector2(UnityEngine.Random.Range(-l.Pain * 0.02f, l.Pain * 0.02f), UnityEngine.Random.Range(-l.Pain * 0.02f, l.Pain * 0.02f));
                 Marks(k, img, l, gone);
-                if (!gone)
-                {
-                    var r = ScreenRect(img.rectTransform);
-                    area = first ? r : Rect.MinMaxRect(Mathf.Min(area.xMin, r.xMin), Mathf.Min(area.yMin, r.yMin), Mathf.Max(area.xMax, r.xMax), Mathf.Max(area.yMax, r.yMax));
-                    first = false;
-                }
             }
-            ScreenArea = area;
 
             _checkTime += Time.unscaledDeltaTime;
             if (_checkTime > 0.1f)
@@ -270,26 +442,6 @@ namespace CCoop.Plugin.UI
                 _checkTime = 0f;
                 Icons(v);
             }
-        }
-
-        /// <summary>The limb under the mouse (the game flashes a limb as you move onto it).</summary>
-        private void Hover(Vitals v)
-        {
-            int hover = -1;
-            float best = float.MaxValue;
-            if (!UiMouse.Over)
-                for (int k = 0; k < _limbs.Length && k < v.Limbs.Count; k++)
-                {
-                    var img = _limbs[k];
-                    if (img == null || (v.Limbs[k].Signs & LimbSigns.Missing) != 0) continue;
-                    if (!RectTransformUtility.RectangleContainsScreenPoint(img.rectTransform, Input.mousePosition, null)) continue;
-                    var size = img.rectTransform.rect.size;
-                    float a = size.x * size.y;
-                    if (a < best) { best = a; hover = k; }
-                }
-            if (hover >= 0 && hover != Hovered) _flash[hover] = 1f;
-            Hovered = hover;
-            if (hover >= 0 && Input.GetMouseButtonDown(0)) Selected = Selected == hover ? -1 : hover;
         }
 
         private void SetHead(int character)
@@ -304,6 +456,7 @@ namespace CCoop.Plugin.UI
             }
             if (head != null) { _limbs[0].sprite = head; _limbs[0].SetNativeSize(); }
             if (fill != null && _fills[0] != null) { _fills[0].sprite = fill; _fills[0].SetNativeSize(); }
+            _measured = false;
         }
 
         /// <summary>A splint or tourniquet drawn on the limb, as the game adds them (AddImageToLimb).</summary>
@@ -319,7 +472,7 @@ namespace CCoop.Plugin.UI
             if (!on || sprite == null) { if (go != null) go.SetActive(false); return; }
             if (go == null)
             {
-                go = new GameObject(sprite.name, typeof(RectTransform), typeof(Image));
+                go = new GameObject(sprite.name, typeof(RectTransform), typeof(Image)) { layer = Layer };
                 go.transform.SetParent(limb.rectTransform, false);
                 var rt = (RectTransform)go.transform;
                 rt.anchoredPosition = Vector2.zero;
@@ -333,7 +486,7 @@ namespace CCoop.Plugin.UI
             go.GetComponent<Image>().color = new Color(color.r, color.g, color.b, limb.color.a);
         }
 
-        /// <summary>The icons beside each limb, as WoundView.UpdateView makes them.</summary>
+        /// <summary>The icons beside each limb, as WoundView.UpdateView makes them (GenerateIcon).</summary>
         private void Icons(Vitals v)
         {
             foreach (var o in _iconObjs) if (o != null) Destroy(o);
@@ -360,12 +513,13 @@ namespace CCoop.Plugin.UI
                 for (int m = 0; m < list.Count; m++)
                 {
                     float num6 = (m * 50f - (list.Count - 1) * 25f) * (_lerp[l] * 0.8f + 0.2f);
-                    var vector = new Vector2(num6, num6 * 0.2f);
-                    var go = new GameObject("icon", typeof(RectTransform), typeof(Image));
+                    // The game adds this in screen pixels at 1080p; here, in the canvas's units.
+                    var offset = _canvasRect.TransformVector(new Vector3(num6, num6 * 0.2f, 0f));
+                    var go = new GameObject("icon", typeof(RectTransform), typeof(Image)) { layer = Layer };
                     var img = go.GetComponent<Image>();
                     img.raycastTarget = false;
-                    go.transform.SetParent(_iconParent);
-                    go.GetComponent<RectTransform>().position = vector + (Vector2)_limbs[l].transform.position;
+                    go.transform.SetParent(_iconParent, false);
+                    go.transform.position = _limbs[l].transform.position + offset;
                     go.transform.localScale = Vector3.one;
                     go.transform.localRotation = Quaternion.identity;
                     img.sprite = list[m].Item1;
@@ -375,15 +529,6 @@ namespace CCoop.Plugin.UI
                     _iconObjs.Add(go);
                 }
             }
-        }
-
-        private static Rect ScreenRect(RectTransform rt)
-        {
-            var c = new Vector3[4];
-            rt.GetWorldCorners(c);
-            float xMin = Mathf.Min(c[0].x, c[2].x), xMax = Mathf.Max(c[0].x, c[2].x);
-            float yMin = Mathf.Min(c[0].y, c[2].y), yMax = Mathf.Max(c[0].y, c[2].y);
-            return Rect.MinMaxRect(xMin, Screen.height - yMax, xMax, Screen.height - yMin);
         }
     }
 }

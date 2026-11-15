@@ -503,10 +503,6 @@ out cold
 Saving is disabled during co-op
 = 
 
-# Sync/RemotePlayer.cs
-Limb {0}
-= 
-
 # Sync/RulesSync.cs
 Shared
 = 
@@ -1102,55 +1098,45 @@ Click a limb to treat it.
 = 
 Hold for CPR
 = 
-Put down
+Health
 = 
-Reach down and pull them up
+Put them down
 = 
-Nothing on them to take.
-= 
-On their body (not hands or mouth):
-= 
-Take
+Pull them up
 = 
 Give {0}
 = 
-Put them down
+Waiting for them to answer...
+= 
+Ask for...
+= 
+Search them
+= 
+Nothing on them to take.
+= 
+Take {0}
 = 
 They're carrying you.
 = 
 Waiting for {0} to climb on...
 = 
-Carry them:
+Drag them
 = 
-Offer to carry them (they can say no):
+Carry on your back
 = 
-Drag
+Carry in your arms
 = 
-On your back
-= 
-In your arms
+They're asked first.
 = 
 Wake them up
 = 
 Shake them
 = 
-They wake as if they'd slept (a short sleep is a poor one).
-= 
-Helps them come round, if their body lets them.
-= 
 Give a leg-up
 = 
-Pull them up
-= 
-Snap them out of it (mood {0})
-= 
-Lifts them for a few minutes. It won't fix what's wrong.
+Snap them out of it
 = 
 Stop helping carry
 = 
-Help carry their {0} ({1} u)
-= 
-Waiting for them to answer…
-= 
-Ask them for…
+Help carry their {0}
 = 
