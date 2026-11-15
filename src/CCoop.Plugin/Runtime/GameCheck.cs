@@ -59,14 +59,18 @@ namespace CCoop.Plugin.Runtime
         /// </summary>
         internal static string SaveReport()
         {
+            // Under Proton the "desktop" is a folder inside the game's prefix that nobody
+            // would find: use the real Linux desktop (or home) instead.
             string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            string home = GameInfo.LinuxHome();
+            if (home != null) desktop = Directory.Exists(Path.Combine(home, "Desktop")) ? Path.Combine(home, "Desktop") : home;
             string dir = Path.Combine(desktop, "CasualtiesCoop-report-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
             Directory.CreateDirectory(dir);
 
             var info = new StringBuilder();
             info.AppendLine("CasualtiesCoop " + CoopPlugin.Version);
             info.AppendLine("Game build " + GameInfo.GameBuild + ", Steam build " + Net.SteamServices.AppBuildId);
-            info.AppendLine("Unity " + Application.unityVersion + ", " + SystemInfo.operatingSystem);
+            info.AppendLine("Unity " + Application.unityVersion + ", " + SystemInfo.operatingSystem + (GameInfo.UnderWine ? " (under Wine/Proton)" : ""));
             info.AppendLine("Failed patches: " + (CoopPlugin.FailedPatches.Length == 0 ? "none" : string.Join(", ", CoopPlugin.FailedPatches)));
             info.AppendLine("Missing game members: " + (Missing.Count == 0 ? "none" : string.Join(", ", Missing.ToArray())));
             var s = Coop.Session;

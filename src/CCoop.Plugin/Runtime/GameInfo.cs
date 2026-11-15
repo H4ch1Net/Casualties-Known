@@ -10,6 +10,62 @@ namespace CCoop.Plugin.Runtime
     /// <summary>Facts about the running game and the local player.</summary>
     internal static class GameInfo
     {
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Ansi)]
+        private static extern IntPtr GetModuleHandle(string module);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Ansi)]
+        private static extern IntPtr GetProcAddress(IntPtr module, string name);
+
+        private static int _wine = -1;
+
+        /// <summary>
+        /// Running under Wine or Proton (Linux, Steam Deck): the game has only a Windows
+        /// build. Wine's ntdll exports wine_get_version; Windows' doesn't.
+        /// </summary>
+        internal static bool UnderWine
+        {
+            get
+            {
+                if (_wine >= 0) return _wine == 1;
+                _wine = 0;
+                try
+                {
+                    var ntdll = GetModuleHandle("ntdll.dll");
+                    if (ntdll != IntPtr.Zero && GetProcAddress(ntdll, "wine_get_version") != IntPtr.Zero) _wine = 1;
+                }
+                catch { /* not Windows at all */ }
+                if (_wine == 0 && (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WINEPREFIX")) ||
+                                   !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("STEAM_COMPAT_DATA_PATH"))))
+                    _wine = 1;
+                return _wine == 1;
+            }
+        }
+
+        /// <summary>
+        /// Under Wine or Proton: the player's Linux home as a Windows path (Z:\home\you), so
+        /// files meant for them don't end up inside the game's Proton prefix. Null on Windows.
+        /// </summary>
+        internal static string LinuxHome()
+        {
+            if (!UnderWine) return null;
+            try
+            {
+                string w = Environment.GetEnvironmentVariable("WINEHOMEDIR");
+                if (!string.IsNullOrEmpty(w))
+                {
+                    if (w.StartsWith(@"\??\", StringComparison.Ordinal)) w = w.Substring(4);
+                    if (Directory.Exists(w)) return w;
+                }
+                string h = Environment.GetEnvironmentVariable("HOME");
+                if (!string.IsNullOrEmpty(h) && h.StartsWith("/", StringComparison.Ordinal))
+                {
+                    string p = "Z:" + h.Replace('/', '\\');
+                    if (Directory.Exists(p)) return p;
+                }
+            }
+            catch { /* no Unix side to reach */ }
+            return null;
+        }
         public const uint FullGameAppId = 4576490;
         public const uint DemoAppId = 4576510;
 

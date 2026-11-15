@@ -73,7 +73,7 @@
     </ItemGroup>
     <Copy SourceFiles="@(CCoopLangPack)" DestinationFolder="$(StageDir)\lang" />
     <!-- The installer sits beside the BepInEx folder in the zip. -->
-    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\tools\install.ps1" DestinationFolder="$(MSBuildThisFileDirectory)..\..\dist\stage" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\tools\install.ps1;$(MSBuildThisFileDirectory)..\..\tools\install.sh" DestinationFolder="$(MSBuildThisFileDirectory)..\..\dist\stage" />
     <Delete Files="$(ZipPath)" />
     <ZipDirectory SourceDirectory="$(MSBuildThisFileDirectory)..\..\dist\stage" DestinationFile="$(ZipPath)" />
     <Message Importance="high" Text="Packaged $(ZipPath)" />

@@ -311,7 +311,7 @@ The game saves only the player: inventory, `[Saveable]` body state, recipes and 
   - Each player's frame rate is shown in the player list (sent with the profile). Clients see a warning when the host's game drops below 20 fps, and the host sees one about its own, since everyone's world goes through it.
   - Items in flight likewise go only to players within 80 m; where an item comes to rest is still sent to everyone.
   - A machine running below 20 fps counts as 15 m farther from every creature when the host hands creatures out, so a teammate nearby takes them over and a slow host does less.
-- [x] **S** **Linux / Proton / Steam Deck notes.** Document `WINEDLLOVERRIDES="winhttp=n,b" %command%`.
+- [x] **S** **Linux / Proton / Steam Deck notes.** Document `WINEDLLOVERRIDES="winhttp=n,b" %command%`. (Also built: `tools/install.sh` in the release zip finds the game in Steam libraries (native, Flatpak, Snap), installs BepInEx 5 x64 if missing and copies the mod; tested on a fake Steam layout, not yet on a real Linux machine. Under Proton the mod logs that it runs under Wine, the bug report goes to the Linux desktop, and the overlay font chain includes the fonts Proton ships.)
 - [x] **S** **Unicode Steam names** (CJK) in the IMGUI font.
 - [~] **S** Ask Orsoniks for permission, Workshop support and rich-presence tokens. (Permission given in November 2026, on the condition that the mod is never sold. Workshop and rich-presence tokens not asked yet.)
 

@@ -12,6 +12,8 @@ Version 2 is a rewrite. Version 1 targeted the demo and is kept under `legacy/v1
 
 **The easy way (Windows):** unzip `CasualtiesCoop-2.0.0.zip` anywhere, then right-click `install.ps1` and choose **Run with PowerShell** (or run `powershell -ExecutionPolicy Bypass -File install.ps1`). It finds the game, installs BepInEx 5 if you don't have it yet, and copies the mod in.
 
+**The easy way (Linux and Steam Deck):** unzip it anywhere, open a terminal there (on Steam Deck: Desktop Mode, then Konsole) and run `bash install.sh`. It does the same, then shows the one launch option to set in Steam (see [Linux, Proton and Steam Deck](#linux-proton-and-steam-deck)).
+
 **By hand:**
 
 1. Install [BepInEx 5.4.23.x x64](https://github.com/BepInEx/BepInEx/releases) into the game folder (`steamapps/common/Casualties Unknown`).
@@ -187,13 +189,16 @@ dotnet build src/CCoop.Plugin/CCoop.Plugin.csproj -c Release   # also writes dis
 
 ## Linux, Proton and Steam Deck
 
-BepInEx loads through `winhttp.dll`, which Proton ignores unless told otherwise. In the game's Steam **Properties → Launch options**, set:
+The game has only a Windows build, so on Linux and Steam Deck it runs through Proton, and the mod runs inside it like on Windows. Linux and Windows players can play together.
+
+1. Run `bash install.sh` from the unzipped download (Steam Deck: in Desktop Mode, with Konsole). It finds the game in your Steam libraries (including Flatpak and Snap Steam), installs BepInEx 5 (the Windows x64 build, which is what Proton needs) if it's missing, and copies the mod in. `bash install.sh --uninstall` removes the mod.
+2. BepInEx loads through `winhttp.dll`, which Proton ignores unless told otherwise. In Steam, right-click the game → **Properties** → **General** → **Launch options**, and set:
 
 ```
 WINEDLLOVERRIDES="winhttp=n,b" %command%
 ```
 
-On Steam Deck the co-op window scales up by itself, and text fields open Steam's on-screen keyboard.
+That's all. On Steam Deck the co-op window scales up by itself, and text fields open Steam's on-screen keyboard. The game has no controller support of its own, so use a Steam Input layout with keyboard and mouse; every co-op action has a key (F1 window, Enter or T chat, H gestures, J catch, V voice, B bark, middle mouse ping) or a click (right-click a teammate). Under Proton the mod notes it in its log, and the **Bug report** button saves to your Linux desktop (or home folder), not inside the Proton prefix. The co-op logs themselves are inside the prefix: `~/.steam/steam/steamapps/compatdata/4576490/pfx/drive_c/users/steamuser/AppData/LocalLow/Orsoniks/CasualtiesUnknown/CasualtiesCoop/`.
 
 **Bug reports.** The co-op window's **Bug report** button gathers your co-op logs and the session details into a folder on your desktop. Attach its files to the report.
 

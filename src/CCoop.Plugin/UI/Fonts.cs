@@ -15,6 +15,9 @@ namespace CCoop.Plugin.UI
         {
             "Segoe UI", "Arial", "Microsoft YaHei", "Yu Gothic UI", "Malgun Gothic", "SimSun", "MS Gothic",
             "Noto Sans", "Noto Sans CJK SC", "Noto Sans CJK JP", "Noto Sans CJK KR", "DejaVu Sans", "Liberation Sans",
+            // What Proton and Wine ship in their prefixes (Linux, Steam Deck).
+            "Source Han Sans SC", "Source Han Sans CN", "Source Han Sans", "Noto Sans CJK", "WenQuanYi Micro Hei",
+            "Droid Sans Fallback", "Tahoma", "Arial Unicode MS",
         };
 
         private static Font _font;

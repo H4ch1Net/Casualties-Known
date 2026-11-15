@@ -144,6 +144,7 @@ namespace CCoop.Plugin.Runtime
             go.AddComponent<CoopRuntime>();
 
             Log.Info(Name + " " + Version + " loaded. Press " + MenuKey.Value + " for the co-op menu. Log: " + Log.FilePath);
+            if (GameInfo.UnderWine) Log.Info("[env] running under Wine/Proton (Linux or Steam Deck); Linux home " + (GameInfo.LinuxHome() ?? "not reachable"));
         }
 
         /// <summary>
