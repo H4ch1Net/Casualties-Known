@@ -83,8 +83,11 @@ namespace CCoop.Plugin.UI
 
         internal override void Gui()
         {
-            if (!Coop.WorldLive) { _open = -1; return; }
-            if (MedicSession.Active) return;  // the minigame has the screen
+            if (!Coop.WorldLive) { _open = -1; TeammateView.Hide(); return; }
+            if (MedicSession.Active) { TeammateView.Hide(); return; }  // the minigame has the screen
+            // The game's own health view open: that one is yours, ours closes.
+            if (_open >= 0 && PlayerCamera.main != null && PlayerCamera.main.woundView != null && PlayerCamera.main.woundView.activeSelf) _open = -1;
+            if (_open < 0) TeammateView.Hide();
             Styles();
             float k = CoopWindow.Scale;
             var old = GUI.matrix;
@@ -141,7 +144,13 @@ namespace CCoop.Plugin.UI
             GUILayout.Label(Status(v), _status);
             foreach (var w in Warnings(v)) GUILayout.Label(w, _warn);
 
-            if (BodyFigure.Ready)
+            if (TeammateView.Show(id))
+            {
+                // The game's own figure, in the middle of the screen; this is the side panel.
+                _limb = TeammateView.Selected;
+                _hoverLimb = TeammateView.Hovered;
+            }
+            else if (BodyFigure.Ready)
             {
                 const float fw = 380f;
                 float fh = Mathf.Min(BodyFigure.HeightFor(fw), 330f);

@@ -14,19 +14,20 @@ namespace CCoop.Plugin.UI
     /// the mouse comes near, a label under it when the mouse is on it, a click sound, and
     /// it sways with the scene's parallax layer. Clicking it opens the co-op window.
     ///
-    /// The art is the mod's own (art/walkie.px, drawn for this scene, shown at 2x),
-    /// embedded in the plugin. If the menu can't be read, the plain "Co-op (F1)" button
+    /// The art is the mod's own, painted for this scene in its style (art/walkie-paint.py
+    /// makes art/walkie.png), embedded in the plugin. If the menu can't be read, the plain "Co-op (F1)" button
     /// stays instead.
     /// </summary>
     internal static class MenuWalkie
     {
         /// <summary>Where it stands, in the menu's 1920 x 1080 picture: centre of its base.</summary>
         private static readonly Vector2 Spot = new Vector2(1468f, 812f);
-        private const float Scale = 2f;
+        private const float Scale = 0.7f;
 
         private static GameObject _root;
         private static int _scene = -1;
         private static float _retryAt;
+        private static bool _portraits;
 
         /// <summary>The walkie-talkie is in the menu (so the plain button isn't needed).</summary>
         internal static bool Shown => _root != null;
@@ -35,6 +36,12 @@ namespace CCoop.Plugin.UI
         internal static void Ensure()
         {
             if (!GameInfo.OnMainMenu) { _root = null; return; }
+            if (!_portraits)
+            {
+                // The character portraits live in the menu scene: copy them now for the lobby.
+                _portraits = true;
+                foreach (var n in new[] { "char1", "char2", "char3", "char1outline", "char2outline", "char3outline" }) GameLook.Texture(n);
+            }
             var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
             if (_root != null && _scene == scene) return;
             if (Time.unscaledTime < _retryAt) return;
@@ -78,8 +85,8 @@ namespace CCoop.Plugin.UI
             // A soft shadow on the ground, then the walkie-talkie, then its hover outline.
             Child(_root.transform, "Shadow", Shadow(), new Vector2(0.5f, 0.5f), new Vector2(0f, 2f * unit), new Vector2(84f, 18f) * unit, new Color(0f, 0f, 0f, 0.55f));
             Child(_root.transform, "Art", art, new Vector2(0.5f, 0f), Vector2.zero, rt.sizeDelta, Color.white);
-            var outline = Child(_root.transform, "Overlay", Outline(art), new Vector2(0.5f, 0f), new Vector2(0f, -Scale * unit),
-                                new Vector2(art.width + 2, art.height + 2) * Scale * unit, new Color(1f, 1f, 1f, 0.025f));
+            var outline = Child(_root.transform, "Overlay", Outline(art), new Vector2(0.5f, 0f), new Vector2(0f, -Pad * Scale * unit),
+                                new Vector2(art.width + 2 * Pad, art.height + 2 * Pad) * Scale * unit, new Color(1f, 1f, 1f, 0.025f));
 
             // The label, a copy of the radio's ("Tutorial"), in the same font and place under it.
             var label = UnityEngine.Object.Instantiate(radio.text.gameObject, radio.text.transform.parent);
@@ -125,32 +132,43 @@ namespace CCoop.Plugin.UI
                 var bytes = new byte[s.Length];
                 int read = 0;
                 while (read < bytes.Length) { int n = s.Read(bytes, read, bytes.Length - read); if (n <= 0) break; read += n; }
-                var tex = new Texture2D(2, 2, TextureFormat.ARGB32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
+                var tex = new Texture2D(2, 2, TextureFormat.ARGB32, true) { wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
                 tex.LoadImage(bytes);
-                tex.filterMode = FilterMode.Point;
+                tex.filterMode = FilterMode.Trilinear;
                 return tex;
             }
         }
 
-        /// <summary>A one-pixel light outline round the picture (as the menu's own objects get on hover).</summary>
+        /// <summary>A light outline round the picture, soft-edged (as the menu's own objects get on hover).</summary>
         private static Texture2D Outline(Texture2D art)
         {
-            int w = art.width + 2, h = art.height + 2;
-            var t = new Texture2D(w, h, TextureFormat.ARGB32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
+            const int r = Pad;
+            int w = art.width + 2 * r, h = art.height + 2 * r;
+            var t = new Texture2D(w, h, TextureFormat.ARGB32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
             var src = art.GetPixels32();
-            bool Solid(int x, int y) => x >= 0 && y >= 0 && x < art.width && y < art.height && src[y * art.width + x].a > 128;
-            var line = new Color32(232, 230, 246, 255);
-            var clear = new Color32(0, 0, 0, 0);
+            float A(int x, int y) => x >= 0 && y >= 0 && x < art.width && y < art.height ? src[y * art.width + x].a / 255f : 0f;
+            var px = new Color32[w * h];
             for (int y = 0; y < h; y++)
                 for (int x = 0; x < w; x++)
                 {
-                    int ax = x - 1, ay = y - 1;
-                    bool edge = !Solid(ax, ay) && (Solid(ax - 1, ay) || Solid(ax + 1, ay) || Solid(ax, ay - 1) || Solid(ax, ay + 1));
-                    t.SetPixel(x, y, edge ? line : clear);
+                    int ax = x - r, ay = y - r;
+                    float grown = 0f;
+                    for (int dy = -r; dy <= r && grown < 1f; dy++)
+                        for (int dx = -r; dx <= r; dx++)
+                        {
+                            float d = Mathf.Sqrt(dx * dx + dy * dy);
+                            if (d > r + 0.5f) continue;
+                            grown = Mathf.Max(grown, A(ax + dx, ay + dy) * Mathf.Clamp01(r + 0.5f - d));
+                        }
+                    float ring = Mathf.Clamp01(grown - A(ax, ay));
+                    px[y * w + x] = new Color32(232, 230, 246, (byte)(ring * 255f));
                 }
+            t.SetPixels32(px);
             t.Apply();
             return t;
         }
+
+        private const int Pad = 4;
 
         /// <summary>A soft elliptical shadow (the menu's objects sit in soft shadows).</summary>
         private static Texture2D Shadow()

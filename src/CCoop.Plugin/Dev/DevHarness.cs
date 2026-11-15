@@ -160,6 +160,11 @@ namespace CCoop.Plugin.Dev
             if (Time.realtimeSinceStartup < 8f) return;
             _uiDumped = key;
             Log.Info("[uidump] scene " + scene);
+            var big = new List<string>();
+            foreach (var sp in Resources.FindObjectsOfTypeAll<Sprite>())
+                if (sp != null && sp.rect.width >= 64 && sp.rect.height >= 64) big.Add(sp.name + " " + sp.rect.width + "x" + sp.rect.height);
+            big.Sort();
+            Log.Info("[uidump] sprites: " + string.Join(", ", big.ToArray()));
             UI.GameLook.DevExport(System.IO.Path.GetDirectoryName(Log.FilePath), new[] { "uiBlockSmall", "uiBlockMini", "uiBlockNano", "uigradientblack", "whitesquare", "userbarback", "gunmenubackground", "radialInnerCircle", "radialBar", "itemcraft", "woundview" });
             foreach (var f in Resources.FindObjectsOfTypeAll<Font>())
                 Log.Info("[uidump] font '" + f.name + "' dynamic=" + f.dynamic + " size=" + f.fontSize + " lineHeight=" + f.lineHeight +

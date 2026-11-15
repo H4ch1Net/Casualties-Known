@@ -13,7 +13,7 @@ namespace CCoop.Plugin.UI
     /// Scaled up on Steam Deck and large screens; text fields bring up Steam's
     /// on-screen keyboard where there is no physical one.
     /// </summary>
-    internal static class CoopWindow
+    internal static partial class CoopWindow
     {
         private const int WindowId = 0x0C00F;
         private const float Width = 490f;
@@ -59,9 +59,10 @@ namespace CCoop.Plugin.UI
         internal static void HandleHotkeys(CoopRuntime rt)
         {
             if (!CoopPlugin.Ready) return;
-            if (Input.GetKeyDown(CoopPlugin.Instance.MenuKey.Value))
+            if (Input.GetKeyDown(CoopPlugin.Instance.MenuKey.Value) || (_open && !TypingInField && Input.GetKeyDown(KeyCode.Escape)))
             {
                 _open = !_open;
+                if (!_open) { GUIUtility.keyboardControl = 0; _lastFocus = ""; }
                 Log.Info("[ui] co-op menu " + (_open ? "opened" : "closed"));
             }
         }
@@ -119,21 +120,7 @@ namespace CCoop.Plugin.UI
                     if (GUI.Button(r, label)) _open = true;
                 }
                 if (!_open) return;
-
-                // A click outside the window hands the keyboard back to the game; IMGUI
-                // would otherwise keep a text field focused (and game input blocked).
-                var e = Event.current;
-                if (e.type == EventType.MouseDown && !_rect.Contains(e.mousePosition) && _lastFocus.StartsWith("ccoop_"))
-                {
-                    GUIUtility.keyboardControl = 0;
-                    _lastFocus = "";
-                }
-
-                _rect.height = 0;
-                _rect = GUILayout.Window(WindowId, _rect, id => Body(rt), "CasualtiesCoop " + CoopPlugin.Version, GUILayout.Width(Width));
-                _rect.x = Mathf.Clamp(_rect.x, 0f, Mathf.Max(0f, Screen.width / scale - 80f));
-                _rect.y = Mathf.Clamp(_rect.y, 0f, Mathf.Max(0f, Screen.height / scale - 40f));
-                UiMouse.Claim(_rect);
+                Lobby(rt);
             }
             finally
             {
@@ -194,24 +181,6 @@ namespace CCoop.Plugin.UI
 
         private static void Offline(CoopRuntime rt)
         {
-            if (rt.Reconnecting)
-            {
-                GUILayout.BeginHorizontal(_box);
-                GUILayout.Label(Lang.T("Lost the host. Reconnecting (your character is saved)..."), _small);
-                if (GUILayout.Button(Lang.T("Stop"), GUILayout.MinWidth(60), GUILayout.ExpandWidth(false))) rt.CancelReconnect();
-                GUILayout.EndHorizontal();
-            }
-
-            GUILayout.Label(Lang.T("Play a run together"), _title);
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Name"), GUILayout.Width(60));
-            string name = Field("name", CoopPlugin.Instance.PlayerName.Value, 24, false);
-            if (name != CoopPlugin.Instance.PlayerName.Value) CoopPlugin.Instance.PlayerName.Value = name;
-            GUILayout.EndHorizontal();
-            if (string.IsNullOrEmpty(name)) GUILayout.Label(Lang.F("Using {0}", GameInfo.PlayerName), _small);
-
-            GUILayout.Space(6);
             var tab = (Tab)GUILayout.Toolbar((int)_tab, new[] { Lang.T("Host"), Lang.T("Find games"), Lang.T("LAN / IP") }, GUILayout.Height(26));
             if (tab != _tab)
             {

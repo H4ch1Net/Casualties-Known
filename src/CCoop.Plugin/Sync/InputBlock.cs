@@ -19,7 +19,7 @@ namespace CCoop.Plugin.Sync
         internal static bool Blocking => Chat.Typing || UI.CoopWindow.TypingInField;
 
         /// <summary>The game's controls are held (typing, or a gesture wheel waiting for a click).</summary>
-        internal static bool HoldGame => Blocking || GestureSync.HoldingInput;
+        internal static bool HoldGame => Blocking || GestureSync.HoldingInput || (UI.CoopWindow.IsOpen && GameInfo.InRunScene);
 
         internal static bool ConsoleOpen
         {
@@ -59,7 +59,7 @@ namespace CCoop.Plugin.Sync
     {
         private static bool Prefix(string action, ref KeyCode __result)
         {
-            if (InputBlock.HoldGame || ((action == "attack" || action == "iteminteract") && UI.UiMouse.Over))
+            if (InputBlock.HoldGame || ((action == "attack" || action == "iteminteract") && (UI.UiMouse.Over || UI.TeammateView.Showing)))
             {
                 __result = KeyCode.None;
                 return false;

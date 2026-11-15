@@ -695,16 +695,20 @@ The host's game is running slowly ({0} fps)
 Your game is running slowly ({0} fps); everyone's world goes through yours
 = 
 
-# UI/CoopWindow.cs
-Co-op · 1 player  (F1)
+# UI/CoopLobby.cs
+Co-op
 = 
-Co-op · {0} players  (F1)
+Reconnecting...
 = 
-Co-op  (F1)
+Not in a session
 = 
-Some hooks failed to install ({0}). The game was probably updated; parts of co-op may not sync.
+Hosting
 = 
-The game changed under these features: {0}. They may not work until the mod is updated.
+Connected
+= 
+Connecting
+= 
+Back
 = 
 Bug report
 = 
@@ -714,17 +718,85 @@ Saved to {0}. Attach the folder's files to your report.
 = 
 Couldn't save the report: {0}
 = 
-Close
+you
 = 
-Lost the host. Reconnecting (your character is saved)...
+Open
+= 
+Invite
+= 
+host
+= 
+NAME
+= 
+STEAM
+= 
+ready
+= 
+not running
+= 
+HOST
+= 
+lost: reconnecting, your character is saved
 = 
 Stop
 = 
-Play a run together
+LAST
 = 
-Name
+RUN
 = 
-Using {0}
+PLAYERS
+= 
+DEATH
+= 
+EXIT
+= 
+FRIENDLY_FIRE
+= 
+on
+= 
+off
+= 
+Public
+= 
+Invite only
+= 
+Friends
+= 
+JOIN
+= 
+password
+= 
+Some hooks failed to install ({0}). The game was probably updated; parts of co-op may not sync.
+= 
+The game changed under these features: {0}. They may not work until the mod is updated.
+= 
+Rules (change them any time)
+= 
+Run settings
+= 
+Run settings (the host's)
+= 
+Start a run
+= 
+Invite Steam friends
+= 
+Start the saved run
+= 
+Join the host's run
+= 
+End session
+= 
+Leave session
+= 
+
+# UI/CoopWindow.cs
+Co-op · 1 player  (F1)
+= 
+Co-op · {0} players  (F1)
+= 
+Co-op  (F1)
+= 
+Close
 = 
 Host
 = 
@@ -747,12 +819,6 @@ Unban
 Difficulty
 = 
 Who can join
-= 
-Friends
-= 
-Public
-= 
-Invite only
 = 
 Listed for everyone under Find games. Add a password to keep strangers out.
 = 
@@ -834,8 +900,6 @@ None of your Steam friends is hosting right now.
 = 
 No public sessions found. Hosts choose Public to be listed here.
 = 
-password
-= 
 In a run
 = 
 In the menu
@@ -868,31 +932,9 @@ Password needed
 = 
 Cancel
 = 
-Hosting
-= 
-Connected
-= 
-Connecting
-= 
-Invite Steam friends
-= 
-Rules (change them any time)
-= 
-Run settings
-= 
-Run settings (the host's)
-= 
 Players ({0}/{1})
 = 
-Start the saved run
-= 
 Players who join get their own characters back from this run; newcomers start fresh.
-= 
-Join the host's run
-= 
-End session
-= 
-Leave session
 = 
 Voice
 = 
@@ -914,10 +956,6 @@ Reduce flashes and shaking
 = 
 Colour-blind safe colours
 = 
-you
-= 
-host
-= 
 Check
 = 
 Kick
@@ -925,10 +963,6 @@ Kick
 Kicked by the host.
 = 
 Ban
-= 
-
-# UI/MenuWalkie.cs
-Co-op
 = 
 
 # UI/RunPresets.cs
@@ -981,10 +1015,6 @@ Changes {0}.
 The game's {0} settings.
 = 
 Changed from normal:
-= 
-on
-= 
-off
 = 
 
 # UI/TeamReceipt.cs
