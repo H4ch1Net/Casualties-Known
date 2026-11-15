@@ -10,7 +10,7 @@ Version 2 is a rewrite. Version 1 targeted the demo and is kept under `legacy/v1
 
 ### Install
 
-**The easy way (Windows):** unzip `CasualtiesCoop-2.1.1.zip` anywhere, then right-click `install.ps1` and choose **Run with PowerShell** (or run `powershell -ExecutionPolicy Bypass -File install.ps1`). It finds the game, installs BepInEx 5 if you don't have it yet, and copies the mod in.
+**The easy way (Windows):** unzip `CasualtiesCoop-2.1.2.zip` anywhere, then right-click `install.ps1` and choose **Run with PowerShell** (or run `powershell -ExecutionPolicy Bypass -File install.ps1`). It finds the game, installs BepInEx 5 if you don't have it yet, and copies the mod in.
 
 **Updating:** run the installer from the new download the same way. It replaces an older CasualtiesCoop (your settings are kept) and removes any other copy of a co-op mod it finds under `BepInEx/plugins` (the first co-op mod in `plugins/CCoop`, a second copy, loose files); other mods are left alone. It won't replace a newer version unless you add `-Force` (`--force` on Linux). If a second copy is still there when the game starts, the co-op lobby says so in red.
 
@@ -19,7 +19,7 @@ Version 2 is a rewrite. Version 1 targeted the demo and is kept under `legacy/v1
 **By hand:**
 
 1. Install [BepInEx 5.4.23.x x64](https://github.com/BepInEx/BepInEx/releases) into the game folder (`steamapps/common/Casualties Unknown`).
-2. Unzip `CasualtiesCoop-2.1.1.zip` into the game folder, which gives you `BepInEx/plugins/CasualtiesCoop/`.
+2. Unzip `CasualtiesCoop-2.1.2.zip` into the game folder, which gives you `BepInEx/plugins/CasualtiesCoop/`.
 
 Everyone in the session needs the same mod version and the same game build (a player with another version is told which version the host has when joining).
 
@@ -78,7 +78,7 @@ The **LAN / IP** tab hosts on port 7777 and joins by address (with the host's pa
 |---|---|
 | **World** | The game has no seed, so the host streams each layer to every client: terrain, water, about 2,000 objects with their health and item state, structures, the layer modifier and fog. That's ~200 KB and loads in 1–2 s. |
 | **Descending** | Exits and drill pods are votes (see above). The host's descent brings everybody along. |
-| **Terrain** | Mining, explosions, block placement and quakes, with crack overlays and hit sounds. Every 30 s the host checks every client's terrain chunk by chunk; a chunk that has drifted apart is repaired from the host's copy. Blocks someone else breaks crumble for you too, with the game's debris, dust and sound. The back-wall decorations (the holes in the rock on the first layer) are the host's, so everyone sees the same walls. |
+| **Terrain** | Mining, explosions, block placement and quakes, with crack overlays and hit sounds. Every 30 s the host checks every client's terrain chunk by chunk; a chunk that has drifted apart is repaired from the host's copy. Blocks someone else breaks crumble for you too, with the game's debris, dust and sound. The back-wall decorations (the holes in the rock on the first layer) are the host's, so everyone sees the same walls. Each machine used to roll its own sky colour, rain and rock-tile pattern; in a session they're the host's (sky and rain) or worked out the same way everywhere (tiles), so everyone sees the same layer. Teammates' splashes into water make the game's splash sound and spray for everyone. |
 | **Water** | Lakes, lava and other liquids near each player are simulated by that player's game and shared with everyone, so a flood, a drained pool or a geyser's eruption looks the same on every screen. |
 | **Hazards** | Fans, pistons, geysers and grabber plants are the same hazard on every machine: same speed, rhythm, liquid and reach. |
 | **Objects** | Damage adds up across players. The host alone decides when a crate breaks and rolls its loot, so loot never duplicates. Hit flashes, damage numbers and sounds show on every screen. |

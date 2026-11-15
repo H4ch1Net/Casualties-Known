@@ -179,6 +179,16 @@ namespace CCoop.Plugin.Sync
             foreach (var p in StructureRecorder.Placements)
                 snap.Structures.Add(new LayerSnapshot.Structure { Prefab = p.Prefab, X = p.Pos.x, Y = p.Pos.y });
             CaptureDecals(w, snap);
+            try
+            {
+                if (w.skyMaterial != null)
+                {
+                    var sky = w.skyMaterial.GetColor("_TopColor");
+                    snap.SkyR = sky.r; snap.SkyG = sky.g; snap.SkyB = sky.b;
+                    snap.Rain = w.skyMaterial.GetFloat("_RainIntensity");
+                }
+            }
+            catch (Exception e) { Log.Debug("[layer] sky: " + e.Message); }
             return snap;
         }
 
@@ -350,6 +360,18 @@ namespace CCoop.Plugin.Sync
             {
                 purged = RemoveUnregisteredContent();
                 int decals = ApplyDecals(w, snap);
+                TileLook.Redraw();
+                // The host's sky (each game rolls its own colour and rain); the last layer's
+                // sky is each player's own (the game colours it by what they carry).
+                if (snap.SkyR >= 0f && w.skyMaterial != null && snap.Depth != 10)
+                {
+                    try
+                    {
+                        w.skyMaterial.SetColor("_TopColor", new Color(snap.SkyR, snap.SkyG, snap.SkyB, 1f));
+                        w.skyMaterial.SetFloat("_RainIntensity", snap.Rain);
+                    }
+                    catch (Exception ex) { Log.Debug("[layer] sky: " + ex.Message); }
+                }
                 if (decals > 0) Log.Info("[layer] " + decals + " back-wall decorations from the host");
                 ApplyModifier(snap.ModifierSlot);
                 // Content modifiers (Flooded, Dried) rewrite water as they initialise, and
@@ -382,6 +404,17 @@ namespace CCoop.Plugin.Sync
             }
 
             BodyFreeze.PlaceAt(new Vector2(snap.SpawnX, snap.SpawnY));
+            // The first layer opens with the pod's crash: the game put its smoke under where this
+            // body was before it was placed. Under the pod instead, unless the layer is long under way.
+            if (snap.Depth == 0 && snap.LayerTime < 20f)
+            {
+                try
+                {
+                    var smoke = Resources.Load("Special/ExplosionParticle");
+                    if (smoke != null) UnityEngine.Object.Instantiate(smoke, new Vector3(snap.SpawnX, snap.SpawnY - 0.5f - 11f, 0f), Quaternion.identity);
+                }
+                catch (Exception e) { Log.Debug("[layer] crash smoke: " + e.Message); }
+            }
             try { w.UpdateChunkVisibility(); } catch { /* camera not ready */ }
             yield return null;
             if (Superseded(snap)) yield break;

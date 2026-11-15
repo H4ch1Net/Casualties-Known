@@ -1930,6 +1930,21 @@ namespace CCoop.Plugin.Dev
             var terrain = WorldAccess.CaptureTerrain();
             string th;
             using (var sha = SHA256.Create()) th = BitConverter.ToString(sha.ComputeHash(terrain), 0, 8).Replace("-", "").ToLowerInvariant();
+            // CCOOP_SIDESHOT=<dir>: each side's screen at the first checkpoints, to compare what both see.
+            string sideShot = Env("CCOOP_SIDESHOT");
+            if (!string.IsNullOrEmpty(sideShot) && (tag == "after" || tag == "dead"))
+                ScreenCapture.CaptureScreenshot(Path.Combine(sideShot, tag + "-" + (Coop.IsHost ? "host" : "client") + ".png"));
+            // CCOOP_TERRAINDUMP=<dir>: the raw grid at each checkpoint (ushort per cell, x-major), to diff host and client.
+            string dumpDir = Env("CCOOP_TERRAINDUMP");
+            if (!string.IsNullOrEmpty(dumpDir))
+            {
+                try
+                {
+                    var g = WorldAccess.Blocks;
+                    File.WriteAllBytes(Path.Combine(dumpDir, tag + "-" + (Coop.IsHost ? "host" : "client") + "-" + g.GetLength(0) + "x" + g.GetLength(1) + ".bin"), terrain);
+                }
+                catch (Exception e) { Log.Info("DEV terrain dump: " + e.Message); }
+            }
             int count = 0, runtime = 0;
             double health = 0;
             foreach (var kv in EntityRegistry.All)

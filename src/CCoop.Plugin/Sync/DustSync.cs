@@ -40,13 +40,60 @@ namespace CCoop.Plugin.Sync
             WorldNet.Publish(new DustPuff { Size = size, X = pos.x, Y = pos.y, VX = v.x, VY = v.y });
         }
 
+        // ---- splashes: the game's own (LiquidAffect), for a teammate stepping or falling into liquid
+
+        private static readonly AccessTools.FieldRef<float> LastSplash = Ref();
+        private static readonly AccessTools.FieldRef<LiquidAffect, Limb> SplashLimb = AccessTools.FieldRefAccess<LiquidAffect, Limb>("limb");
+        private static readonly string[] SplashSounds = { "Sounds/Splash/Small", "Sounds/Splash/Medium", "Sounds/Splash/Big" };
+        private static readonly AudioClip[][] SplashClips = new AudioClip[3][];
+
+        private static AccessTools.FieldRef<float> Ref()
+        {
+            try { return AccessTools.StaticFieldRefAccess<float>(AccessTools.Field(typeof(LiquidAffect), "lastSplash")); }
+            catch { return null; }
+        }
+
+        [HarmonyPatch(typeof(LiquidAffect), "FixedUpdate")]
+        internal static class SplashPatch
+        {
+            private static void Prefix(out float __state) => __state = LastSplash != null ? LastSplash() : 0f;
+
+            private static void Postfix(LiquidAffect __instance, float __state)
+            {
+                if (LastSplash == null || LastSplash() == __state || _replaying || !Coop.InSession || !Coop.WorldLive) return;
+                try
+                {
+                    var limb = SplashLimb(__instance);
+                    var me = GameInfo.LocalBody;
+                    if (limb == null || me == null || !ReferenceEquals(limb.body, me)) return;
+                    float speed = me.rb != null ? me.rb.velocity.magnitude : 0f;
+                    if (speed <= 0.5f) return;
+                    byte size = (byte)(speed > 20f ? 5 : speed > 8f ? 4 : 3);
+                    Vector2 at = __instance.transform.position;
+                    WorldNet.Publish(new DustPuff { Size = size, X = at.x, Y = at.y });
+                }
+                catch (Exception e) { Log.Debug("splash: " + e.Message); }
+            }
+        }
+
+        private static void Splash(DustPuff m, Vector2 at)
+        {
+            int k = m.Size - 3;
+            if (SplashClips[k] == null) SplashClips[k] = Resources.LoadAll<AudioClip>(SplashSounds[k]) ?? new AudioClip[0];
+            if (SplashClips[k].Length > 0) Sound.Play(SplashClips[k][UnityEngine.Random.Range(0, SplashClips[k].Length)], at);
+            int dust = k == 0 ? 1 : 2;
+            if (Loaded[dust] == null) Loaded[dust] = Resources.Load<GameObject>(Prefabs[dust]);
+            if (Loaded[dust] != null) UnityEngine.Object.Instantiate(Loaded[dust], at, Quaternion.identity);
+        }
+
         private static void Make(DustPuff m)
         {
             try
             {
                 var cam = Camera.main;
                 var at = new Vector2(m.X, m.Y);
-                if (cam == null || Vector2.Distance(cam.transform.position, at) > SeenWithin || m.Size > 2) return;
+                if (cam == null || Vector2.Distance(cam.transform.position, at) > SeenWithin || m.Size > 5) return;
+                if (m.Size >= 3) { _replaying = true; Splash(m, at); return; }
                 if (Loaded[m.Size] == null) Loaded[m.Size] = Resources.Load<GameObject>(Prefabs[m.Size]);
                 if (Loaded[m.Size] == null) return;
                 _replaying = true;

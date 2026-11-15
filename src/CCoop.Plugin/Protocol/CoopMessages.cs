@@ -1313,7 +1313,7 @@ namespace CCoop.Plugin.Protocol
     /// <summary>A dust cloud a player's body made (a step, a jump, a landing, a blow on a wall).</summary>
     internal sealed class DustPuff : IMessage
     {
-        public byte Size;   // 0 mini, 1 small, 2 big
+        public byte Size;   // 0 mini, 1 small, 2 big; 3, 4, 5 a small, medium, big splash
         public float X, Y, VX, VY;
 
         public void Write(PacketWriter w) { w.WriteByte(Size); w.WriteSingle(X); w.WriteSingle(Y); w.WriteSingle(VX); w.WriteSingle(VY); }

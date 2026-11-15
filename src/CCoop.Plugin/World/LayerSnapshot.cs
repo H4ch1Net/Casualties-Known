@@ -12,7 +12,7 @@ namespace CCoop.Plugin.World
     internal sealed class LayerSnapshot
     {
         private const uint Magic = 0x4C434343; // "CCCL"
-        private const int Version = 5;
+        private const int Version = 6;
         private const int MaxInflated = 48 * 1024 * 1024;
 
         internal sealed class Entity
@@ -57,6 +57,9 @@ namespace CCoop.Plugin.World
         public List<Entity> Entities = new List<Entity>();
         public List<Structure> Structures = new List<Structure>();
         public List<Decal> Decals = new List<Decal>();
+
+        /// <summary>The sky the game rolled for the run (colour at the top, rain), the host's for everyone.</summary>
+        public float SkyR = -1f, SkyG, SkyB, Rain;
 
         public byte[] Encode()
         {
@@ -135,6 +138,11 @@ namespace CCoop.Plugin.World
                 w.WriteSingle(d.Pitch);
             }
 
+            w.WriteSingle(SkyR);
+            w.WriteSingle(SkyG);
+            w.WriteSingle(SkyB);
+            w.WriteSingle(Rain);
+
             return Compression.Deflate(w.Buffer, 0, w.Length);
         }
 
@@ -206,6 +214,11 @@ namespace CCoop.Plugin.World
                 int k = r.ReadInt32();
                 s.Decals.Add(new Decal { Key = k >= 0 && k < keys.Length ? keys[k] : "", X = r.ReadSingle(), Y = r.ReadSingle(), Rotation = r.ReadSingle(), Pitch = r.ReadSingle() });
             }
+
+            s.SkyR = r.ReadSingle();
+            s.SkyG = r.ReadSingle();
+            s.SkyB = r.ReadSingle();
+            s.Rain = r.ReadSingle();
 
             if (r.Failed || !r.AtEnd) throw new FormatException("snapshot is truncated or malformed");
             return s;
