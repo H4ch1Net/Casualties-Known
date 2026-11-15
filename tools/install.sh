@@ -7,6 +7,12 @@
 #   bash install.sh "/path/to/Casualties Unknown"
 #   bash install.sh --uninstall     remove the mod (BepInEx stays)
 #   bash install.sh --dry-run       say what would happen, change nothing
+#   bash install.sh --force         install this download even over a newer one
+#
+# An older CasualtiesCoop is updated (settings are kept). Any other copy of a co-op mod
+# under BepInEx/plugins (the first co-op mod, v1, in plugins/CCoop, a second copy, loose
+# files, test tools) is removed, since two copies break each other; other mods are left
+# alone.
 #
 # On Steam Deck: switch to Desktop Mode, open Konsole in the unzipped folder, and run
 # "bash install.sh". Afterwards set the game's launch option shown at the end (Steam has
@@ -25,11 +31,13 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 game=""
 uninstall=0
 dry=0
+force=0
 for arg in "$@"; do
     case "$arg" in
         --uninstall) uninstall=1 ;;
         --dry-run) dry=1 ;;
-        -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
+        --force) force=1 ;;
+        -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
         *) game="$arg" ;;
     esac
 done
@@ -77,9 +85,41 @@ if pgrep -f "$GAME_EXE" >/dev/null 2>&1; then
     fail "the game is running. Close it, then run this again."
 fi
 
-target="$game/BepInEx/plugins/CasualtiesCoop"
+plugins="$game/BepInEx/plugins"
+target="$plugins/CasualtiesCoop"
+
+# ------------------------------------------------------------------ other copies of the mod
+
+# Every other copy of a co-op mod under BepInEx/plugins, removed (or listed with --dry-run).
+remove_other_copies() {
+    [ -d "$plugins" ] || return 0
+    local f dir what stem n ext foreign
+    while IFS= read -r f; do
+        dir="$(dirname "$f")"
+        case "$(basename "$f")" in
+            CCoop.Plugin.dll)
+                if grep -qa "ccoop.casualtiescoop" "$f"; then what="another copy of CasualtiesCoop"; else what="the first co-op mod (CasualtiesCoop v1)"; fi ;;
+            *) what="a CasualtiesCoop test tool ($(basename "$f"))" ;;
+        esac
+        say "Found $what: $f"
+        # A folder holding only the mod goes; loose files go one by one, beside other mods' files.
+        foreign="$(find "$dir" -type f ! -name 'CCoop.*' ! -name 'LiteNetLib.*' ! -name 'version.txt' ! -path '*/lang/*' | head -n 1)"
+        if [ "$dir" != "$plugins" ] && [ -z "$foreign" ]; then
+            if [ "$dry" = 1 ]; then say "  would remove $dir"; else rm -rf "$dir"; say "  removed $dir"; fi
+        else
+            stem="$(basename "$f" .dll)"
+            for n in $([ "$stem" = "CCoop.Plugin" ] && echo "CCoop.Plugin CCoop.Net" || echo "$stem"); do
+                for ext in dll pdb xml; do
+                    [ -f "$dir/$n.$ext" ] || continue
+                    if [ "$dry" = 1 ]; then say "  would remove $dir/$n.$ext"; else rm -f "$dir/$n.$ext"; say "  removed $dir/$n.$ext"; fi
+                done
+            done
+        fi
+    done < <(find "$plugins" -type f \( -name 'CCoop.Plugin.dll' -o -name 'CCoop.Gates.dll' -o -name 'CCoop.Probe.dll' \) ! -path "$target/*" 2>/dev/null)
+}
 
 if [ "$uninstall" = 1 ]; then
+    remove_other_copies
     if [ ! -d "$target" ]; then say "CasualtiesCoop is not installed."; exit 0; fi
     if [ "$dry" = 1 ]; then say "Would remove $target"; exit 0; fi
     rm -rf "$target"
@@ -90,6 +130,20 @@ fi
 source_dir="$here/BepInEx/plugins/CasualtiesCoop"
 [ -f "$source_dir/CCoop.Plugin.dll" ] ||
     fail "this folder doesn't hold the mod (expected $source_dir/CCoop.Plugin.dll). Run the script from the unzipped download."
+
+# What's installed now, against this download (installs before 2.1.0 have no version.txt).
+new_version="$(head -n 1 "$source_dir/version.txt" 2>/dev/null | tr -d '\r' || true)"
+installed=""
+if [ -f "$target/CCoop.Plugin.dll" ]; then
+    installed="$(head -n 1 "$target/version.txt" 2>/dev/null | tr -d '\r' || true)"
+    [ -n "$installed" ] || installed="2.0.0"
+fi
+newer() {  # newer A B: A is a later version than B
+    [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n 1)" = "$1" ]
+}
+if [ -n "$installed" ] && [ -n "$new_version" ] && newer "$installed" "$new_version" && [ "$force" = 0 ]; then
+    fail "CasualtiesCoop $installed is installed, which is newer than this download ($new_version). Nothing was changed. Run again with --force to install $new_version anyway."
+fi
 
 # ------------------------------------------------------------------ BepInEx
 
@@ -139,13 +193,20 @@ fi
 
 # ------------------------------------------------------------------ the mod
 
+remove_other_copies
+if [ -z "$installed" ]; then say "Installing CasualtiesCoop $new_version."
+elif newer "$new_version" "$installed"; then say "Updating CasualtiesCoop $installed to $new_version (your settings are kept)."
+elif [ "$installed" != "$new_version" ]; then say "Replacing CasualtiesCoop $installed with the older $new_version (--force)."
+else say "CasualtiesCoop $new_version is already installed; installing it again."
+fi
+
 if [ "$dry" = 1 ]; then
     say "Would copy $source_dir to $target"
 else
     rm -rf "$target"
     mkdir -p "$target"
     cp -R "$source_dir/." "$target/"
-    say "CasualtiesCoop installed in $target"
+    say "CasualtiesCoop $new_version installed in $target"
 fi
 
 say ""

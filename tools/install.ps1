@@ -12,10 +12,15 @@
     2. If BepInEx 5 isn't installed there, downloads the latest stable BepInEx 5 (x64)
        from its GitHub releases page and unpacks it into the game folder. Nothing else
        is downloaded, and nothing is sent anywhere.
-    3. Copies BepInEx\plugins\CasualtiesCoop from this folder into the game, replacing
-       an older copy of the mod.
+    3. Checks what's already there. An older CasualtiesCoop is updated (your settings
+       are kept). Any other copy of a co-op mod under BepInEx\plugins (the first
+       co-op mod, v1, in plugins\CCoop, a second copy, loose files, test tools) is
+       removed, since two copies break each other; other mods are left alone. A newer
+       CasualtiesCoop than this download is left as it is, unless you use -Force.
+    4. Copies BepInEx\plugins\CasualtiesCoop from this folder into the game.
 
-    -Uninstall removes the mod and leaves BepInEx in place. Close the game first.
+    -Uninstall removes the mod (and any old copies) and leaves BepInEx in place.
+    Close the game first.
     Linux / Steam Deck: install by hand (see the README); this script is for Windows.
 
 .PARAMETER GamePath
@@ -26,12 +31,16 @@
 
 .PARAMETER DryRun
     Say what would happen without changing or downloading anything.
+
+.PARAMETER Force
+    Install this download even over a newer CasualtiesCoop.
 #>
 [CmdletBinding()]
 param(
     [string]$GamePath = '',
     [switch]$Uninstall,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
@@ -63,6 +72,64 @@ function Find-Game {
     return $null
 }
 
+# ---------------------------------------------------------------------- copies of the mod
+
+function Get-ModVersion([string]$dll) {
+    try {
+        $v = (Get-Item -LiteralPath $dll).VersionInfo.FileVersion
+        if ($v) { $v = [version]$v; return [version]::new($v.Major, $v.Minor, [Math]::Max(0, $v.Build)) }
+    } catch { }
+    return $null
+}
+
+# This mod's plugin id is written in its DLL; the first co-op mod (v1) has "ccoop.plugin".
+function Test-ThisMod([string]$dll) {
+    try { return [IO.File]::ReadAllText($dll, [Text.Encoding]::ASCII).Contains('ccoop.casualtiescoop') } catch { return $false }
+}
+
+# Every other copy of a co-op mod under BepInEx\plugins: what it is and what to delete.
+function Find-OtherCopies([string]$plugins, [string]$keep) {
+    $found = @()
+    if (-not (Test-Path -LiteralPath $plugins)) { return $found }
+    $ours = '^(CCoop\..*|LiteNetLib\..*|version\.txt)$'
+    $files = Get-ChildItem -LiteralPath $plugins -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -in @('CCoop.Plugin.dll', 'CCoop.Gates.dll', 'CCoop.Probe.dll') }
+    foreach ($f in $files) {
+        if ($keep -and $f.FullName.StartsWith($keep + '\', [StringComparison]::OrdinalIgnoreCase)) { continue }
+        $what = if ($f.Name -ne 'CCoop.Plugin.dll') { "a CasualtiesCoop test tool ($($f.Name))" }
+                elseif (Test-ThisMod $f.FullName) { "another copy of CasualtiesCoop $(Get-ModVersion $f.FullName)" }
+                else { 'the first co-op mod (CasualtiesCoop v1)' }
+        $dir = $f.Directory
+        $delete = @()
+        $foreign = @(Get-ChildItem -LiteralPath $dir.FullName -Recurse -File | Where-Object { $_.Name -notmatch $ours -and $_.DirectoryName -notmatch '\\lang$' })
+        if ($dir.FullName -ne (Get-Item -LiteralPath $plugins).FullName -and $foreign.Count -eq 0) {
+            $delete += $dir.FullName   # a folder holding only the mod
+        } else {
+            # Loose in the plugins folder, or beside other mods' files: just this mod's own files.
+            $stem = [IO.Path]::GetFileNameWithoutExtension($f.Name)
+            $names = if ($f.Name -eq 'CCoop.Plugin.dll') { @('CCoop.Plugin', 'CCoop.Net') } else { @($stem) }
+            foreach ($n in $names) {
+                foreach ($ext in @('.dll', '.pdb', '.xml')) {
+                    $x = Join-Path $dir.FullName ($n + $ext)
+                    if (Test-Path -LiteralPath $x) { $delete += $x }
+                }
+            }
+        }
+        $found += [pscustomobject]@{ What = $what; Where = $f.FullName; Delete = $delete }
+    }
+    return $found
+}
+
+function Remove-OtherCopies($copies) {
+    foreach ($c in $copies) {
+        Write-Host "Found $($c.What): $($c.Where)"
+        foreach ($d in $c.Delete) {
+            if ($DryRun) { Write-Host "  would remove $d"; continue }
+            if (Test-Path -LiteralPath $d) { Remove-Item -LiteralPath $d -Recurse -Force; Write-Host "  removed $d" }
+        }
+    }
+}
+
 function Get-BepInExVersion([string]$game) {
     $core = Join-Path $game 'BepInEx\core\BepInEx.dll'
     if (-not (Test-Path -LiteralPath $core)) { return $null }
@@ -85,9 +152,12 @@ foreach ($p in (Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($GameE
     if (-not $running -or $running -ieq $exePath) { throw "The game is running. Close it, then run this again." }
 }
 
-$target = Join-Path $GamePath 'BepInEx\plugins\CasualtiesCoop'
+$plugins = Join-Path $GamePath 'BepInEx\plugins'
+$target = Join-Path $plugins 'CasualtiesCoop'
+$others = @(Find-OtherCopies $plugins $target)
 
 if ($Uninstall) {
+    Remove-OtherCopies $others
     if (-not (Test-Path -LiteralPath $target)) { Write-Host 'CasualtiesCoop is not installed.'; return }
     if ($DryRun) { Write-Host "Would remove $target"; return }
     Remove-Item -LiteralPath $target -Recurse -Force
@@ -98,6 +168,14 @@ if ($Uninstall) {
 $source = Join-Path $PSScriptRoot 'BepInEx\plugins\CasualtiesCoop'
 if (-not (Test-Path -LiteralPath (Join-Path $source 'CCoop.Plugin.dll'))) {
     throw "This folder doesn't hold the mod (expected $source\CCoop.Plugin.dll). Run the script from the unzipped download."
+}
+
+# What's installed now, against this download.
+$newVersion = Get-ModVersion (Join-Path $source 'CCoop.Plugin.dll')
+$installed = $null
+if (Test-Path -LiteralPath (Join-Path $target 'CCoop.Plugin.dll')) { $installed = Get-ModVersion (Join-Path $target 'CCoop.Plugin.dll') }
+if ($installed -and $newVersion -and $installed -gt $newVersion -and -not $Force) {
+    throw "CasualtiesCoop $installed is installed, which is newer than this download ($newVersion). Nothing was changed. Run again with -Force to install $newVersion anyway."
 }
 
 # ---------------------------------------------------------------------- BepInEx
@@ -134,6 +212,12 @@ if ($version -and $version.StartsWith('5.')) {
 
 # ---------------------------------------------------------------------- the mod
 
+Remove-OtherCopies $others
+if (-not $installed) { Write-Host "Installing CasualtiesCoop $newVersion." }
+elseif ($installed -lt $newVersion) { Write-Host "Updating CasualtiesCoop $installed to $newVersion (your settings are kept)." }
+elseif ($installed -gt $newVersion) { Write-Host "Replacing CasualtiesCoop $installed with the older $newVersion (-Force)." }
+else { Write-Host "CasualtiesCoop $newVersion is already installed; installing it again." }
+
 if ($DryRun) {
     Write-Host "Would copy $source to $target"
     return
@@ -141,5 +225,5 @@ if ($DryRun) {
 if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
 New-Item -ItemType Directory -Path $target -Force | Out-Null
 Copy-Item -Path (Join-Path $source '*') -Destination $target -Recurse -Force
-Write-Host "CasualtiesCoop installed in $target"
+Write-Host "CasualtiesCoop $newVersion installed in $target"
 Write-Host 'Start the game through Steam, then press F1 (or click Co-op on the main menu).'

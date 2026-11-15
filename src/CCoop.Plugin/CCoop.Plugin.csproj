@@ -63,6 +63,7 @@
       <CCoopLang Include="$(MSBuildThisFileDirectory)..\..\lang\*.txt" />
     </ItemGroup>
     <Copy SourceFiles="@(CCoopLang)" DestinationFolder="$(GameBepInExPluginPath)\CasualtiesCoop\lang" />
+    <WriteLinesToFile File="$(GameBepInExPluginPath)\CasualtiesCoop\version.txt" Lines="$(Version)" Overwrite="true" />
     <Message Importance="high" Text="Deployed to $(GameBepInExPluginPath)\CasualtiesCoop" />
   </Target>
 
@@ -79,6 +80,8 @@
       <CCoopLangPack Include="$(MSBuildThisFileDirectory)..\..\lang\*.txt" />
     </ItemGroup>
     <Copy SourceFiles="@(CCoopLangPack)" DestinationFolder="$(StageDir)\lang" />
+    <!-- The installers compare it with what's installed (bash can't read a DLL's version). -->
+    <WriteLinesToFile File="$(StageDir)\version.txt" Lines="$(Version)" Overwrite="true" />
     <!-- The installer sits beside the BepInEx folder in the zip. -->
     <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\tools\install.ps1;$(MSBuildThisFileDirectory)..\..\tools\install.sh" DestinationFolder="$(MSBuildThisFileDirectory)..\..\dist\stage" />
     <Delete Files="$(ZipPath)" />

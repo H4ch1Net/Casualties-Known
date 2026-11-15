@@ -862,6 +862,8 @@ JOIN
 = 
 password
 = 
+Another copy of the co-op mod is installed ({0}) and will clash with this one. Close the game and run the installer from this download again: it removes old copies.
+= 
 Some hooks failed to install ({0}). The game was probably updated; parts of co-op may not sync.
 = 
 The game changed under these features: {0}. They may not work until the mod is updated.

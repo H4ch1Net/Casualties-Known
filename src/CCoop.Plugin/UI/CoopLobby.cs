@@ -284,6 +284,7 @@ namespace CCoop.Plugin.UI
             string quirks = CharacterPick.Text(c, "quirks");
             if (quirks.Length > 0) { GUILayout.Space(4); GUILayout.Label(quirks, UiSkin.Fit(_charText, quirks)); }
             GUILayout.FlexibleSpace();
+            Problems();
             var flow = Coop.Get<RunFlow>();
             if (s != null && flow != null) GUILayout.Label(flow.Describe(), _small);
             if (s == null && !string.IsNullOrEmpty(rt.LastMessage)) GUILayout.Label(Lang.Unpack(rt.LastMessage), _small);
@@ -419,6 +420,14 @@ namespace CCoop.Plugin.UI
                 var history = Notices.History;
                 for (int i = Mathf.Max(0, history.Count - 4); i < history.Count; i++) GUILayout.Label(history[i], _small);
             }
+            Problems();
+        }
+
+        /// <summary>What's wrong with this install (shown wherever the lobby is).</summary>
+        private static void Problems()
+        {
+            if (GameCheck.OtherCopies.Count > 0)
+                GUILayout.Label(Lang.F("Another copy of the co-op mod is installed ({0}) and will clash with this one. Close the game and run the installer from this download again: it removes old copies.", string.Join(", ", GameCheck.OtherCopies.ToArray())), _bad);
             if (CoopPlugin.FailedPatches.Length > 0)
                 GUILayout.Label(Lang.F("Some hooks failed to install ({0}). The game was probably updated; parts of co-op may not sync.", string.Join(", ", CoopPlugin.FailedPatches)), _bad);
             if (GameCheck.Missing.Count > 0)

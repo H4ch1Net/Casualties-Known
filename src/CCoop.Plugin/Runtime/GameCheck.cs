@@ -38,6 +38,42 @@ namespace CCoop.Plugin.Runtime
         /// <summary>Features that may not work, e.g. "chat and speech bubbles (Talker.currentString)".</summary>
         internal static readonly List<string> Missing = new List<string>();
 
+        /// <summary>Other copies of a co-op mod in the plugins folder (an old version, the first mod), as paths.</summary>
+        internal static readonly List<string> OtherCopies = new List<string>();
+
+        /// <summary>
+        /// Another CCoop.Plugin.dll anywhere under BepInEx/plugins: the first co-op mod (v1,
+        /// "ccoop.plugin") or a second copy of this one. Both are the same assembly name, and
+        /// two of them break each other. The installer removes them; this says so in game.
+        /// </summary>
+        internal static void FindOtherCopies()
+        {
+            OtherCopies.Clear();
+            try
+            {
+                string mine = Path.GetFullPath(typeof(GameCheck).Assembly.Location);
+                string plugins = BepInEx.Paths.PluginPath;
+                foreach (var dll in Directory.GetFiles(plugins, "CCoop.Plugin.dll", SearchOption.AllDirectories))
+                {
+                    if (string.Equals(Path.GetFullPath(dll), mine, StringComparison.OrdinalIgnoreCase)) continue;
+                    OtherCopies.Add(Relative(plugins, dll));
+                }
+                foreach (var tool in new[] { "CCoop.Gates.dll", "CCoop.Probe.dll" })
+                    foreach (var dll in Directory.GetFiles(plugins, tool, SearchOption.AllDirectories))
+                        OtherCopies.Add(Relative(plugins, dll));
+            }
+            catch (Exception e) { Log.Debug("other copies: " + e.Message); }
+            if (OtherCopies.Count > 0) Log.Warn("another co-op mod is installed too: " + string.Join(", ", OtherCopies.ToArray()) + ". Run the installer again to remove it.");
+        }
+
+        /// <summary>"plugins/CCoop/CCoop.Plugin.dll" for a file under the plugins folder.</summary>
+        private static string Relative(string plugins, string file)
+        {
+            string parent = Path.GetDirectoryName(plugins) ?? "";
+            string rel = file.Length > parent.Length ? file.Substring(parent.Length) : file;
+            return rel.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, '/');
+        }
+
         internal static void Run()
         {
             Missing.Clear();
@@ -49,6 +85,7 @@ namespace CCoop.Plugin.Runtime
             }
             if (Missing.Count == 0) Log.Info("game check: all " + Members.Length + " game members found");
             else Log.Warn("game check: missing " + string.Join(", ", Missing.ToArray()));
+            FindOtherCopies();
         }
 
         // ------------------------------------------------------------------ bug reports

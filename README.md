@@ -10,16 +10,18 @@ Version 2 is a rewrite. Version 1 targeted the demo and is kept under `legacy/v1
 
 ### Install
 
-**The easy way (Windows):** unzip `CasualtiesCoop-2.0.0.zip` anywhere, then right-click `install.ps1` and choose **Run with PowerShell** (or run `powershell -ExecutionPolicy Bypass -File install.ps1`). It finds the game, installs BepInEx 5 if you don't have it yet, and copies the mod in.
+**The easy way (Windows):** unzip `CasualtiesCoop-2.1.0.zip` anywhere, then right-click `install.ps1` and choose **Run with PowerShell** (or run `powershell -ExecutionPolicy Bypass -File install.ps1`). It finds the game, installs BepInEx 5 if you don't have it yet, and copies the mod in.
+
+**Updating:** run the installer from the new download the same way. It replaces an older CasualtiesCoop (your settings are kept) and removes any other copy of a co-op mod it finds under `BepInEx/plugins` (the first co-op mod in `plugins/CCoop`, a second copy, loose files); other mods are left alone. It won't replace a newer version unless you add `-Force` (`--force` on Linux). If a second copy is still there when the game starts, the co-op lobby says so in red.
 
 **The easy way (Linux and Steam Deck):** unzip it anywhere, open a terminal there (on Steam Deck: Desktop Mode, then Konsole) and run `bash install.sh`. It does the same, then shows the one launch option to set in Steam (see [Linux, Proton and Steam Deck](#linux-proton-and-steam-deck)).
 
 **By hand:**
 
 1. Install [BepInEx 5.4.23.x x64](https://github.com/BepInEx/BepInEx/releases) into the game folder (`steamapps/common/Casualties Unknown`).
-2. Unzip `CasualtiesCoop-2.0.0.zip` into the game folder, which gives you `BepInEx/plugins/CasualtiesCoop/`.
+2. Unzip `CasualtiesCoop-2.1.0.zip` into the game folder, which gives you `BepInEx/plugins/CasualtiesCoop/`.
 
-Everyone in the session needs the same mod version and the same game build.
+Everyone in the session needs the same mod version and the same game build (a player with another version is told which version the host has when joining).
 
 ### Host
 
