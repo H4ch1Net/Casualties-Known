@@ -250,8 +250,6 @@ Point
 = 
 Help!
 = 
-*calls for help!*
-= 
 Hug
 = 
 No
@@ -269,8 +267,6 @@ Thumbs up
 You can't do that right now.
 = 
 No one close enough to hug.
-= 
-*hugs {0}*
 = 
 {0} hugged you
 = 
@@ -710,8 +706,6 @@ Some hooks failed to install ({0}). The game was probably updated; parts of co-o
 = 
 The game changed under these features: {0}. They may not work until the mod is updated.
 = 
-Log: {0}
-= 
 Bug report
 = 
 Saves your co-op logs and session details to a folder on your desktop.
@@ -744,17 +738,13 @@ Host with Steam and continue
 = 
 Host with Steam
 = 
-Host from the main menu, then start a run. Players who join are brought into your run with the character they picked on the character screen.
+Host, then start a run: friends who join are brought into it.
 = 
 Banned players ({0})
 = 
 Unban
 = 
 Difficulty
-= 
-Custom rules.
-= 
-Co-op rules only; the game's own difficulty is the run settings you pick when starting a run.
 = 
 Who can join
 = 
@@ -773,10 +763,6 @@ Steam friends can join from Find games, your profile ("Join Game") or an invite.
 Players
 = 
 Password
-= 
-Joiners will be asked for the password (players already here stay).
-= 
-Joiners will be asked for the password.
 = 
 When you die
 = 
@@ -800,8 +786,6 @@ Half are there
 = 
 All are there
 = 
-Counts living players at an exit or in the drill pod. The rest are brought along.
-= 
 (Set to {0}% in the config.)
 = 
 Help
@@ -821,8 +805,6 @@ Voices carry
 Loot
 = 
 Enemies
-= 
-Scales with the number of players, on top of the game's own run settings.
 = 
 Speed-up
 = 
@@ -851,8 +833,6 @@ Looking for sessions...
 None of your Steam friends is hosting right now.
 = 
 No public sessions found. Hosts choose Public to be listed here.
-= 
-Ping is Steam's estimate from relay locations; the real figure shows once connected.
 = 
 password
 = 
@@ -904,8 +884,6 @@ Run settings (the host's)
 = 
 Players ({0}/{1})
 = 
-Ping is each player's round trip to the host.
-= 
 Start the saved run
 = 
 Players who join get their own characters back from this run; newcomers start fresh.
@@ -916,8 +894,6 @@ End session
 = 
 Leave session
 = 
-Voice chat needs Steam. Text chat: press {0}.
-= 
 Voice
 = 
 Hold {0}
@@ -927,8 +903,6 @@ Off
 Send above
 = 
 everything
-= 
-Nearby players hear you, quieter with distance; the dead hear only each other. Text chat: press {0}.
 = 
 Show arrows to teammates who are off screen
 = 
@@ -951,6 +925,10 @@ Kick
 Kicked by the host.
 = 
 Ban
+= 
+
+# UI/MenuWalkie.cs
+Co-op
 = 
 
 # UI/RunPresets.cs
@@ -1038,8 +1016,6 @@ down
 = 
 
 # UI/TeammatePanel.cs
-right-click
-= 
 dead {0} s
 = 
 dying
@@ -1048,31 +1024,15 @@ bleeding
 = 
 ok
 = 
-No reading: they're not on this layer.
+They're not on this layer.
 = 
-Blood {0}% · Oxygen {1}% · Pulse {2} · Pressure {3} · Temp {4}°C · Brain {5}% · Pain {6}
+nothing wrong you can see
 = 
-skin {0} · muscle {1}
+A defibrillator might still bring them back ({0} s).
 = 
-Dead. A defibrillator might still bring them back ({0} s left).
+Too late to bring back on this layer.
 = 
-Dead. Too late to bring back on this layer.
-= 
-Heart stopped: hold CPR to keep the brain alive, and defibrillate.
-= 
-Heart fibrillating ({0}%): an AED can reset it.
-= 
-Bleeding.
-= 
-Dying.
-= 
-Hypothermic.
-= 
-Feverish.
-= 
-Thirsty.
-= 
-Hungry.
+Heart stopped: hold CPR and defibrillate.
 = 
 missing
 = 
@@ -1092,6 +1052,26 @@ bandaged
 = 
 prosthetic
 = 
+In your hand: {0}
+= 
+Shock their heart with the {0}
+= 
+Shock them (try to bring them back)
+= 
+Use {0}
+= 
+Set the joint
+= 
+Pull out the shrapnel
+= 
+Take off the tourniquet
+= 
+Take off the splint
+= 
+Click a limb to treat it.
+= 
+Hold for CPR
+= 
 Put down
 = 
 Reach down and pull them up
@@ -1101,28 +1081,6 @@ Nothing on them to take.
 On their body (not hands or mouth):
 = 
 Take
-= 
-In your hand: {0}
-= 
-nothing
-= 
-Shock their heart with the {0}
-= 
-Shock them (try to bring them back)
-= 
-Use {0} on {1}
-= 
-Set the dislocated {0}
-= 
-Pull the shrapnel out by hand
-= 
-Take off the tourniquet
-= 
-Take off the splint
-= 
-Pick a limb above to treat it.
-= 
-Hold for CPR
 = 
 Give {0}
 = 

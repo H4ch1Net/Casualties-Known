@@ -131,6 +131,57 @@ namespace CCoop.Plugin.Sync
 
         internal static int Count => Lines.Count;
 
+        // ---- the log in the game's own speech text (in a run; the menu keeps the plain one)
+
+        private static readonly List<TMPro.TextMeshProUGUI> Shown = new List<TMPro.TextMeshProUGUI>();
+        private static bool UseGameText => UI.GameText.Template != null;
+
+        internal override void LateTick()
+        {
+            if (!UseGameText)
+            {
+                foreach (var t in Shown) if (t != null) t.gameObject.SetActive(false);
+                return;
+            }
+            float now = Time.unscaledTime;
+            // Laid out from the bottom up, newest lowest, just above the input line (the
+            // canvas is 1080 tall whatever the screen).
+            float y = 190f + 30f;
+            int used = 0;
+            var amber = UI.GameText.Colour;
+            for (int i = Lines.Count - 1; i >= 0 && used < 10; i--)
+            {
+                var l = Lines[i];
+                float alpha = Typing ? 1f : Mathf.Clamp01((FadeAfter - (now - l.At)) / 2f);
+                if (alpha <= 0f) continue;
+                while (Shown.Count <= used)
+                {
+                    var made = UI.GameText.Screen("Chat" + Shown.Count);
+                    if (made == null) return;
+                    made.alignment = TMPro.TextAlignmentOptions.BottomLeft;
+                    made.fontSize = 26f;
+                    var rt = made.rectTransform;
+                    rt.anchorMin = rt.anchorMax = Vector2.zero;
+                    rt.pivot = Vector2.zero;
+                    Shown.Add(made);
+                }
+                var tmp = Shown[used++];
+                if (tmp == null) continue;
+                tmp.gameObject.SetActive(true);
+                if (tmp.text != l.Text) tmp.text = l.Text;
+                // What people say is in the game's speech colour; the mod's own notes keep theirs.
+                var c = l.Color == Color.white ? amber : l.Color;
+                tmp.color = new Color(c.r, c.g, c.b, alpha);
+                var r = tmp.rectTransform;
+                r.sizeDelta = new Vector2(620f, 30f);
+                float h = Mathf.Max(30f, tmp.GetPreferredValues(l.Text, 620f, 0f).y);
+                r.sizeDelta = new Vector2(620f, h);
+                r.anchoredPosition = new Vector2(110f, y);
+                y += h + 2f;
+            }
+            for (int i = used; i < Shown.Count; i++) if (Shown[i] != null) Shown[i].gameObject.SetActive(false);
+        }
+
         internal static void DevOpen() => Open();
         internal static void DevClose() => Close();
 
@@ -227,8 +278,10 @@ namespace CCoop.Plugin.Sync
                     }
                 }
 
-                // Newest at the bottom, just above the input line.
+                // Newest at the bottom, just above the input line (drawn in the game's
+                // speech text instead, in a run: see LateTick).
                 float now = Time.unscaledTime;
+                if (UseGameText) goto Input;
                 float lineY = y;
                 for (int i = Lines.Count - 1; i >= 0; i--)
                 {
@@ -248,6 +301,7 @@ namespace CCoop.Plugin.Sync
                     ls.normal.textColor = keep;
                 }
 
+                Input:
                 if (Typing)
                 {
                     // The key that opened chat mustn't also become its first letter.

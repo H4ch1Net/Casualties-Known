@@ -193,9 +193,63 @@ namespace CCoop.Plugin.Dev
             }
         }
 
+        private bool _hurtDone;
+
+        /// <summary>CCOOP_HURT=1: the client arrives hurt in every way the health view shows (to look at the teammate panel).</summary>
+        private void DevHurt()
+        {
+            if (_hurtDone || Env("CCOOP_HURT") != "1" || !Coop.IsClient || !Coop.WorldLive) return;
+            var b = GameInfo.LocalBody;
+            if (b == null || b.limbs == null || b.limbs.Length < 15) return;
+            _hurtDone = true;
+            b.limbs[3].skinHealth = 45f; b.limbs[3].bleedAmount = 9f; b.limbs[3].Dislocate();
+            b.limbs[4].muscleHealth = 35f; b.limbs[4].shrapnel = 2;
+            b.limbs[10].BreakBone(); b.limbs[10].skinHealth = 70f;
+            b.limbs[1].infectionAmount = 45f; b.limbs[1].skinHealth = 60f;
+            b.limbs[13].bleedAmount = 2.5f;
+            b.limbs[8].Dismember();
+            Log.Info("DEV client arrives hurt (bleeding arm, dislocation, shrapnel, broken shin, infection, a lost hand)");
+        }
+
+        private int _poseStep = -1;
+        private float _poseAt;
+        private bool _posePlayed;
+
+        /// <summary>CCOOP_POSETEST=1: the client performs every gesture and screenshots each mid-way (pose-*.png beside the logs).</summary>
+        private void PoseTest()
+        {
+            if (Env("CCOOP_POSETEST") != "1" || !Coop.IsClient || !Coop.WorldLive) return;
+            var b = GameInfo.LocalBody;
+            if (b == null || !b.standing) return;
+            float now = Time.unscaledTime;
+            if (_poseStep < 0) { _poseStep = 0; _poseAt = now + 4f; return; }
+            var poses = (GesturePose.Pose[])Enum.GetValues(typeof(GesturePose.Pose));
+            if (_poseStep >= poses.Length - 1 || now < _poseAt) return;
+            var pose = poses[_poseStep + 1];
+            if (!_posePlayed)
+            {
+                GesturePose.Play(pose, (Vector2)b.transform.position + new Vector2(b.isRight ? 6f : -6f, 4f));
+                _posePlayed = true;
+                _poseAt = now + (pose == GesturePose.Pose.Wave ? 0.55f : 0.8f);
+                return;
+            }
+            var cam = Camera.main;
+            if (cam == null) return;
+            var sp = cam.WorldToScreenPoint(b.transform.position);
+            string dir = System.IO.Path.GetDirectoryName(Log.FilePath);
+            ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, "pose-" + pose + ".png"));
+            Log.Info("DEV pose " + pose + " at screen " + sp.x.ToString("F0") + "," + (Screen.height - sp.y).ToString("F0") + " of " + Screen.width + "x" + Screen.height +
+                     " facing " + (b.isRight ? "right" : "left"));
+            _posePlayed = false;
+            _poseStep++;
+            _poseAt = now + 2.4f;
+        }
+
         internal void Pump()
         {
             try { UiDump(); } catch (Exception e) { Log.Info("[uidump] " + e.Message); }
+            try { PoseTest(); } catch (Exception e) { Log.Info("DEV pose test: " + e.Message); }
+            try { DevHurt(); } catch (Exception e) { Log.Info("DEV hurt: " + e.Message); }
             if (!_started && _startAt >= 0 && Time.realtimeSinceStartup > _startAt && GameInfo.OnMainMenu)
             {
                 if (_autostart == "steamhost")

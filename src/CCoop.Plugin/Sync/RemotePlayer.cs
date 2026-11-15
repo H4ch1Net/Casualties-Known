@@ -321,6 +321,83 @@ namespace CCoop.Plugin.Sync
         {
             _speech = text;
             _speechUntil = Time.unscaledTime + Mathf.Clamp(1.5f + text.Length * 0.06f, 2f, 8f);
+            _talkAt = Time.unscaledTime;
+            _talkShown = 0;
+        }
+
+        // ---- words and name in the game's own speech text (world space, like the game's)
+
+        private TMPro.TextMeshPro _nameText, _talkText;
+        private float _talkAt;
+        private int _talkShown;
+
+        /// <summary>
+        /// Every frame: the name above the head (when shown) and, while they speak, their
+        /// words typed out above it at the game's pace, 18 letters a second with the
+        /// game's letter sound, held for three seconds after the last.
+        /// </summary>
+        internal void UpdateTexts(bool showName)
+        {
+            if (!Visible || _rig.Limbs.Length == 0 || _rig.Limbs[0] == null)
+            {
+                if (_nameText != null) _nameText.gameObject.SetActive(false);
+                if (_talkText != null) _talkText.gameObject.SetActive(false);
+                return;
+            }
+            Vector3 head = _rig.Limbs[0].position;
+            var rec = Coop.Player(_id);
+            if (showName)
+            {
+                if (_nameText == null) _nameText = UI.GameText.World("Name" + _id);
+                if (_nameText != null)
+                {
+                    var t = UI.GameText.Template;
+                    _nameText.gameObject.SetActive(true);
+                    _nameText.fontSize = (t != null ? t.fontSize : 8f) * 0.85f;
+                    string state = !rec.Alive ? UI.Lang.T("dead") : rec.Conscious ? "" : rec.Sleeping ? UI.Lang.T("asleep") : UI.Lang.T("out cold");
+                    var voice = Coop.Get<VoiceSync>();
+                    string label = rec.Name + (state.Length > 0 ? " (" + state + ")" : "") + (voice != null && voice.IsTalking(_id) ? " ((o))" : "");
+                    if (_nameText.text != label) _nameText.text = label;
+                    var c = UI.GameText.Colour;
+                    _nameText.color = rec.Alive ? new Color(c.r, c.g, c.b, 0.85f) : new Color(0.6f, 0.6f, 0.6f, 0.85f);
+                    _nameText.transform.position = new Vector3(head.x, head.y + 2.2f, head.z - 2.6f);
+                }
+            }
+            else if (_nameText != null) _nameText.gameObject.SetActive(false);
+
+            float since = Time.unscaledTime - _talkAt;
+            bool talking = !string.IsNullOrEmpty(_speech) && since <= _speech.Length / 18f + 3f;
+            if (!talking)
+            {
+                if (_talkText != null) _talkText.gameObject.SetActive(false);
+                return;
+            }
+            if (_talkText == null) _talkText = UI.GameText.World("Talk" + _id);
+            if (_talkText == null) return;
+            _talkText.gameObject.SetActive(true);
+            int n = Mathf.Min(_speech.Length, (int)(since * 18f));
+            if (n > _talkShown)
+            {
+                // The game's letter sound for each new letter, not for "*waves*" or "(thinks)".
+                bool quiet = _speech.StartsWith("*") || _speech.StartsWith("(");
+                if (!quiet)
+                    for (int i = _talkShown; i < n; i++)
+                        if (char.IsLetterOrDigit(_speech[i]))
+                        {
+                            try { Sound.Play(UI.GameText.LetterSound(EffectiveCharacter), head); } catch { /* no sound */ }
+                            break;  // one sound a frame, as the game does
+                        }
+                _talkShown = n;
+                _talkText.text = _speech.Substring(0, n);
+            }
+            _talkText.transform.position = new Vector3(head.x, head.y + 4f, head.z - 2.6f);
+        }
+
+        private void DropTexts()
+        {
+            if (_nameText != null) UnityEngine.Object.Destroy(_nameText.gameObject);
+            if (_talkText != null) UnityEngine.Object.Destroy(_talkText.gameObject);
+            _nameText = _talkText = null;
         }
 
         private static GUIStyle _name, _talk;
@@ -365,6 +442,7 @@ namespace CCoop.Plugin.Sync
 
         private void Release()
         {
+            DropTexts();
             foreach (var go in _heldItems.Values) if (go != null) UnityEngine.Object.Destroy(go);
             _heldItems.Clear();
             ProxyBuilder.Destroy(_rig);

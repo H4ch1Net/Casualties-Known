@@ -44,6 +44,8 @@ namespace CCoop.Plugin.UI
         internal static bool TypingInField => _open && _lastFocus.StartsWith("ccoop_");
         internal static void Show() => _open = true;
 
+        internal static bool IsOpen => _open;
+
         /// <summary>Dev screenshots: a scale that does not touch the player's config.</summary>
         internal static float DevScale;
 
@@ -107,7 +109,7 @@ namespace CCoop.Plugin.UI
             try
             {
                 // A visible way in from the main menu, so nobody has to know about F1.
-                if (!_open && GameInfo.OnMainMenu)
+                if (!_open && GameInfo.OnMainMenu && !MenuWalkie.Shown)
                 {
                     int n = Coop.InSession ? Coop.Session.PeerCount : 0;
                     string label = n > 0 ? (n == 1 ? Lang.T("Co-op · 1 player  (F1)") : Lang.F("Co-op · {0} players  (F1)", n)) : Lang.T("Co-op  (F1)");
@@ -148,7 +150,7 @@ namespace CCoop.Plugin.UI
             else if (s == null) Offline(rt);
             else Online(rt, s);
 
-            if (!string.IsNullOrEmpty(rt.LastMessage))
+            if (!string.IsNullOrEmpty(rt.LastMessage) && s == null)
             {
                 GUILayout.Space(6);
                 GUILayout.Label(Lang.Unpack(rt.LastMessage), _small);
@@ -175,7 +177,7 @@ namespace CCoop.Plugin.UI
 
             GUILayout.Space(4);
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.F("Log: {0}", System.IO.Path.GetFileName(Log.FilePath ?? "-")), _small);
+            GUILayout.FlexibleSpace();
             if (GUILayout.Button(new GUIContent(Lang.T("Bug report"), Lang.T("Saves your co-op logs and session details to a folder on your desktop.")), GUILayout.ExpandWidth(false)))
             {
                 try { rt.LastMessage = Lang.F("Saved to {0}. Attach the folder's files to your report.", GameCheck.SaveReport()); }
@@ -242,7 +244,7 @@ namespace CCoop.Plugin.UI
 
             GUILayout.Space(4);
             if (GUILayout.Button(CoopSaves.PendingContinue != null ? Lang.T("Host with Steam and continue") : Lang.T("Host with Steam"), GUILayout.Height(32))) rt.HostSteam();
-            GUILayout.Label(Lang.T("Host from the main menu, then start a run. Players who join are brought into your run with the character they picked on the character screen."), _small);
+            GUILayout.Label(Lang.T("Host, then start a run: friends who join are brought into it."), _small);
 
             var bans = BanList.All;
             if (bans.Count > 0)
@@ -286,8 +288,6 @@ namespace CCoop.Plugin.UI
             int pickPreset = GUILayout.Toolbar(preset, Lang.All(HostRules.PresetNames));
             GUILayout.EndHorizontal();
             if (pickPreset != preset && pickPreset >= 0) HostRules.ApplyPreset(pickPreset);
-            GUILayout.Label((preset < 0 ? Lang.T("Custom rules.") + " " : "") +
-                            Lang.T("Co-op rules only; the game's own difficulty is the run settings you pick when starting a run."), _small);
 
             if (steamLobby)
             {
@@ -322,7 +322,6 @@ namespace CCoop.Plugin.UI
             string pw = Field(live == null ? "hostpw" : "livepw", cfg.HostPassword.Value, 64, true);
             if (pw != cfg.HostPassword.Value) cfg.HostPassword.Value = pw;
             GUILayout.EndHorizontal();
-            if (!string.IsNullOrEmpty(pw)) GUILayout.Label(live != null ? Lang.T("Joiners will be asked for the password (players already here stay).") : Lang.T("Joiners will be asked for the password."), _small);
 
             int rule = Mathf.Max(0, System.Array.IndexOf(RespawnRules, cfg.Respawn.Value));
             GUILayout.BeginHorizontal();
@@ -341,8 +340,7 @@ namespace CCoop.Plugin.UI
             int newShare = GUILayout.Toolbar(shareAt, new[] { Lang.T("First arrives"), Lang.T("Half are there"), Lang.T("All are there") });
             GUILayout.EndHorizontal();
             if (newShare != shareAt && newShare >= 0) cfg.ExitShare.Value = ExitShares[newShare];
-            GUILayout.Label(Lang.T("Counts living players at an exit or in the drill pod. The rest are brought along.") +
-                            (shareAt < 0 ? " " + Lang.F("(Set to {0}% in the config.)", share) : ""), _small);
+            if (shareAt < 0) GUILayout.Label(Lang.F("(Set to {0}% in the config.)", share), _small);
 
             // One toggle a line once translated text gets long (a German "Teammate arrows" is not short).
             GUILayout.BeginHorizontal();
@@ -377,7 +375,6 @@ namespace CCoop.Plugin.UI
             int danger = GUILayout.Toolbar(Mathf.Clamp(cfg.DangerScale.Value, 0, 2), Lang.All(HostRules.DangerNames));
             if (danger != cfg.DangerScale.Value) cfg.DangerScale.Value = danger;
             GUILayout.EndHorizontal();
-            GUILayout.Label(Lang.T("Scales with the number of players, on top of the game's own run settings."), _small);
 
             GUILayout.BeginHorizontal();
             GUILayout.Label(Lang.T("Speed-up"), GUILayout.Width(134));
@@ -442,7 +439,6 @@ namespace CCoop.Plugin.UI
             _browseScroll = GUILayout.BeginScrollView(_browseScroll, GUILayout.Height(Mathf.Min(20 + list.Count * 52, 260)));
             foreach (var l in list) LobbyRow(rt, l);
             GUILayout.EndScrollView();
-            GUILayout.Label(Lang.T("Ping is Steam's estimate from relay locations; the real figure shows once connected."), _small);
         }
 
         private static void LobbyRow(CoopRuntime rt, LobbyInfo l)
@@ -592,7 +588,6 @@ namespace CCoop.Plugin.UI
                 PlayerRow(rt, s, p, Coop.Player(id));
             }
             GUILayout.EndScrollView();
-            if (!s.IsHost) GUILayout.Label(Lang.T("Ping is each player's round trip to the host."), _small);
 
             if (s.IsHost && GameInfo.OnMainMenu && CoopSaves.PendingContinue != null)
             {
@@ -612,7 +607,7 @@ namespace CCoop.Plugin.UI
             if (history.Count > 0)
             {
                 GUILayout.Space(4);
-                foreach (var line in history) GUILayout.Label(line, _small);
+                for (int i = Mathf.Max(0, history.Count - 2); i < history.Count; i++) GUILayout.Label(history[i], _small);
             }
         }
 
@@ -626,7 +621,6 @@ namespace CCoop.Plugin.UI
             var cfg = CoopPlugin.Instance;
             if (!VoiceSync.Available)
             {
-                GUILayout.Label(Lang.F("Voice chat needs Steam. Text chat: press {0}.", cfg.ChatKey.Value), _small);
                 return;
             }
             int cur = Mathf.Max(0, System.Array.IndexOf(VoiceModes, cfg.VoiceMode.Value));
@@ -652,7 +646,6 @@ namespace CCoop.Plugin.UI
                 GUI.color = oldColor;
                 GUILayout.EndHorizontal();
             }
-            GUILayout.Label(Lang.F("Nearby players hear you, quieter with distance; the dead hear only each other. Text chat: press {0}.", cfg.ChatKey.Value), _small);
             if (HostRules.Current.Arrows)
                 cfg.ShowArrows.Value = GUILayout.Toggle(cfg.ShowArrows.Value, " " + Lang.T("Show arrows to teammates who are off screen"));
         }
@@ -697,7 +690,11 @@ namespace CCoop.Plugin.UI
             var voice = Coop.Get<VoiceSync>();
             bool talking = voice != null && (me ? voice.Transmitting : voice.IsTalking(p.Id));
             string who = p.Name + (me ? " (" + Lang.T("you") + ")" : "") + (p.IsHost ? " [" + Lang.T("host") + "]" : "") + (talking ? "  ((o))" : "");
+            GUILayout.BeginHorizontal();
             GUILayout.Label(who, UiSkin.Fit(GUI.skin.label, who));
+            GUILayout.FlexibleSpace();
+            RowButtons(rt, s, p, rec, me, voice);
+            GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             GUILayout.Label(GameInfo.CharacterName(rec.Character) + " · " + Lang.T(rec.Status), _small, GUILayout.ExpandWidth(false));
             var fpsColor = GUI.color;
@@ -717,8 +714,12 @@ namespace CCoop.Plugin.UI
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
             GUILayout.EndVertical();
+            GUILayout.EndHorizontal();
+        }
 
-            GUILayout.FlexibleSpace();
+        /// <summary>A player row's buttons: voice volume, check on them, and (host) kick and ban.</summary>
+        private static void RowButtons(CoopRuntime rt, NetSession s, PeerInfo p, PlayerRecord rec, bool me, VoiceSync voice)
+        {
             // How loud this teammate's voice is for you (only you): 100% / 50% / muted / 150%.
             if (!me && voice != null && VoiceSync.Available && GUILayout.Button(VoiceSync.VolumeLabel(rec), GUILayout.MinWidth(56), GUILayout.ExpandWidth(false))) VoiceSync.CycleVolume(rec);
             if (!me && Coop.WorldLive && rec.HasPosition && GUILayout.Button(Lang.T("Check"), GUILayout.MinWidth(52), GUILayout.ExpandWidth(false))) TeammatePanel.Open(p.Id);
@@ -730,7 +731,6 @@ namespace CCoop.Plugin.UI
                 if (GUILayout.Button(Lang.T("Ban"), GUILayout.MinWidth(40), GUILayout.ExpandWidth(false))) rt.Ban(p.Id);
                 GUI.enabled = was;
             }
-            GUILayout.EndHorizontal();
         }
 
         // ------------------------------------------------------------------ helpers

@@ -118,7 +118,7 @@ namespace CCoop.Plugin.Sync
                     {
                         Skin = B(l.skinHealth),
                         Muscle = B(Mathf.Min(l.muscleHealth, 255f)),
-                        Bleed = B(l.bleedAmount * 20f),
+                        Bleed = B(l.bleedAmount * 10f),  // tenths of a litre a minute, up to 25.5
                         Infection = B(l.infectionAmount),
                         Pain = B(l.pain),
                         Shrapnel = B(l.shrapnel),

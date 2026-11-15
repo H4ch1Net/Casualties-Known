@@ -20,6 +20,11 @@
     <ProjectReference Include="..\CCoop.Net\CCoop.Net.csproj" />
   </ItemGroup>
 
+  <!-- The mod's own art (drawn for it; sources in art/): embedded, nothing extra to install. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\art\walkie.png" LogicalName="CCoop.walkie.png" />
+  </ItemGroup>
+
   <!-- Game, Unity and loader assemblies are referenced in place and never copied. -->
   <ItemGroup>
     <Reference Include="Assembly-CSharp"><HintPath>$(GameManagedPath)\Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
@@ -31,6 +36,7 @@
     <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(GameManagedPath)\UnityEngine.IMGUIModule.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.UnityWebRequestModule"><HintPath>$(GameManagedPath)\UnityEngine.UnityWebRequestModule.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.UI"><HintPath>$(GameManagedPath)\UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UIModule"><HintPath>$(GameManagedPath)\UnityEngine.UIModule.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(GameManagedPath)\UnityEngine.ImageConversionModule.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.ScreenCaptureModule"><HintPath>$(GameManagedPath)\UnityEngine.ScreenCaptureModule.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(GameManagedPath)\UnityEngine.TextRenderingModule.dll</HintPath><Private>false</Private></Reference>

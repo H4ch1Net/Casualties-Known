@@ -324,9 +324,21 @@ namespace CCoop.Plugin.Sync
             Session.Broadcast(new PlayerTalk { Text = text });
         }
 
+        private static bool NamesShown =>
+            Coop.WorldLive && CoopPlugin.Ready && CoopPlugin.Instance.ShowNames.Value && HostRules.Current.NameTags && !ConditionFx.Blind;
+
+        internal override void LateTick()
+        {
+            // Names and words in the game's own speech text, when the game's is at hand.
+            if (UI.GameText.Template == null) return;
+            bool names = NamesShown;
+            foreach (var r in _remotes.Values) r.UpdateTexts(names);
+        }
+
         internal override void Gui()
         {
-            if (!Coop.WorldLive || !CoopPlugin.Ready || !CoopPlugin.Instance.ShowNames.Value || !HostRules.Current.NameTags || ConditionFx.Blind) return;
+            if (UI.GameText.Template != null) return;  // drawn in the world instead
+            if (!NamesShown) return;
             var cam = Camera.main;
             if (cam == null) return;
             foreach (var r in _remotes.Values) r.DrawLabel(cam);

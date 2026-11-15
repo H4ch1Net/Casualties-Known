@@ -438,6 +438,7 @@ namespace CCoop.Plugin.Runtime
                 HandlePendingJoins();
                 TickReconnect();
                 CoopWindow.HandleHotkeys(this);
+                MenuWalkie.Ensure();
                 Get<DevHarness>()?.Pump();
 
                 var s = Coop.Session;
