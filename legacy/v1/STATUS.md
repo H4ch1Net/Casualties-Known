@@ -10,12 +10,8 @@ testing procedure in `docs/testing.md`.
 
 ## Start here
 
-**The decompiled game source is not in the repo and must never be committed.** The
-working copy is at:
-
-```
-C:\Users\h4ch1\AppData\Local\Temp\claude\F--Documents-Code-Personal-Casualties-Known\bffb2686-205a-434b-b8d5-c44fe298979c\scratchpad\decomp\Assembly-CSharp.decompiled.cs
-```
+**The decompiled game source is not in the repo and must never be committed.** Keep a
+decompile of `Assembly-CSharp.dll` in a scratch folder outside the repo.
 
 1.5 MB, one file, no namespaces. **Grep it before reading anything** - nearly every
 question this project has asked ("who calls this?", "is that field public?", "does a

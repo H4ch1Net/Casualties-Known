@@ -144,8 +144,8 @@ namespace CCoop.Plugin.Dev
             float y = 50;
             for (int i = 0; i < sizes.Length; i++)
             {
-                GUI.Label(new Rect(310, y, 640, 40), sizes[i] + " Retro Gaming: Waiting for h4ch1 Ää 0123", _specimen[i]);
-                GUI.Label(new Rect(960, y, 640, 40), sizes[i] + " Unifont: Waiting for h4ch1 Ää 李明 Жж", _specimen[i + sizes.Length]);
+                GUI.Label(new Rect(310, y, 640, 40), sizes[i] + " Retro Gaming: Waiting for Player Ää 0123", _specimen[i]);
+                GUI.Label(new Rect(960, y, 640, 40), sizes[i] + " Unifont: Waiting for Player Ää 李明 Жж", _specimen[i + sizes.Length]);
                 y += sizes[i] + 14;
             }
         }
@@ -326,7 +326,7 @@ namespace CCoop.Plugin.Dev
                 case 2: UI.TeammatePanel.DevMenu(-1, 0); UI.TeammatePanel.Open(mate.Id); break;
                 case 3: UI.TeammatePanel.DevMenu(-1, 0); PauseHandler.TogglePause(); break;
                 case 4: PauseHandler.TogglePause(); Chat.DevOpen(); Chat.DevRadioMode(true); break;
-                case 5: Chat.DevClose(); Chat.DevRadioMode(false); CoopRuntime.Notice("h4ch1 (1) treated your forearm"); break;
+                case 5: Chat.DevClose(); Chat.DevRadioMode(false); CoopRuntime.Notice("Teammate treated your forearm"); break;
                 case 6: UI.CoopWindow.DevSelectLobbyTab(1); break;
             }
             _runShot++;
