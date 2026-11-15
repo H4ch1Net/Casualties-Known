@@ -271,6 +271,7 @@ namespace CCoop.Plugin.Dev
             }
             if (_autostart == "steamhost" && _started && !_steamReported) SteamReport();
             if (!string.IsNullOrEmpty(_shots)) Shots();
+            if (!string.IsNullOrEmpty(_runShots)) RunShots();
             if (_dump && !_dumped && GameInfo.LocalBody != null && Coop.WorldLive)
             {
                 _dumped = true;
@@ -285,6 +286,51 @@ namespace CCoop.Plugin.Dev
                 Application.targetFrameRate = FpsCap;
                 Log.Info("DEV this instance now runs at " + FpsCap + " fps");
             }
+        }
+
+        // CCOOP_RUNSHOTS=<dir> (host, in a run with a teammate): capture the in-run screens.
+        private readonly string _runShots = Env("CCOOP_RUNSHOTS");
+        private int _runShot;
+        private float _runShotAt = -1f;
+
+        private void RunShots()
+        {
+            if (_runShot >= 99 || !Coop.IsHost || !Coop.WorldLive) return;
+            var ps = Coop.Get<PlayerSync>();
+            RemotePlayer mate = null;
+            if (ps != null) foreach (var r in ps.Remotes) if (r.Visible) { mate = r; break; }
+            if (mate == null) return;
+            float now = Time.realtimeSinceStartup;
+            if (_runShotAt < 0f) { _runShotAt = now + 6f; return; }  // let everyone set off
+            if (now < _runShotAt) return;
+            string[] names = { "run-1-menu", "run-2-askfor", "run-3-health", "run-4-pause", "run-5-radio", "run-6-alert", "run-7-lobby" };
+            int step = _runShot / 2;
+            if (step >= names.Length)
+            {
+                UI.CoopWindow.DevClose();
+                Log.Info("DEV run shots saved to " + _runShots);
+                _runShot = 99;
+                return;
+            }
+            if (_runShot % 2 == 1)
+            {
+                ScreenCapture.CaptureScreenshot(Path.Combine(_runShots, names[step] + ".png"));
+                _runShot++;
+                _runShotAt = now + 0.6f;
+                return;
+            }
+            switch (step)
+            {
+                case 0: UI.TeammatePanel.DevMenu(mate.Id, 0); break;
+                case 1: UI.TeammatePanel.DevMenu(mate.Id, 1); break;
+                case 2: UI.TeammatePanel.DevMenu(-1, 0); UI.TeammatePanel.Open(mate.Id); break;
+                case 3: UI.TeammatePanel.DevMenu(-1, 0); PauseHandler.TogglePause(); break;
+                case 4: PauseHandler.TogglePause(); Chat.DevOpen(); Chat.DevRadioMode(true); break;
+                case 5: Chat.DevClose(); Chat.DevRadioMode(false); CoopRuntime.Notice("h4ch1 (1) treated your forearm"); break;
+                case 6: UI.CoopWindow.DevSelectLobbyTab(1); break;
+            }
+            _runShot++;
+            _runShotAt = now + 2.5f;
         }
 
         // CCOOP_SHOTS=<dir>: capture the co-op window's screens for layout review.

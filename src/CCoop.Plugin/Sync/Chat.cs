@@ -185,6 +185,7 @@ namespace CCoop.Plugin.Sync
         }
 
         internal static void DevOpen() => Open();
+        internal static void DevRadioMode(bool on) => _radio = on;
 
         /// <summary>Radio lines this player heard through a radio (self-test).</summary>
         internal static int RadioHeard;

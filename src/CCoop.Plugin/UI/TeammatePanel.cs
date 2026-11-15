@@ -28,7 +28,7 @@ namespace CCoop.Plugin.UI
         private int _hoverLimb = -1;
         private float _nextCpr;
         private Rect _rect = new Rect(0, 80, 10, 10);
-        private static GUIStyle _small, _warn, _hint, _rowSel, _status, _limbTitle, _item, _menuWindow, _menuNote;
+        private static GUIStyle _small, _warn, _rowSel, _status, _limbTitle, _item, _menuWindow, _menuNote;
         private static Texture2D _inset;
 
         // The menu beside a teammate.
@@ -74,6 +74,16 @@ namespace CCoop.Plugin.UI
             }
             tip = (Coop.Player(id).Name, desc);
             return true;
+        }
+
+        /// <summary>Self-test screenshots: the menu on a teammate (with a sub-list open), or nothing.</summary>
+        internal static void DevMenu(int id, int sub)
+        {
+            if (_self == null) return;
+            _self._menu = id;
+            _self._sub = sub;
+            _self._menuFrame = Time.frameCount;
+            if (id < 0) _self._open = -1;
         }
 
         internal static void Open(byte id)
@@ -132,7 +142,6 @@ namespace CCoop.Plugin.UI
             _small.normal.textColor = UiSkin.Dim;
             _warn = new GUIStyle(_small);
             _warn.normal.textColor = UiSkin.Bad;
-            _hint = new GUIStyle(GUI.skin.box) { fontSize = UiSkin.Small };
             _rowSel = new GUIStyle(GUI.skin.button) { alignment = TextAnchor.MiddleLeft, fontSize = UiSkin.Small };
             _status = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Big };
             _limbTitle = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Body, wordWrap = true };
@@ -398,8 +407,6 @@ namespace CCoop.Plugin.UI
             var rec = Coop.Player(id);
             bool below = me != null && rec.HasPosition && rec.Position.y < me.transform.position.y - 1f &&
                          Vector2.Distance(me.transform.position, rec.Position) <= TeamMotion.PullReach;
-            string tipShown = _iconTip;
-            _iconTipNext = "";
 
             if (Item(Lang.T("Health"))) Open(id);
 
@@ -410,7 +417,6 @@ namespace CCoop.Plugin.UI
                 if (carry != null && carry.Carrying(id) && Item(Lang.T("Put down"))) { carry.PutDown(); _menu = -1; }
                 if (motion != null && awake && below && Item(Lang.T("Pull up"))) { motion.PullUp(id); _menu = -1; }
                 Note(cant);
-                EndIcons();
                 return;
             }
 
@@ -431,7 +437,7 @@ namespace CCoop.Plugin.UI
                         var slots = new List<int>();
                         for (int slot = 0; slot < kit.Length; slot++)
                             if (!string.IsNullOrEmpty(kit[slot])) { ids.Add(kit[slot]); slots.Add(slot); }
-                        int pick = IconGrid(ids, tipShown);
+                        int pick = IconGrid(ids);
                         if (pick >= 0) { give.AskFor(id, slots[pick], ids[pick]); _menu = -1; }
                     }
                 }
@@ -447,7 +453,7 @@ namespace CCoop.Plugin.UI
                     if (loot.Count == 0) Note(Lang.T("Nothing to take."));
                     var ids = new List<string>();
                     foreach (var en in loot) ids.Add(en.ItemId);
-                    int pick = IconGrid(ids, tipShown);
+                    int pick = IconGrid(ids);
                     if (pick >= 0) Coop.Get<LootSync>().Take(id, loot[pick].Key);
                 }
             }
@@ -491,19 +497,10 @@ namespace CCoop.Plugin.UI
                 if (motion.LiftingFor(id)) { if (Item(Lang.T("Stop helping"))) { motion.StopLifting(true); _menu = -1; } }
                 else if (heavy != null && ItemWithIcon(Lang.T("Help carry"), heavy)) { motion.StartLifting(id); _menu = -1; }
             }
-            EndIcons();
         }
 
-        private string _iconTip = "", _iconTipNext = "";
-
-        /// <summary>After the menu's controls: the hovered picture's name becomes next frame's label.</summary>
-        private void EndIcons()
-        {
-            if (Event.current.type == EventType.Repaint) _iconTip = _iconTipNext;
-        }
-
-        /// <summary>Items as a grid of their pictures; the one under the mouse is named below. Returns the one clicked, or -1.</summary>
-        private int IconGrid(List<string> ids, string tipShown)
+        /// <summary>Items as a grid of their pictures; the one under the mouse is named in the game's hover label. Returns the one clicked, or -1.</summary>
+        private int IconGrid(List<string> ids)
         {
             const float cell = 42f;
             const int perRow = 4;

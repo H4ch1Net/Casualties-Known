@@ -20,6 +20,20 @@ namespace CCoop.Plugin.UI
 
         internal static void DevOpen(string key) => _openDrop = key;
 
+        /// <summary>
+        /// The part of a scrolled list that's on screen, in its content's coordinates (null:
+        /// all of it). Rows scrolled out of sight mustn't take the mouse: they'd answer
+        /// hovers and clicks meant for whatever is drawn where they would be.
+        /// </summary>
+        internal static Rect? Clip;
+
+        private static bool InView => !Clip.HasValue || Clip.Value.Contains(Event.current.mousePosition);
+
+        private static bool Over(Rect r) => InView && r.Contains(Event.current.mousePosition);
+
+        /// <summary>An invisible button over the whole row (nowhere, when the mouse is outside the list).</summary>
+        private static bool RowButton(Rect r) => GUI.Button(InView ? r : new Rect(0f, 0f, 0f, 0f), GUIContent.none, GUIStyle.none);
+
         /// <summary>The explanation of the row under the mouse (last frame's), or null.</summary>
         internal static string Tip => _tip;
 
@@ -91,7 +105,7 @@ namespace CCoop.Plugin.UI
             {
                 GUI.Label(new Rect(r.x + 10f, r.y, r.width * 0.62f, Mathf.Min(height, RowH)), label, UiSkin.Fit(_label, label));
                 Fill(new Rect(r.x, r.yMax - 1f, r.width, 1f), new Color(1f, 1f, 1f, 0.22f));
-                if (!string.IsNullOrEmpty(tip) && r.Contains(Event.current.mousePosition)) { _tipNext = tip; GameTooltip.Set(label, tip); }
+                if (!string.IsNullOrEmpty(tip) && Over(r)) { _tipNext = tip; GameTooltip.Set(label, tip); }
             }
             return r;
         }
@@ -107,9 +121,9 @@ namespace CCoop.Plugin.UI
                 var c = enabled ? Color.white : new Color(1f, 1f, 1f, 0.4f);
                 Box(box, c);
                 if (value) Fill(new Rect(box.x + 6f, box.y + 6f, box.width - 12f, box.height - 12f), c);
-                if (enabled && r.Contains(Event.current.mousePosition)) Fill(r, new Color(1f, 1f, 1f, 0.04f));
+                if (enabled && Over(r)) Fill(r, new Color(1f, 1f, 1f, 0.04f));
             }
-            if (GUI.Button(r, GUIContent.none, GUIStyle.none)) { value = !value; Click(); }
+            if (RowButton(r)) { value = !value; Click(); }
             return value;
         }
 
@@ -137,9 +151,9 @@ namespace CCoop.Plugin.UI
                 GUI.Label(new Rect(box.x + 8f, box.y, box.width - 30f, box.height), shown, UiSkin.Fit(_dropText, shown));
                 GUI.Label(new Rect(box.xMax - 22f, box.y, 18f, box.height), open ? "^" : "v", _dropText);
                 GUI.color = old;
-                if (GUI.enabled && r.Contains(Event.current.mousePosition)) Fill(r, new Color(1f, 1f, 1f, 0.04f));
+                if (GUI.enabled && Over(r)) Fill(r, new Color(1f, 1f, 1f, 0.04f));
             }
-            if (GUI.Button(r, GUIContent.none, GUIStyle.none)) { _openDrop = open ? null : key; Click(); }
+            if (RowButton(r)) { _openDrop = open ? null : key; Click(); }
             if (!open) return index;
             for (int i = 0; i < options.Length; i++)
             {
@@ -158,7 +172,7 @@ namespace CCoop.Plugin.UI
         {
             var r = Row(label, tip, RowH + 26f);
             var bar = new Rect(r.x + 10f, r.y + RowH - 6f, r.width - 90f, 18f);
-            float v = GUI.HorizontalSlider(bar, value, min, max, _track, _thumb);
+            float v = GUI.HorizontalSlider(InView || GUIUtility.hotControl != 0 ? bar : new Rect(bar.x, bar.y, 0f, 0f), value, min, max, _track, _thumb);
             if (Event.current.type == EventType.Repaint)
                 GUI.Label(new Rect(bar.xMax + 6f, bar.y - 6f, 70f, 30f), shown, _value);
             return v;

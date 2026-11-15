@@ -25,6 +25,8 @@ namespace CCoop.Plugin.UI
         private enum LobbyTab { Run, Rules, Options }
         private static LobbyTab _lobbyTab = LobbyTab.Run;
 
+        internal static void DevClose() => _open = false;
+
         internal static void DevSelectLobbyTab(int tab)
         {
             _open = true;
@@ -57,7 +59,7 @@ namespace CCoop.Plugin.UI
             var s = Coop.Session;
             float w = Screen.width / Scale, h = Screen.height / Scale;
             var all = new Rect(0f, 0f, w, h);
-            GUI.DrawTexture(all, GameLook.Solid(new Color(0f, 0f, 0f, GameInfo.InRunScene ? 0.9f : 1f)));
+            GUI.DrawTexture(all, GameLook.Solid(new Color(0f, 0f, 0f, GameInfo.InRunScene ? 0.96f : 1f)));
             UiMouse.Claim(all);
 
             // ---- title bar
@@ -68,6 +70,22 @@ namespace CCoop.Plugin.UI
             var ver = new GUIStyle(_tag) { alignment = TextAnchor.MiddleRight };
             GUI.Label(new Rect(w * 0.7f - 18f, 0f, w * 0.3f, Bar), "CasualtiesCoop " + CoopPlugin.Version, ver);
             Line(new Rect(0f, Bar, w, 1f));
+
+            // ---- bottom bar (drawn first: in IMGUI the first control under the mouse takes the click,
+            // so nothing scrolled out of sight in the lists above can take it)
+            Line(new Rect(0f, h - Bar, w, 1f));
+            GUILayout.BeginArea(new Rect(14f, h - Bar + 10f, w - 28f, Bar - 18f));
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(Lang.T("Back"), GUILayout.MinWidth(120f), GUILayout.ExpandHeight(true))) _open = false;
+            GUILayout.FlexibleSpace();
+            Actions(rt, s);
+            if (GUILayout.Button(new GUIContent(Lang.T("Bug report"), Lang.T("Saves your co-op logs and session details to a folder on your desktop.")), GUILayout.MinWidth(120f), GUILayout.ExpandHeight(true)))
+            {
+                try { rt.LastMessage = Lang.F("Saved to {0}. Attach the folder's files to your report.", GameCheck.SaveReport()); }
+                catch (System.Exception ex) { rt.LastMessage = Lang.F("Couldn't save the report: {0}", ex.Message); }
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.EndArea();
 
             // ---- the players
             float slotsH = Mathf.Round((h - Bar * 2f) * 0.46f);
@@ -83,29 +101,17 @@ namespace CCoop.Plugin.UI
             GUILayout.EndArea();
             Line(new Rect(leftW, lowY, 1f, lowH));
             float rightW = w - leftW - 28f;
-            float tabsH = s != null ? 44f : 0f;
-            if (s != null) Tabs(new Rect(leftW + 14f, lowY + 4f, rightW, tabsH), s);
-            GUILayout.BeginArea(new Rect(leftW + 14f, lowY + 8f + tabsH, rightW, lowH - 12f - tabsH));
+            float tabsH = s != null || rt.PasswordPrompt == null ? 44f : 0f;
+            if (tabsH > 0f) Tabs(new Rect(leftW + 14f, lowY + 4f, rightW, tabsH), s, rt);
+            float viewH = lowH - 12f - tabsH;
+            GUILayout.BeginArea(new Rect(leftW + 14f, lowY + 8f + tabsH, rightW, viewH));
             _lobbyScroll = GUILayout.BeginScrollView(_lobbyScroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
+            GameRows.Clip = new Rect(_lobbyScroll.x, _lobbyScroll.y, rightW, viewH);
             if (s == null && rt.PasswordPrompt != null) PasswordPrompt(rt);
             else if (s == null) Offline(rt);
             else Settings(rt, s, rightW - 24f);
+            GameRows.Clip = null;
             GUILayout.EndScrollView();
-            GUILayout.EndArea();
-
-            // ---- bottom bar
-            Line(new Rect(0f, h - Bar, w, 1f));
-            GUILayout.BeginArea(new Rect(14f, h - Bar + 10f, w - 28f, Bar - 18f));
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button(Lang.T("Back"), GUILayout.MinWidth(120f), GUILayout.ExpandHeight(true))) _open = false;
-            GUILayout.FlexibleSpace();
-            Actions(rt, s);
-            if (GUILayout.Button(new GUIContent(Lang.T("Bug report"), Lang.T("Saves your co-op logs and session details to a folder on your desktop.")), GUILayout.MinWidth(120f), GUILayout.ExpandHeight(true)))
-            {
-                try { rt.LastMessage = Lang.F("Saved to {0}. Attach the folder's files to your report.", GameCheck.SaveReport()); }
-                catch (System.Exception ex) { rt.LastMessage = Lang.F("Couldn't save the report: {0}", ex.Message); }
-            }
-            GUILayout.EndHorizontal();
             GUILayout.EndArea();
 
             KeyboardForFocusedField();
@@ -284,6 +290,18 @@ namespace CCoop.Plugin.UI
             string quirks = CharacterPick.Text(c, "quirks");
             if (quirks.Length > 0) { GUILayout.Space(4); GUILayout.Label(quirks, UiSkin.Fit(_charText, quirks)); }
             GUILayout.FlexibleSpace();
+            if (s == null)
+            {
+                // Your name, for the others (set before hosting or joining).
+                var cfg = CoopPlugin.Instance;
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("[" + Lang.T("NAME") + "]", _tag, GUILayout.ExpandWidth(false));
+                string name = Field("name", cfg.PlayerName.Value, 24, false);
+                if (name != cfg.PlayerName.Value) cfg.PlayerName.Value = name;
+                GUILayout.EndHorizontal();
+                if (string.IsNullOrEmpty(cfg.PlayerName.Value)) GUILayout.Label(Lang.T("Empty: your Steam name."), _small);
+                GUILayout.Space(6);
+            }
             Problems();
             var flow = Coop.Get<RunFlow>();
             if (s != null && flow != null) GUILayout.Label(flow.Describe(), _small);
@@ -292,15 +310,18 @@ namespace CCoop.Plugin.UI
             for (int i = Mathf.Max(0, history.Count - 2); i < history.Count; i++) GUILayout.Label(history[i], _small);
         }
 
-        private static void Tabs(Rect r, NetSession s)
+        /// <summary>The tabs over the right-hand side: in a session its pages, out of one Host / Find games / LAN.</summary>
+        private static void Tabs(Rect r, NetSession s, CoopRuntime rt)
         {
-            var tabs = new List<LobbyTab> { LobbyTab.Run, LobbyTab.Rules, LobbyTab.Options };
-            var names = new[] { Lang.T("Run settings"), Lang.T("Co-op rules"), Lang.T("Options") };
-            float tw = r.width / tabs.Count;
-            for (int i = 0; i < tabs.Count; i++)
+            string[] names = s != null
+                ? new[] { Lang.T("Run settings"), Lang.T("Co-op rules"), Lang.T("Options") }
+                : new[] { Lang.T("Host"), Lang.T("Find games"), Lang.T("LAN / IP") };
+            int current = s != null ? (int)_lobbyTab : (int)_tab;
+            float tw = r.width / names.Length;
+            for (int i = 0; i < names.Length; i++)
             {
                 var t = new Rect(r.x + i * tw, r.y, tw, r.height);
-                bool on = _lobbyTab == tabs[i];
+                bool on = current == i;
                 if (Event.current.type == EventType.Repaint)
                 {
                     var old = GUI.color;
@@ -309,7 +330,17 @@ namespace CCoop.Plugin.UI
                     if (on) GUI.DrawTexture(new Rect(t.x + 16f, t.yMax - 3f, t.width - 32f, 2f), Texture2D.whiteTexture);
                     GUI.color = old;
                 }
-                if (GUI.Button(t, GUIContent.none, GUIStyle.none) && !on) { _lobbyTab = tabs[i]; _lobbyScroll = Vector2.zero; Click(); }
+                if (GUI.Button(t, GUIContent.none, GUIStyle.none) && !on)
+                {
+                    if (s != null) _lobbyTab = (LobbyTab)i;
+                    else
+                    {
+                        _tab = (Tab)i;
+                        if (_tab == Tab.Find && !_browsedOnce) Refresh(rt);
+                    }
+                    _lobbyScroll = Vector2.zero;
+                    Click();
+                }
             }
         }
 
@@ -472,7 +503,7 @@ namespace CCoop.Plugin.UI
         /// <summary>The bottom bar's own buttons, beside Back.</summary>
         private static void Actions(CoopRuntime rt, NetSession s)
         {
-            if (s == null) return;
+            if (s == null) { OfflineActions(rt); return; }
             var flow = Coop.Get<RunFlow>();
             // The host starts the run as in the game: its own run setup, from the menu.
             // The host starts the run from here, with the settings and characters picked here.

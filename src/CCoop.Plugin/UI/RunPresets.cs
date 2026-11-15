@@ -258,35 +258,40 @@ namespace CCoop.Plugin.UI
 
         // ------------------------------------------------------------------ window
 
-        private static bool _show;
         private static string _name = "";
 
+        /// <summary>
+        /// The co-op presets, in the lobby's rows: each one's line says what it is on hover,
+        /// with Use (and Delete for your own); then saving the current settings under a name,
+        /// and sharing them as a line of text.
+        /// </summary>
         internal static void Section(GUIStyle box, GUIStyle small)
         {
             if (!CanApply) return;
             string match = Matching();
-            _show = GUILayout.Toggle(_show, " " + Lang.T("Co-op run presets") + (match != null ? " (" + Lang.T(match) + ")" : ""));
-            if (!_show) return;
-            GUILayout.BeginVertical(box);
-            GUILayout.Label(Lang.T("These set the game's run settings for the next run. Open the game's run settings to check or change them."), small);
+            GameRows.Header(Lang.T("Co-op run presets"));
             Preset remove = null;
             foreach (var p in All())
             {
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button((p.Name == match ? "✓ " : "") + (p.Saved ? p.Name : Lang.T(p.Name)), GUILayout.Width(130))) Apply(p);
-                GUILayout.Label(p.Saved ? Summary(p) : Lang.T(p.About), small);
-                if (p.Saved && GUILayout.Button(Lang.T("Delete"), GUILayout.Width(55))) remove = p;
-                GUILayout.EndHorizontal();
+                string name = p.Saved ? p.Name : Lang.T(p.Name);
+                var at = GameRows.Slot(name, p.Saved ? Summary(p) : Lang.T(p.About), p.Saved ? 220f : 110f);
+                float bw = p.Saved ? (at.width - 6f) / 2f : at.width;
+                bool inUse = p.Name == match;
+                bool was = GUI.enabled;
+                GUI.enabled = was && !inUse;
+                if (GUI.Button(new Rect(at.x, at.y, bw, at.height), inUse ? Lang.T("In use") : Lang.T("Use"))) Apply(p);
+                GUI.enabled = was;
+                if (p.Saved && GUI.Button(new Rect(at.x + bw + 6f, at.y, bw, at.height), Lang.T("Delete"))) remove = p;
             }
             if (remove != null) Delete(remove);
 
-            GUILayout.BeginHorizontal();
-            _name = GUILayout.TextField(_name, 32, GUILayout.Width(150));
-            if (GUILayout.Button(Lang.T("Save the current settings as"), GUILayout.Width(190)) && Clean(_name).Length > 0) Save(_name);
-            GUILayout.EndHorizontal();
+            var nameAt = GameRows.Slot(Lang.T("Save these settings"), Lang.T("Keeps the run settings above under a name, to use again or share."), 330f);
+            _name = GUI.TextField(new Rect(nameAt.x, nameAt.y, nameAt.width - 96f, nameAt.height), _name ?? "", 32);
+            if (GUI.Button(new Rect(nameAt.xMax - 90f, nameAt.y, 90f, nameAt.height), Lang.T("Save")) && Clean(_name).Length > 0) Save(_name);
 
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button(Lang.T("Copy as text")))
+            var shareAt = GameRows.Slot(Lang.T("Share"), Lang.F("Copy: these settings as a line of text for a friend. Paste: use a line a friend sent you (it starts with {0}).", SharePrefix), 220f);
+            float hw = (shareAt.width - 6f) / 2f;
+            if (GUI.Button(new Rect(shareAt.x, shareAt.y, hw, shareAt.height), Lang.T("Copy")))
             {
                 var cur = Current(match ?? (Clean(_name).Length > 0 ? _name : "Shared"));
                 if (cur != null)
@@ -295,14 +300,12 @@ namespace CCoop.Plugin.UI
                     CoopRuntime.Notice(Lang.T("Copied the run settings: paste them to a friend"));
                 }
             }
-            if (GUILayout.Button(Lang.T("Use text from the clipboard")))
+            if (GUI.Button(new Rect(shareAt.x + hw + 6f, shareAt.y, hw, shareAt.height), Lang.T("Paste")))
             {
                 var p = Decode(GUIUtility.systemCopyBuffer);
                 if (p == null) CoopRuntime.Notice(Lang.F("The clipboard has no co-op run preset (it starts with {0})", SharePrefix));
                 else Apply(p);
             }
-            GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
         }
 
         private static string Summary(Preset p)

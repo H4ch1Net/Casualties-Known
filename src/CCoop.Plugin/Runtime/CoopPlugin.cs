@@ -13,7 +13,7 @@ namespace CCoop.Plugin.Runtime
     {
         public const string Guid = "ccoop.casualtiescoop";
         public const string Name = "CasualtiesCoop";
-        public const string Version = "2.1.0";
+        public const string Version = "2.1.1";
 
         internal static CoopPlugin Instance { get; private set; }
 

@@ -23,17 +23,12 @@ namespace CCoop.Plugin.UI
         private static string _address;
         private static string _lanPassword = "";
         private static string _promptPassword = "";
-        private static Vector2 _scroll, _browseScroll, _banScroll;
         private static GUIStyle _title, _small, _box, _right, _bad;
 
         private enum Tab { Host, Find, Lan }
         private static Tab _tab = Tab.Host;
         private static bool _friendsTab = true;
         private static bool _browsedOnce;
-        private static bool _showBans;
-        private static bool _showRules;
-        private static bool _showRunSettings;
-        private static bool _showMilestones;
 
         private static string _lastFocus = "";
         private static readonly Dictionary<string, Rect> FieldRects = new Dictionary<string, Rect>();
@@ -128,67 +123,11 @@ namespace CCoop.Plugin.UI
             }
         }
 
-        private static void Body(CoopRuntime rt)
-        {
-            if (_address == null) _address = CoopPlugin.Instance.LastAddress.Value;
-            var s = Coop.Session;
+        // ------------------------------------------------------------------ offline (Host / Find games / LAN)
 
-            if (s == null && rt.PasswordPrompt != null) PasswordPrompt(rt);
-            else if (s == null) Offline(rt);
-            else Online(rt, s);
-
-            if (!string.IsNullOrEmpty(rt.LastMessage) && s == null)
-            {
-                GUILayout.Space(6);
-                GUILayout.Label(Lang.Unpack(rt.LastMessage), _small);
-            }
-
-            if (CoopPlugin.FailedPatches.Length > 0)
-            {
-                GUILayout.Space(4);
-                GUILayout.Label(Lang.F("Some hooks failed to install ({0}). The game was probably updated; parts of co-op may not sync.",
-                                       string.Join(", ", CoopPlugin.FailedPatches)), _bad);
-            }
-
-            if (GameCheck.Missing.Count > 0)
-            {
-                GUILayout.Space(4);
-                GUILayout.Label(Lang.F("The game changed under these features: {0}. They may not work until the mod is updated.",
-                                       string.Join("; ", GameCheck.Missing.ToArray())), _bad);
-            }
-            if (!string.IsNullOrEmpty(UpdateCheck.Notice))
-            {
-                GUILayout.Space(4);
-                GUILayout.Label(UpdateCheck.Notice, _small);
-            }
-
-            GUILayout.Space(4);
-            GUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button(new GUIContent(Lang.T("Bug report"), Lang.T("Saves your co-op logs and session details to a folder on your desktop.")), GUILayout.ExpandWidth(false)))
-            {
-                try { rt.LastMessage = Lang.F("Saved to {0}. Attach the folder's files to your report.", GameCheck.SaveReport()); }
-                catch (System.Exception ex) { rt.LastMessage = Lang.F("Couldn't save the report: {0}", ex.Message); }
-            }
-            if (GUILayout.Button(Lang.T("Close"), GUILayout.ExpandWidth(false))) _open = false;
-            GUILayout.EndHorizontal();
-
-            KeyboardForFocusedField();
-            GUI.DragWindow();
-        }
-
-        // ------------------------------------------------------------------ offline
-
+        /// <summary>Dev screenshots: 0 Host, 1 Find games, 2 LAN / IP.</summary>
         private static void Offline(CoopRuntime rt)
         {
-            var tab = (Tab)GUILayout.Toolbar((int)_tab, new[] { Lang.T("Host"), Lang.T("Find games"), Lang.T("LAN / IP") }, GUILayout.Height(26));
-            if (tab != _tab)
-            {
-                _tab = tab;
-                if (_tab == Tab.Find && !_browsedOnce) Refresh(rt);
-            }
-            GUILayout.Space(4);
-
             GUI.enabled = !rt.Connecting;
             switch (_tab)
             {
@@ -201,45 +140,188 @@ namespace CCoop.Plugin.UI
 
         private static void HostTab(CoopRuntime rt)
         {
+            // The rules apply to a LAN host too, so they're here with or without Steam.
             if (!GameInfo.SteamReady)
-            {
-                GUILayout.Label(Lang.T("Steam is not available. Launch the game through Steam to host with invites, or use LAN / IP."), _small);
-                return;
-            }
+                GameRows.Info(Lang.T("Steam isn't running: host under LAN / IP."), "", Lang.T("Launch the game through Steam to host with invites."), UiSkin.Amber);
             RulesEditor(rt, null);
-
             RunPresets.Section(_box, _small);
             SavedRuns();
+            Bans();
+        }
 
-            GUILayout.Space(4);
-            if (GUILayout.Button(CoopSaves.PendingContinue != null ? Lang.T("Host with Steam and continue") : Lang.T("Host with Steam"), GUILayout.Height(32))) rt.HostSteam();
-            GUILayout.Label(Lang.T("Host, then start a run: friends who join are brought into it."), _small);
-
-            var bans = BanList.All;
-            if (bans.Count > 0)
+        /// <summary>Co-op runs saved earlier: pick one, then host to carry on with it.</summary>
+        private static void SavedRuns()
+        {
+            var runs = CoopSaves.List();
+            if (runs.Count == 0) return;
+            GameRows.Header(Lang.T("Continue a co-op run"));
+            foreach (var r in runs)
             {
-                GUILayout.Space(4);
-                _showBans = GUILayout.Toggle(_showBans, " " + Lang.F("Banned players ({0})", bans.Count));
-                if (_showBans)
-                {
-                    _banScroll = GUILayout.BeginScrollView(_banScroll, GUILayout.Height(Mathf.Min(30 + bans.Count * 24, 140)));
-                    foreach (var b in new List<BanList.Entry>(bans))
-                    {
-                        GUILayout.BeginHorizontal(_box);
-                        GUILayout.Label(string.IsNullOrEmpty(b.Name) ? b.Key : b.Name, GUILayout.Width(170));
-                        GUILayout.Label(b.When, _small, GUILayout.Width(80));
-                        GUILayout.FlexibleSpace();
-                        if (GUILayout.Button(Lang.T("Unban"), GUILayout.MinWidth(60), GUILayout.ExpandWidth(false))) BanList.Unban(b.Key);
-                        GUILayout.EndHorizontal();
-                    }
-                    GUILayout.EndScrollView();
-                }
+                bool picked = CoopSaves.PendingContinue == r.Id;
+                string label = Lang.F("Layer {0}", r.Layer) + " · " + r.When.ToString("MMM d HH:mm");
+                var at = GameRows.Slot(label, r.Players.Length > 0 ? r.Players : null, 220f);
+                float bw = (at.width - 6f) / 2f;
+                if (GUI.Button(new Rect(at.x, at.y, bw, at.height), picked ? Lang.T("Picked") : Lang.T("Continue"))) CoopSaves.PendingContinue = picked ? null : r.Id;
+                if (GUI.Button(new Rect(at.x + bw + 6f, at.y, bw, at.height), Lang.T("Delete"))) { CoopSaves.Delete(r.Id); if (picked) CoopSaves.PendingContinue = null; }
             }
+        }
+
+        private static void Bans()
+        {
+            var bans = BanList.All;
+            if (bans.Count == 0) return;
+            GameRows.Header(Lang.F("Banned players ({0})", bans.Count));
+            foreach (var b in new List<BanList.Entry>(bans))
+            {
+                var at = GameRows.Slot(string.IsNullOrEmpty(b.Name) ? b.Key : b.Name, Lang.F("Banned {0}", b.When), 110f);
+                if (GUI.Button(at, Lang.T("Unban"))) BanList.Unban(b.Key);
+            }
+        }
+
+        private static void Refresh(CoopRuntime rt)
+        {
+            _browsedOnce = true;
+            rt.Lobby.Refresh();
+        }
+
+        private static void FindTab(CoopRuntime rt)
+        {
+            if (!GameInfo.SteamReady)
+            {
+                GameRows.Header(Lang.T("Steam isn't running"));
+                GameRows.Info(Lang.T("Launch the game through Steam to find games."), "", Lang.T("Or join directly under LAN / IP."));
+                return;
+            }
+            var lobby = rt.Lobby;
+            int which = GameRows.Choice("findwhich", Lang.T("Show"), _friendsTab ? 0 : 1, new[] { Lang.T("Friends' games"), Lang.T("Public games") },
+                Lang.T("Friends: sessions your Steam friends host. Public: sessions anyone can join."));
+            if ((which == 0) != _friendsTab) { _friendsTab = which == 0; Refresh(rt); }
+
+            var list = new List<LobbyInfo>(_friendsTab ? lobby.FriendLobbies : lobby.PublicLobbies);
+            if (list.Count == 0)
+            {
+                GameRows.Info(lobby.Searching ? Lang.T("Looking for sessions...")
+                    : _friendsTab ? Lang.T("None of your Steam friends is hosting right now.")
+                    : Lang.T("No public sessions found."), "", _friendsTab ? null : Lang.T("Hosts choose Public to be listed here."));
+                return;
+            }
+            foreach (var l in list) LobbyRow(rt, l);
+        }
+
+        /// <summary>One session found: the host's picture and name, where they are, the ping, Join.</summary>
+        private static void LobbyRow(CoopRuntime rt, LobbyInfo l)
+        {
+            string why = l.Incompatible;
+            bool full = l.Max > 0 && l.Players >= l.Max;
+            var r = GUILayoutUtility.GetRect(10f, 72f, GUILayout.ExpandWidth(true));
+            if (_lobbyName == null)
+            {
+                _lobbyName = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Head, wordWrap = false, clipping = TextClipping.Clip };
+                _lobbySub = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Small, wordWrap = false, clipping = TextClipping.Clip };
+                _lobbySub.normal.textColor = UiSkin.Dim;
+            }
+            if (Event.current.type == EventType.Repaint)
+            {
+                var tex = SteamServices.Avatar(l.HostId);
+                if (tex != null) GUI.DrawTexture(new Rect(r.x + 10f, r.y + 12f, 48f, 48f), tex, ScaleMode.ScaleToFit);
+                string hostLine = l.Host + (l.Locked ? "  [" + Lang.T("password") + "]" : "");
+                GUI.Label(new Rect(r.x + 70f, r.y + 6f, r.width - 300f, 30f), hostLine, UiSkin.Fit(_lobbyName, hostLine));
+                string where = l.InRun ? (string.IsNullOrEmpty(l.Layer) ? Lang.T("In a run") : int.TryParse(l.Layer, out var depth) ? Lang.F("Layer {0}", depth) : l.Layer) : Lang.T("In the menu");
+                string sub = where + " · " + Lang.F("{0}/{1} players", l.Players, l.Max);
+                if (l.ViaFriend && !string.IsNullOrEmpty(l.FriendName) && l.FriendName != l.Host) sub += " · " + Lang.F("with {0}", l.FriendName);
+                var rules = HostRules.Decode(l.Rules);
+                if (rules != null) sub += " · " + Lang.F("Dead: {0}", rules.RespawnText);
+                var subStyle = _lobbySub;
+                if (why != null) { sub = Lang.F("Can't join: {0}", why); subStyle = _bad; }
+                GUI.Label(new Rect(r.x + 70f, r.y + 38f, r.width - 300f, 24f), sub, UiSkin.Fit(subStyle, sub));
+                var old = GUI.color;
+                GUI.color = PingColor(l.Ping, -1f);
+                GUI.Label(new Rect(r.xMax - 220f, r.y, 90f, r.height), l.Ping >= 0 ? "~" + l.Ping + " ms" : "? ms", _right);
+                GUI.color = old;
+                GUI.DrawTexture(new Rect(r.x, r.yMax - 1f, r.width, 1f), GameLook.Solid(new Color(1f, 1f, 1f, 0.22f)));
+            }
+            bool was = GUI.enabled;
+            GUI.enabled = was && why == null && !full;
+            if (GUI.Button(new Rect(r.xMax - 120f, r.y + 18f, 110f, 36f), full ? Lang.T("Full") : Lang.T("Join")))
+            {
+                _promptPassword = "";
+                rt.JoinSteamLobby(l.Id);
+            }
+            GUI.enabled = was;
+        }
+
+        private static GUIStyle _lobbyName, _lobbySub;
+
+        private static void LanTab(CoopRuntime rt)
+        {
+            GameRows.Header(Lang.T("Direct connection"));
+            GameRows.Info(Lang.T("Port"), CoopPlugin.Instance.Port.Value.ToString(),
+                Lang.F("On a LAN or a VPN (Tailscale, ZeroTier, Radmin) nothing else is needed. Over the internet the host must forward UDP port {0}.", CoopPlugin.Instance.Port.Value));
+            var addrAt = GameRows.Slot(Lang.T("Host's address"), Lang.T("The host's IP address (or name) to join."));
+            _address = FieldAt(addrAt, "address", _address, 64, false);
+            var pwAt = GameRows.Slot(Lang.T("Password"), Lang.T("Leave it empty if the host has none."));
+            _lanPassword = FieldAt(pwAt, "lanpw", _lanPassword, 64, true);
+            GameRows.Info(Lang.T("Hosting here uses the Host tab's rules."), "");
+        }
+
+        private static void PasswordPrompt(CoopRuntime rt)
+        {
+            var l = rt.PasswordPrompt;
+            GameRows.Header(Lang.T("Password needed"));
+            GameRows.Info(Lang.F("{0}'s session is locked.", l.Host), "", Lang.T("Ask them for the password."));
+            bool submit = Event.current.type == EventType.KeyDown
+                          && (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter)
+                          && GUI.GetNameOfFocusedControl() == "ccoop_prompt";
+            var at = GameRows.Slot(Lang.T("Password"), null);
+            _promptPassword = FieldAt(at, "prompt", _promptPassword, 64, true);
+            if (submit && _promptPassword.Length > 0)
+            {
+                Event.current.Use();
+                JoinPrompted(rt);
+            }
+        }
+
+        private static void JoinPrompted(CoopRuntime rt)
+        {
+            string pw = _promptPassword;
+            _promptPassword = "";
+            rt.JoinSteamLobby(rt.PasswordPrompt.Id, pw);
+        }
+
+        /// <summary>Not in a session: the current page's own buttons, in the bottom bar.</summary>
+        private static void OfflineActions(CoopRuntime rt)
+        {
+            bool was = GUI.enabled;
+            GUI.enabled = was && !rt.Connecting;
+            if (rt.PasswordPrompt != null)
+            {
+                if (GUILayout.Button(Lang.T("Cancel"), GUILayout.MinWidth(120f), GUILayout.ExpandHeight(true))) { rt.PasswordPrompt = null; rt.LastMessage = ""; }
+                if (GUILayout.Button(Lang.T("Join"), GUILayout.MinWidth(160f), GUILayout.ExpandHeight(true)) && _promptPassword.Length > 0) JoinPrompted(rt);
+            }
+            else if (_tab == Tab.Host && GameInfo.SteamReady)
+            {
+                if (GUILayout.Button(CoopSaves.PendingContinue != null ? Lang.T("Host and continue") : Lang.T("Host with Steam"), GUILayout.MinWidth(180f), GUILayout.ExpandHeight(true))) rt.HostSteam();
+            }
+            else if (_tab == Tab.Find && GameInfo.SteamReady)
+            {
+                GUI.enabled = was && !rt.Connecting && !rt.Lobby.Searching;
+                if (GUILayout.Button(rt.Lobby.Searching ? Lang.T("Searching...") : Lang.T("Refresh"), GUILayout.MinWidth(140f), GUILayout.ExpandHeight(true))) Refresh(rt);
+            }
+            else if (_tab == Tab.Lan)
+            {
+                if (GUILayout.Button(Lang.F("Host on port {0}", CoopPlugin.Instance.Port.Value), GUILayout.MinWidth(180f), GUILayout.ExpandHeight(true))) rt.HostLan();
+                if (GUILayout.Button(Lang.T("Join"), GUILayout.MinWidth(120f), GUILayout.ExpandHeight(true))) rt.JoinLan(_address, _lanPassword);
+            }
+            GUI.enabled = was;
         }
 
         private static readonly string[] LobbyTypes = { "FriendsOnly", "Public", "InviteOnly" };
         private static readonly string[] RespawnRules = { "NextLayer", "Permadeath", "Quick" };
         private static readonly int[] ExitShares = { 0, 50, 100 };
+        private static readonly string[] VoiceModes = { "PushToTalk", "Open", "Off" };
+
+        /// <summary>The open-mic level meter is on screen (the mic is read for it even when not sending).</summary>
+        internal static bool MeasuringMic;
 
         /// <summary>
         /// The host's rules: before hosting (Host tab) and live while hosting. Everything
@@ -315,274 +397,6 @@ namespace CCoop.Plugin.UI
             if (danger != cfg.DangerScale.Value) cfg.DangerScale.Value = danger;
         }
 
-        private static bool _showSaves;
-
-        private static void SavedRuns()
-        {
-            var runs = CoopSaves.List();
-            if (runs.Count == 0) return;
-            GUILayout.Space(4);
-            _showSaves = GUILayout.Toggle(_showSaves, " " + Lang.F("Continue a co-op run ({0})", runs.Count));
-            if (!_showSaves) return;
-            foreach (var r in runs)
-            {
-                GUILayout.BeginHorizontal(_box);
-                bool picked = CoopSaves.PendingContinue == r.Id;
-                GUILayout.Label(Lang.F("Layer {0}", r.Layer) + " · " + r.When.ToString("MMM d HH:mm") + (r.Players.Length > 0 ? " · " + r.Players : ""), _small, GUILayout.Width(280));
-                if (GUILayout.Button(picked ? Lang.T("Picked") : Lang.T("Continue"), GUILayout.MinWidth(70), GUILayout.ExpandWidth(false))) CoopSaves.PendingContinue = picked ? null : r.Id;
-                if (GUILayout.Button(Lang.T("Delete"), GUILayout.MinWidth(55), GUILayout.ExpandWidth(false))) { CoopSaves.Delete(r.Id); if (picked) CoopSaves.PendingContinue = null; }
-                GUILayout.EndHorizontal();
-            }
-            if (CoopSaves.PendingContinue != null) GUILayout.Label(Lang.T("Host, then press \"Start the saved run\" when your friends are in."), _small);
-        }
-
-        private static void Refresh(CoopRuntime rt)
-        {
-            _browsedOnce = true;
-            rt.Lobby.Refresh();
-        }
-
-        private static void FindTab(CoopRuntime rt)
-        {
-            if (!GameInfo.SteamReady)
-            {
-                GUILayout.Label(Lang.T("Steam is not available. Launch the game through Steam to find games, or use LAN / IP."), _small);
-                return;
-            }
-            var lobby = rt.Lobby;
-
-            GUILayout.BeginHorizontal();
-            int which = GUILayout.Toolbar(_friendsTab ? 0 : 1, new[] { Lang.T("Friends"), Lang.T("Public") }, GUILayout.Width(200));
-            _friendsTab = which == 0;
-            GUILayout.FlexibleSpace();
-            GUI.enabled = !lobby.Searching && !rt.Connecting;
-            if (GUILayout.Button(lobby.Searching ? Lang.T("Searching...") : Lang.T("Refresh"), GUILayout.MinWidth(100), GUILayout.ExpandWidth(false))) Refresh(rt);
-            GUI.enabled = !rt.Connecting;
-            GUILayout.EndHorizontal();
-
-            var list = new List<LobbyInfo>(_friendsTab ? lobby.FriendLobbies : lobby.PublicLobbies);
-            if (list.Count == 0)
-            {
-                GUILayout.Label(lobby.Searching ? Lang.T("Looking for sessions...")
-                    : _friendsTab ? Lang.T("None of your Steam friends is hosting right now.")
-                    : Lang.T("No public sessions found. Hosts choose Public to be listed here."), _small);
-                return;
-            }
-
-            _browseScroll = GUILayout.BeginScrollView(_browseScroll, GUILayout.Height(Mathf.Min(20 + list.Count * 52, 260)));
-            foreach (var l in list) LobbyRow(rt, l);
-            GUILayout.EndScrollView();
-        }
-
-        private static void LobbyRow(CoopRuntime rt, LobbyInfo l)
-        {
-            string why = l.Incompatible;
-            bool full = l.Max > 0 && l.Players >= l.Max;
-
-            GUILayout.BeginHorizontal(_box);
-            AvatarBox(l.HostId, 36);
-            GUILayout.BeginVertical();
-            string hostLine = l.Host + (l.Locked ? "  [" + Lang.T("password") + "]" : "");
-            GUILayout.Label(hostLine, UiSkin.Fit(GUI.skin.label, hostLine), GUILayout.Width(220));
-            // The advert carries the layer number (older builds sent "Layer 5").
-            string where = l.InRun ? (string.IsNullOrEmpty(l.Layer) ? Lang.T("In a run") : int.TryParse(l.Layer, out var depth) ? Lang.F("Layer {0}", depth) : l.Layer) : Lang.T("In the menu");
-            string sub = where + " · " + Lang.F("{0}/{1} players", l.Players, l.Max);
-            if (l.ViaFriend && !string.IsNullOrEmpty(l.FriendName) && l.FriendName != l.Host) sub += " · " + Lang.F("with {0}", l.FriendName);
-            GUILayout.Label(sub, _small, GUILayout.Width(220));
-            var rules = HostRules.Decode(l.Rules);
-            if (rules != null) GUILayout.Label(Lang.F("Dead: {0} · {1}", rules.RespawnText, rules.ExitText), _small, GUILayout.Width(220));
-            if (why != null) GUILayout.Label(Lang.F("Can't join: {0}", why), _bad, GUILayout.Width(220));
-            GUILayout.EndVertical();
-            GUILayout.FlexibleSpace();
-
-            var old = GUI.color;
-            GUI.color = PingColor(l.Ping, -1f);
-            GUILayout.Label(l.Ping >= 0 ? "~" + l.Ping + " ms" : "? ms", _right, GUILayout.Width(60), GUILayout.Height(36));
-            GUI.color = old;
-
-            bool was = GUI.enabled;
-            GUI.enabled = was && why == null && !full;
-            if (GUILayout.Button(full ? Lang.T("Full") : Lang.T("Join"), GUILayout.MinWidth(60), GUILayout.ExpandWidth(false), GUILayout.Height(36)))
-            {
-                _promptPassword = "";
-                rt.JoinSteamLobby(l.Id);
-            }
-            GUI.enabled = was;
-            GUILayout.EndHorizontal();
-        }
-
-        private static void LanTab(CoopRuntime rt)
-        {
-            GUILayout.Label(Lang.F("Direct connection over your LAN or a VPN (Tailscale, ZeroTier, Radmin). Over the internet the host must forward UDP port {0}.", CoopPlugin.Instance.Port.Value), _small);
-            if (GUILayout.Button(Lang.F("Host on port {0}", CoopPlugin.Instance.Port.Value), GUILayout.Height(28))) rt.HostLan();
-            GUILayout.Label(Lang.T("The Host tab's password and respawn rule apply here too."), _small);
-
-            GUILayout.Space(6);
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Address"), GUILayout.Width(70));
-            _address = Field("address", _address, 64, false);
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Password"), GUILayout.Width(70));
-            _lanPassword = Field("lanpw", _lanPassword, 64, true);
-            if (GUILayout.Button(Lang.T("Join"), GUILayout.MinWidth(70), GUILayout.ExpandWidth(false), GUILayout.Height(22))) rt.JoinLan(_address, _lanPassword);
-            GUILayout.EndHorizontal();
-            GUILayout.Label(Lang.T("Leave the password empty if the host has none."), _small);
-        }
-
-        private static void PasswordPrompt(CoopRuntime rt)
-        {
-            var l = rt.PasswordPrompt;
-            GUILayout.Label(Lang.T("Password needed"), _title);
-            GUILayout.BeginHorizontal();
-            AvatarBox(l.HostId, 36);
-            GUILayout.Label(Lang.F("{0}'s session is locked. Ask them for the password.", l.Host), _small);
-            GUILayout.EndHorizontal();
-
-            bool submit = Event.current.type == EventType.KeyDown
-                          && (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter)
-                          && GUI.GetNameOfFocusedControl() == "ccoop_prompt";
-            _promptPassword = Field("prompt", _promptPassword, 64, true);
-
-            GUILayout.BeginHorizontal();
-            GUI.enabled = !rt.Connecting;
-            if (GUILayout.Button(Lang.T("Join"), GUILayout.Height(28)) || (submit && _promptPassword.Length > 0))
-            {
-                if (submit) Event.current.Use();
-                string pw = _promptPassword;
-                _promptPassword = "";
-                rt.JoinSteamLobby(l.Id, pw);
-            }
-            GUI.enabled = true;
-            if (GUILayout.Button(Lang.T("Cancel"), GUILayout.MinWidth(80), GUILayout.ExpandWidth(false), GUILayout.Height(28)))
-            {
-                rt.PasswordPrompt = null;
-                rt.LastMessage = "";
-            }
-            GUILayout.EndHorizontal();
-        }
-
-        // ------------------------------------------------------------------ online
-
-        private static void Online(CoopRuntime rt, NetSession s)
-        {
-            string role = s.IsHost ? Lang.T("Hosting") : (s.State == SessionState.Established ? Lang.T("Connected") : Lang.T("Connecting"));
-            GUILayout.Label(Lang.F("{0} · {1}", role, rt.TransportKind), _title);
-
-            var flow = Coop.Get<RunFlow>();
-            if (flow != null) GUILayout.Label(flow.Describe(), _small);
-            GUILayout.Label(HostRules.Current.Shown(), _small);
-
-            if (s.IsHost && rt.TransportKind == "Steam" && rt.Lobby.InLobby)
-            {
-                var cfg = CoopPlugin.Instance;
-                string type = cfg.LobbyType.Value == "Public" ? "Public" : cfg.LobbyType.Value == "InviteOnly" ? "Invite only" : "Friends";
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button(Lang.T("Invite Steam friends"), GUILayout.Height(28))) rt.Lobby.Invite();
-                GUILayout.Label(Lang.T(type) + (string.IsNullOrEmpty(cfg.HostPassword.Value) ? "" : " · " + Lang.T("password")), _right, GUILayout.Width(130), GUILayout.Height(28));
-                GUILayout.EndHorizontal();
-            }
-            if (s.IsHost)
-            {
-                _showRules = GUILayout.Toggle(_showRules, " " + Lang.T("Rules (change them any time)"));
-                if (_showRules)
-                {
-                    GUILayout.BeginVertical(_box);
-                    RulesEditor(rt, s);
-                    GUILayout.EndVertical();
-                }
-                RunPresets.Section(_box, _small);  // only before the run starts
-            }
-
-            if (GameInfo.InRunScene && WorldGeneration.runSettings != null)
-            {
-                _showRunSettings = GUILayout.Toggle(_showRunSettings, " " + (s.IsHost ? Lang.T("Run settings") : Lang.T("Run settings (the host's)")));
-                if (_showRunSettings)
-                {
-                    GUILayout.BeginVertical(_box);
-                    foreach (var line in RunSettingsReadout.Lines(WorldGeneration.runSettings)) GUILayout.Label(line, _small);
-                    GUILayout.EndVertical();
-                }
-            }
-
-            VoiceRow();
-            ComfortRow();
-            MilestoneList();
-
-            GUILayout.Space(6);
-            GUILayout.Label(Lang.F("Players ({0}/{1})", s.PeerCount, HostRules.Current.MaxPlayers));
-            _scroll = GUILayout.BeginScrollView(_scroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Min(12 + s.PeerCount * 64, 260)));
-            var ids = new List<byte>();
-            foreach (var p in s.Peers) ids.Add(p.Id);
-            ids.Sort();
-            foreach (var id in ids)
-            {
-                if (!s.TryGetPeer(id, out var p)) continue;
-                PlayerRow(rt, s, p, Coop.Player(id));
-            }
-            GUILayout.EndScrollView();
-
-            if (s.IsHost && GameInfo.OnMainMenu && CoopSaves.PendingContinue != null)
-            {
-                if (GUILayout.Button(Lang.T("Start the saved run"), GUILayout.Height(30))) CoopSaves.StartContinue();
-                GUILayout.Label(Lang.T("Players who join get their own characters back from this run; newcomers start fresh."), _small);
-            }
-
-            if (!s.IsHost && flow != null && flow.CanJoinHostRun)
-            {
-                if (GUILayout.Button(Lang.T("Join the host's run"), GUILayout.Height(30))) flow.JoinHostRun();
-            }
-
-            GUILayout.Space(6);
-            if (GUILayout.Button(s.IsHost ? Lang.T("End session") : Lang.T("Leave session"), GUILayout.Height(26))) LeaveSession(rt, s);
-
-            var history = Notices.History;
-            if (history.Count > 0)
-            {
-                GUILayout.Space(4);
-                for (int i = Mathf.Max(0, history.Count - 2); i < history.Count; i++) GUILayout.Label(history[i], _small);
-            }
-        }
-
-        private static readonly string[] VoiceModes = { "PushToTalk", "Open", "Off" };
-
-        /// <summary>The voice row is showing the mic meter (open mic).</summary>
-        internal static bool MeasuringMic;
-
-        private static void VoiceRow()
-        {
-            var cfg = CoopPlugin.Instance;
-            if (!VoiceSync.Available)
-            {
-                return;
-            }
-            int cur = Mathf.Max(0, System.Array.IndexOf(VoiceModes, cfg.VoiceMode.Value));
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Voice"), GUILayout.Width(50));
-            int pick = GUILayout.Toolbar(cur, new[] { Lang.F("Hold {0}", cfg.VoiceKey.Value), Lang.T("Open mic"), Lang.T("Off") });
-            if (pick != cur) cfg.VoiceMode.Value = VoiceModes[pick];
-            GUILayout.EndHorizontal();
-            MeasuringMic = cfg.VoiceMode.Value == "Open";
-            if (MeasuringMic)
-            {
-                // Open mic threshold, with this player's live mic level beside it.
-                GUILayout.BeginHorizontal();
-                GUILayout.Label(Lang.T("Send above"), _small, GUILayout.Width(70));
-                cfg.VoiceGate.Value = GUILayout.HorizontalSlider(cfg.VoiceGate.Value, 0f, 0.3f, GUILayout.Width(140));
-                GUILayout.Label(cfg.VoiceGate.Value <= 0.001f ? Lang.T("everything") : Mathf.RoundToInt(cfg.VoiceGate.Value / 0.3f * 100f) + "%", _small, GUILayout.Width(70));
-                var bar = GUILayoutUtility.GetRect(100f, 10f, GUILayout.Width(100f));
-                GUI.Box(bar, GUIContent.none);
-                float lvl = Mathf.Clamp01(VoiceSync.MicLevel / 0.3f);
-                var oldColor = GUI.color;
-                GUI.color = VoiceSync.MicLevel >= cfg.VoiceGate.Value ? new Color(0.5f, 1f, 0.5f) : new Color(0.7f, 0.7f, 0.7f);
-                GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * lvl, bar.height), Texture2D.whiteTexture);
-                GUI.color = oldColor;
-                GUILayout.EndHorizontal();
-            }
-            if (HostRules.Current.Arrows)
-                cfg.ShowArrows.Value = GUILayout.Toggle(cfg.ShowArrows.Value, " " + Lang.T("Show arrows to teammates who are off screen"));
-        }
-
         private static void MilestoneList()
         {
             GameRows.Header(Lang.F("Co-op milestones ({0}/{1})", Milestones.Reached, Milestones.All.Length));
@@ -592,54 +406,6 @@ namespace CCoop.Plugin.UI
                 bool done = n >= d.Goal;
                 GameRows.Info(Lang.T(d.Title), done ? Lang.T("done") : Mathf.FloorToInt(n) + "/" + d.Goal + (d.Unit ?? ""), Lang.T(d.Text), done ? (Color?)UiSkin.Good : null);
             }
-        }
-
-        /// <summary>Personal display options: these never change anything for anyone else.</summary>
-        private static void ComfortRow()
-        {
-            var cfg = CoopPlugin.Instance;
-            bool narrow = Wide(Width - 40f, " " + Lang.T("Reduce flashes and shaking"), " " + Lang.T("Colour-blind safe colours"));
-            if (!narrow) GUILayout.BeginHorizontal();
-            cfg.ReduceFlashes.Value = GUILayout.Toggle(cfg.ReduceFlashes.Value, " " + Lang.T("Reduce flashes and shaking"), GUILayout.ExpandWidth(false));
-            cfg.ColorBlindColors.Value = GUILayout.Toggle(cfg.ColorBlindColors.Value, " " + Lang.T("Colour-blind safe colours"), GUILayout.ExpandWidth(false));
-            if (!narrow) GUILayout.EndHorizontal();
-        }
-
-        private static void PlayerRow(CoopRuntime rt, NetSession s, PeerInfo p, PlayerRecord rec)
-        {
-            bool me = p.Id == s.LocalId;
-            // Two lines: who they are (and what you can do), then how they're doing.
-            GUILayout.BeginHorizontal(_box);
-            AvatarBox(rec.SteamId, 32);
-            GUILayout.BeginVertical();
-            var voice = Coop.Get<VoiceSync>();
-            bool talking = voice != null && (me ? voice.Transmitting : voice.IsTalking(p.Id));
-            string who = p.Name + (me ? " (" + Lang.T("you") + ")" : "") + (p.IsHost ? " [" + Lang.T("host") + "]" : "") + (talking ? "  ((o))" : "");
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(who, UiSkin.Fit(GUI.skin.label, who));
-            GUILayout.FlexibleSpace();
-            RowButtons(rt, s, p, rec, me, voice);
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(GameInfo.CharacterName(rec.Character) + " · " + Lang.T(rec.Status), _small, GUILayout.ExpandWidth(false));
-            var fpsColor = GUI.color;
-            if (rec.Fps > 0 && rec.Fps < ConnectionBadge.SlowFps) GUI.color = UiSkin.Bad;
-            if (rec.Fps > 0) GUILayout.Label("· " + rec.Fps + " fps", _small, GUILayout.ExpandWidth(false));
-            GUI.color = fpsColor;
-            string ping = "";
-            if (!p.IsHost && p.RoundTripMs >= 0)
-            {
-                ping = "· " + p.RoundTripMs + " ms";
-                if (p.Quality >= 0f && p.Quality < 0.95f) ping += " · " + Mathf.RoundToInt((1f - p.Quality) * 100f) + "%";
-            }
-            var old = GUI.color;
-            GUI.color = PingColor(p.RoundTripMs, p.Quality);
-            if (ping.Length > 0) GUILayout.Label(ping, _small, GUILayout.ExpandWidth(false));
-            GUI.color = old;
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
-            GUILayout.EndHorizontal();
         }
 
         /// <summary>A player row's buttons: voice volume, check on them, and (host) kick and ban.</summary>
@@ -659,21 +425,6 @@ namespace CCoop.Plugin.UI
         }
 
         // ------------------------------------------------------------------ helpers
-
-        /// <summary>Whether these toggles side by side would be wider than <paramref name="room"/> (then they stack).</summary>
-        private static bool Wide(float room, params string[] labels)
-        {
-            float w = 0f;
-            foreach (var l in labels) w += GUI.skin.toggle.CalcSize(new GUIContent(l)).x + 8f;
-            return w > room;
-        }
-
-        private static void AvatarBox(ulong steamId, float size)
-        {
-            var r = GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size));
-            var tex = SteamServices.Avatar(steamId);
-            if (tex != null) GUI.DrawTexture(r, tex, ScaleMode.ScaleToFit);
-        }
 
         /// <summary>A named text field, remembered so the on-screen keyboard can be placed beside it.</summary>
         private static string Field(string id, string value, int max, bool secret)

@@ -45,6 +45,10 @@ param(
     [switch]$Handover,
     # Friendly fire on for this test (the host's rule), whatever the config says.
     [switch]$FriendlyFire,
+    # Copies stay on the menu, out of any session (to look at the offline pages).
+    [switch]$Offline,
+    # Start the copies minimised, out of the way (for self-tests; screenshots need them shown).
+    [switch]$Minimized,
     # The host runs at this frame rate once in the run (a slow host).
     [int]$HostFps = 0,
     [int]$StaggerSeconds = 6
@@ -70,7 +74,7 @@ if ($Count -gt 1 -and -not $override) {
 }
 
 for ($i = 1; $i -le $Count; $i++) {
-    $env:CCOOP_AUTOSTART = if ($i -eq 1) { 'host' } else { 'join' }
+    $env:CCOOP_AUTOSTART = if ($Offline) { '' } elseif ($i -eq 1) { 'host' } else { 'join' }
     $env:CCOOP_AUTORUN = if ($Auto -and $i -eq 1) { '1' } else { '' }
     $env:CCOOP_SELFTEST = if ($SelfTest) { '1' } else { '' }
     $env:CCOOP_DUMP = if ($Dump) { '1' } else { '' }
@@ -87,8 +91,9 @@ for ($i = 1; $i -le $Count; $i++) {
     } else {
         Remove-Item Env:SteamAppId, Env:SteamGameId -ErrorAction SilentlyContinue
     }
-    $p = if ($launchArgs.Count -gt 0) { Start-Process -FilePath $exe -WorkingDirectory $GamePath -ArgumentList $launchArgs -PassThru }
-         else { Start-Process -FilePath $exe -WorkingDirectory $GamePath -PassThru }
+    $style = if ($Minimized) { 'Minimized' } else { 'Normal' }
+    $p = if ($launchArgs.Count -gt 0) { Start-Process -FilePath $exe -WorkingDirectory $GamePath -ArgumentList $launchArgs -WindowStyle $style -PassThru }
+         else { Start-Process -FilePath $exe -WorkingDirectory $GamePath -WindowStyle $style -PassThru }
     Write-Host ("instance {0} ({1}) pid {2}" -f $i, $env:CCOOP_AUTOSTART, $p.Id)
     if ($i -lt $Count) { Start-Sleep -Seconds $StaggerSeconds }
 }

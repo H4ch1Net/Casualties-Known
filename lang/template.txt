@@ -750,11 +750,21 @@ Your character
 = 
 host
 = 
+NAME
+= 
+Empty: your Steam name.
+= 
 Run settings
 = 
 Co-op rules
 = 
 Options
+= 
+Host
+= 
+Find games
+= 
+LAN / IP
 = 
 Session
 = 
@@ -822,8 +832,6 @@ Reduce flashes and shaking
 = 
 Colour-blind safe colours
 = 
-NAME
-= 
 STEAM
 = 
 ready
@@ -888,23 +896,95 @@ Co-op · {0} players  (F1)
 = 
 Co-op  (F1)
 = 
-Host
+Steam isn't running: host under LAN / IP.
 = 
-Find games
+Launch the game through Steam to host with invites.
 = 
-LAN / IP
+Continue a co-op run
 = 
-Steam is not available. Launch the game through Steam to host with invites, or use LAN / IP.
+Picked
 = 
-Host with Steam and continue
+Continue
 = 
-Host with Steam
-= 
-Host, then start a run: friends who join are brought into it.
+Delete
 = 
 Banned players ({0})
 = 
+Banned {0}
+= 
 Unban
+= 
+Steam isn't running
+= 
+Launch the game through Steam to find games.
+= 
+Or join directly under LAN / IP.
+= 
+Show
+= 
+Friends' games
+= 
+Public games
+= 
+Friends: sessions your Steam friends host. Public: sessions anyone can join.
+= 
+Looking for sessions...
+= 
+None of your Steam friends is hosting right now.
+= 
+No public sessions found.
+= 
+Hosts choose Public to be listed here.
+= 
+In a run
+= 
+In the menu
+= 
+{0}/{1} players
+= 
+with {0}
+= 
+Dead: {0}
+= 
+Can't join: {0}
+= 
+Full
+= 
+Join
+= 
+Direct connection
+= 
+Port
+= 
+On a LAN or a VPN (Tailscale, ZeroTier, Radmin) nothing else is needed. Over the internet the host must forward UDP port {0}.
+= 
+Host's address
+= 
+The host's IP address (or name) to join.
+= 
+Password
+= 
+Leave it empty if the host has none.
+= 
+Hosting here uses the Host tab's rules.
+= 
+Password needed
+= 
+{0}'s session is locked.
+= 
+Ask them for the password.
+= 
+Cancel
+= 
+Host and continue
+= 
+Host with Steam
+= 
+Searching...
+= 
+Refresh
+= 
+Host on port {0}
 = 
 Sets all the co-op rules below at once. The game's own run settings stay as they are.
 = 
@@ -915,8 +995,6 @@ Listed for everyone under Find games. Add a password to keep strangers out.
 Only people you invite through Steam can join.
 = 
 Steam friends can join from Find games, your profile ("Join Game") or an invite.
-= 
-Password
 = 
 Players need it to join. Empty: no password.
 = 
@@ -947,72 +1025,6 @@ Anyone may speed up time. Off: time runs at normal speed (sleep still fast-forwa
 Shared: one layer's loot for the team. More: each extra player adds some.
 = 
 Enemies get stronger with each extra player.
-= 
-Continue a co-op run ({0})
-= 
-Picked
-= 
-Continue
-= 
-Delete
-= 
-Host, then press "Start the saved run" when your friends are in.
-= 
-Steam is not available. Launch the game through Steam to find games, or use LAN / IP.
-= 
-Searching...
-= 
-Refresh
-= 
-Looking for sessions...
-= 
-None of your Steam friends is hosting right now.
-= 
-No public sessions found. Hosts choose Public to be listed here.
-= 
-In a run
-= 
-In the menu
-= 
-{0}/{1} players
-= 
-with {0}
-= 
-Dead: {0} · {1}
-= 
-Can't join: {0}
-= 
-Full
-= 
-Join
-= 
-Direct connection over your LAN or a VPN (Tailscale, ZeroTier, Radmin). Over the internet the host must forward UDP port {0}.
-= 
-Host on port {0}
-= 
-The Host tab's password and respawn rule apply here too.
-= 
-Address
-= 
-Leave the password empty if the host has none.
-= 
-Password needed
-= 
-{0}'s session is locked. Ask them for the password.
-= 
-Cancel
-= 
-Rules (change them any time)
-= 
-Run settings (the host's)
-= 
-Players ({0}/{1})
-= 
-Players who join get their own characters back from this run; newcomers start fresh.
-= 
-everything
-= 
-Show arrows to teammates who are off screen
 = 
 Co-op milestones ({0}/{1})
 = 
@@ -1054,15 +1066,25 @@ Saved run preset: {0}
 = 
 Co-op run presets
 = 
-These set the game's run settings for the next run. Open the game's run settings to check or change them.
+In use
 = 
-Save the current settings as
+Use
 = 
-Copy as text
+Save these settings
+= 
+Keeps the run settings above under a name, to use again or share.
+= 
+Save
+= 
+Share
+= 
+Copy: these settings as a line of text for a friend. Paste: use a line a friend sent you (it starts with {0}).
+= 
+Copy
 = 
 Copied the run settings: paste them to a friend
 = 
-Use text from the clipboard
+Paste
 = 
 The clipboard has no co-op run preset (it starts with {0})
 = 
@@ -1207,4 +1229,8 @@ Snap out of it
 Stop helping
 = 
 Help carry
+= 
+
+# UI/UiSkin.cs
+Rules (change them any time)
 = 
