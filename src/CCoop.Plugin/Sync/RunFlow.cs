@@ -134,6 +134,7 @@ namespace CCoop.Plugin.Sync
             Coop.Session.Broadcast(flow.BuildRunInfo());
             Coop.Session.Broadcast(new LayerBegin { Epoch = Coop.Epoch, Depth = depth, Pod = ExitVote.PodDescent });
             ExitVote.PodDescent = false;
+            Coop.Get<ArrivalGate>()?.HostLayerStarting();
             Log.Info("[run] building layer " + (depth + 1) + " as epoch " + Coop.Epoch);
         }
 

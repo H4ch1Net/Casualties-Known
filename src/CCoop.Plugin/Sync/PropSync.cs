@@ -19,9 +19,12 @@ namespace CCoop.Plugin.Sync
 
         internal override void Attach(NetSession s) => WorldNet.Register<PropUse>(s, OnUse);
 
+        internal override void OnWorldLost() => ShowerPerPlayerPatch.UsedHere.Clear();
+
         internal static void Announce(LifepodButton b)
         {
             if (!Coop.WorldLive || Coop.Applying || b == null) return;
+            if (b.type != 0 && !ShowerPerPlayerPatch.Fired) return;  // already used: nothing ran
             byte state = b.type != 0 ? Shower : (byte)Mathf.Clamp(b.controller != null ? b.controller.heatState : 0, 0, 2);
             WorldNet.Publish(new PropUse { X = b.transform.position.x, Y = b.transform.position.y, State = state });
         }
@@ -40,10 +43,48 @@ namespace CCoop.Plugin.Sync
             if (m.State == Shower)
             {
                 best.controller.ActivateShower();
+                // A teammate's shower isn't ours: the button stays lit until we use it.
+                var c = best.controller;
+                if (c.shower != null && !ShowerPerPlayerPatch.UsedHere.Contains(c.shower.GetInstanceID()) && c.disinfectSprite != null)
+                    c.disinfectSprite.color = c.onColor;
                 return;
             }
             for (int guard = 0; best.controller.heatState != m.State && guard < 6; guard++)
                 best.controller.ToggleHeatState();
+        }
+    }
+
+    /// <summary>
+    /// In the game the lifepod shower works once. In co-op it works once for each
+    /// player: a teammate's shower (replayed here) runs and washes whoever stands in it,
+    /// but doesn't use up ours.
+    /// </summary>
+    [HarmonyPatch(typeof(LifepodShower), nameof(LifepodShower.Activate))]
+    internal static class ShowerPerPlayerPatch
+    {
+        /// <summary>Showers the local player has used (instance ids; cleared each layer).</summary>
+        internal static readonly System.Collections.Generic.HashSet<int> UsedHere = new System.Collections.Generic.HashSet<int>();
+
+        /// <summary>The last local Activate actually ran the shower.</summary>
+        internal static bool Fired;
+
+        private static void Prefix(LifepodShower __instance)
+        {
+            Fired = false;
+            if (!Coop.InSession) { Fired = !__instance.activated; return; }
+            int id = __instance.GetInstanceID();
+            if (Coop.Applying) { __instance.activated = false; return; }
+            if (UsedHere.Add(id))
+            {
+                __instance.activated = false;
+                Fired = true;
+                Log.Info("[prop] shower used");
+            }
+        }
+
+        private static void Postfix(LifepodShower __instance)
+        {
+            if (Coop.InSession && Coop.Applying) __instance.activated = UsedHere.Contains(__instance.GetInstanceID());
         }
     }
 

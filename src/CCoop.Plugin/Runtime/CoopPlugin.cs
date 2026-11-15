@@ -17,6 +17,15 @@ namespace CCoop.Plugin.Runtime
 
         internal static CoopPlugin Instance { get; private set; }
 
+        /// <summary>
+        /// The plugin has loaded and its settings can be read. Test this, never
+        /// <c>Instance != null</c>: the game destroys plugin components on scene load, and
+        /// Unity's == then calls the destroyed plugin null although its settings (plain C#
+        /// objects) are still there. That silently switched off every hotkey, name tags,
+        /// voice and the host's respawn rule after the first scene change.
+        /// </summary>
+        internal static bool Ready => !ReferenceEquals(Instance, null);
+
         internal ConfigEntry<string> PlayerName;
         internal ConfigEntry<string> Language;
         internal ConfigEntry<int> MaxPlayers;
@@ -24,6 +33,12 @@ namespace CCoop.Plugin.Runtime
         internal ConfigEntry<string> LastAddress;
         internal ConfigEntry<string> LobbyType;
         internal ConfigEntry<string> HostPassword;
+
+        /// <summary>
+        /// The password a hosted session asks for. Dev instances started by the launcher
+        /// (CCOOP_AUTOSTART) join each other without one, whatever the player's config says.
+        /// </summary>
+        internal string SessionPassword => string.IsNullOrEmpty(Dev.DevHarness.AutostartRole) ? (HostPassword.Value ?? "") : "";
         internal ConfigEntry<string> Respawn;
         internal ConfigEntry<int> ExitShare;
         internal ConfigEntry<bool> HostArrows;

@@ -45,7 +45,7 @@ namespace CCoop.Plugin.Sync
 
         internal static bool Available => SteamServices.Ready;
 
-        internal static string Mode => CoopPlugin.Instance != null ? CoopPlugin.Instance.VoiceMode.Value : "Off";
+        internal static string Mode => CoopPlugin.Ready ? CoopPlugin.Instance.VoiceMode.Value : "Off";
 
         /// <summary>The local player is sending voice right now.</summary>
         internal bool Transmitting => _transmitting && Time.unscaledTime - _lastSent < TalkingHold;

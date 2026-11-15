@@ -60,31 +60,84 @@ namespace CCoop.Plugin.Sync
         {
             _points.Clear();
             _lastHug.Clear();
-            _wheelOpen = false;
+            CloseWheel();
         }
 
         // ------------------------------------------------------------------ doing it
 
+        /// <summary>The wheel stays up after a quick tap of the key, for a click.</summary>
+        private bool _sticky;
+        private float _openedAt;
+        private float _ignoredLogAt = -100f;
+
+        /// <summary>A tapped-open wheel holds the game's own controls (the click picks, not swings).</summary>
+        internal static bool HoldingInput;
+
         internal override void Tick()
         {
-            if (!Coop.WorldLive || CoopPlugin.Instance == null) { _wheelOpen = false; return; }
+            if (!Coop.WorldLive || !CoopPlugin.Ready) { CloseWheel(); return; }
             var key = CoopPlugin.Instance.GestureKey.Value;
-            if (!_wheelOpen && !InputBlock.Blocking && Input.GetKeyDown(key))
+            if (!_wheelOpen && Input.GetKeyDown(key))
             {
-                _wheelOpen = true;
-                _choice = -1;
-                _wheelCentre = Input.mousePosition;
+                if (InputBlock.Blocking || Chat.Typing)
+                {
+                    if (Time.unscaledTime - _ignoredLogAt > 5f)
+                    {
+                        _ignoredLogAt = Time.unscaledTime;
+                        Log.Info("[gesture] " + key + " ignored: " + (Chat.Typing ? "chat is open" : "a co-op window text field has the keyboard"));
+                    }
+                }
+                else
+                {
+                    _wheelOpen = true;
+                    _sticky = false;
+                    _choice = -1;
+                    _openedAt = Time.unscaledTime;
+                    // Around the mouse, but always whole on screen (the mouse may be at an
+                    // edge, or outside the window altogether).
+                    float m = 180f * CoopWindow.Scale;
+                    Vector2 at = Input.mousePosition;
+                    _wheelCentre = new Vector2(Mathf.Clamp(at.x, Mathf.Min(m, Screen.width / 2f), Mathf.Max(Screen.width - m, Screen.width / 2f)),
+                                               Mathf.Clamp(at.y, Mathf.Min(m, Screen.height / 2f), Mathf.Max(Screen.height - m, Screen.height / 2f)));
+                    Log.Info("[gesture] wheel open");
+                }
+                return;
             }
-            else if (_wheelOpen && !Input.GetKey(key))
+            if (!_wheelOpen) return;
+
+            Vector2 d = (Vector2)Input.mousePosition - _wheelCentre;
+            _choice = d.magnitude < 30f * CoopWindow.Scale ? -1 : Sector(d);
+            for (int i = 0; i < Wheel.Length && i < 9; i++)
+                if (Input.GetKeyDown(KeyCode.Alpha1 + i) || Input.GetKeyDown(KeyCode.Keypad1 + i)) { Pick(i); return; }
+
+            if (!_sticky)
             {
-                _wheelOpen = false;
-                if (_choice >= 0) Do(_choice);
+                if (Input.GetKey(key)) return;
+                // Let go: a pick if the mouse moved onto one; after a quick tap the wheel
+                // stays up for a click instead.
+                if (_choice >= 0) { Pick(_choice); return; }
+                if (Time.unscaledTime - _openedAt < 0.35f) { _sticky = true; HoldingInput = true; return; }
+                CloseWheel();
+                Log.Info("[gesture] wheel closed without a pick");
+                return;
             }
-            if (_wheelOpen)
-            {
-                Vector2 d = (Vector2)Input.mousePosition - _wheelCentre;
-                _choice = d.magnitude < 30f ? -1 : Sector(d);
-            }
+
+            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(key) || Input.GetMouseButtonDown(1)) { CloseWheel(); return; }
+            if (Input.GetMouseButtonDown(0) && _choice >= 0) Pick(_choice);
+        }
+
+        private void Pick(int index)
+        {
+            CloseWheel();
+            Do(index);
+        }
+
+        private void CloseWheel()
+        {
+            _wheelOpen = false;
+            _sticky = false;
+            _choice = -1;
+            HoldingInput = false;
         }
 
         private static int Sector(Vector2 d)
@@ -284,9 +337,13 @@ namespace CCoop.Plugin.Sync
                 var at = centre + new Vector2(Mathf.Sin(angle), -Mathf.Cos(angle)) * radius;
                 var r = new Rect(at.x - 55f * k, at.y - 16f * k, 110f * k, 32f * k);
                 GUI.color = i == _choice ? Color.white : new Color(1f, 1f, 1f, 0.8f);
-                GUI.Box(r, Lang.T(Wheel[i].label), i == _choice ? _wheelSel : _wheelStyle);
+                GUI.Box(r, (i + 1) + "  " + Lang.T(Wheel[i].label), i == _choice ? _wheelSel : _wheelStyle);
             }
             GUI.color = old;
+            string hint = _sticky ? Lang.T("Click a gesture (or press its number). Esc to close")
+                                  : Lang.T("Move the mouse onto a gesture and let go");
+            var hr = new Rect(centre.x - 160f * k, centre.y + radius + 26f * k, 320f * k, 26f * k);
+            GUI.Box(hr, hint, _wheelStyle);
         }
     }
 

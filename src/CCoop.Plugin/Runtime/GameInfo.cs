@@ -147,7 +147,7 @@ namespace CCoop.Plugin.Runtime
         {
             get
             {
-                var configured = CoopPlugin.Instance != null ? CoopPlugin.Instance.PlayerName.Value : null;
+                var configured = CoopPlugin.Ready ? CoopPlugin.Instance.PlayerName.Value : null;
                 if (!string.IsNullOrEmpty(configured)) return configured;
                 return SteamName ?? Environment.UserName;
             }

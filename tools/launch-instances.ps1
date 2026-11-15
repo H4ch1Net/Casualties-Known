@@ -57,8 +57,16 @@ if (-not (Test-Path -LiteralPath $exe)) { throw "game not found: $exe" }
 $doorstop = Join-Path $GamePath 'doorstop_config.ini'
 if (-not (Test-Path -LiteralPath $doorstop)) { throw "BepInEx is not installed in $GamePath" }
 $override = (Get-Content -LiteralPath $doorstop | Where-Object { $_ -match '^\s*boot_config_override\s*=\s*\S' })
+# Without an override in doorstop_config.ini, Unity's "single-instance=" would close every
+# copy after the first. Write a copy of boot.config without that line to the temp folder
+# and hand it to Doorstop on the command line (Doorstop 4), so the game folder isn't touched.
+$launchArgs = @()
 if ($Count -gt 1 -and -not $override) {
-    Write-Warning "boot_config_override is not set in doorstop_config.ini; only one instance will start."
+    $boot = Join-Path $GamePath 'CasualtiesUnknown_Data\boot.config'
+    $multi = Join-Path $env:TEMP 'ccoop-boot.multi.config'
+    Get-Content -LiteralPath $boot | Where-Object { $_ -notmatch '^\s*single-instance\s*=' } | Set-Content -LiteralPath $multi -Encoding ascii
+    $launchArgs = @('--doorstop-boot-config-override', ('"' + $multi + '"'))
+    Write-Host "Several copies allowed through $multi"
 }
 
 for ($i = 1; $i -le $Count; $i++) {
@@ -79,7 +87,8 @@ for ($i = 1; $i -le $Count; $i++) {
     } else {
         Remove-Item Env:SteamAppId, Env:SteamGameId -ErrorAction SilentlyContinue
     }
-    $p = Start-Process -FilePath $exe -WorkingDirectory $GamePath -PassThru
+    $p = if ($launchArgs.Count -gt 0) { Start-Process -FilePath $exe -WorkingDirectory $GamePath -ArgumentList $launchArgs -PassThru }
+         else { Start-Process -FilePath $exe -WorkingDirectory $GamePath -PassThru }
     Write-Host ("instance {0} ({1}) pid {2}" -f $i, $env:CCOOP_AUTOSTART, $p.Id)
     if ($i -lt $Count) { Start-Sleep -Seconds $StaggerSeconds }
 }

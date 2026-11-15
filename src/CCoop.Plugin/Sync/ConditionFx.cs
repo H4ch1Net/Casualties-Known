@@ -103,7 +103,7 @@ namespace CCoop.Plugin.Sync
         private static Color _flash;
         private static float _flashAt = -10f, _flashLength = 1f;
 
-        internal static bool Reduced => CoopPlugin.Instance != null && CoopPlugin.Instance.ReduceFlashes.Value;
+        internal static bool Reduced => CoopPlugin.Ready && CoopPlugin.Instance.ReduceFlashes.Value;
 
         internal static void Flash(Color color, float seconds)
         {

@@ -38,7 +38,7 @@ namespace CCoop.Plugin.UI
             get
             {
                 if (!string.IsNullOrEmpty(Dev.DevHarness.LangOverride)) return Dev.DevHarness.LangOverride;
-                string set = CoopPlugin.Instance != null ? CoopPlugin.Instance.Language.Value : "";
+                string set = CoopPlugin.Ready ? CoopPlugin.Instance.Language.Value : "";
                 if (!string.IsNullOrEmpty(set) && !string.Equals(set, "auto", StringComparison.OrdinalIgnoreCase)) return set.Trim();
                 string game = null;
                 try { game = Locale.currentLangName; }

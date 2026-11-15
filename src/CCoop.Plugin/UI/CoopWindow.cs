@@ -56,7 +56,7 @@ namespace CCoop.Plugin.UI
 
         internal static void HandleHotkeys(CoopRuntime rt)
         {
-            if (CoopPlugin.Instance == null) return;
+            if (!CoopPlugin.Ready) return;
             if (Input.GetKeyDown(CoopPlugin.Instance.MenuKey.Value))
             {
                 _open = !_open;
@@ -70,7 +70,7 @@ namespace CCoop.Plugin.UI
             get
             {
                 if (DevScale > 0f) return DevScale;
-                float cfg = CoopPlugin.Instance != null ? CoopPlugin.Instance.UiScale.Value : 0f;
+                float cfg = CoopPlugin.Ready ? CoopPlugin.Instance.UiScale.Value : 0f;
                 if (cfg > 0.1f) return Mathf.Clamp(cfg, 0.5f, 3f);
                 float s = Screen.height / 1080f;
                 if (SteamServices.OnDeckCached) s = Mathf.Max(s, 1.35f);
@@ -111,6 +111,7 @@ namespace CCoop.Plugin.UI
                 {
                     int n = Coop.InSession ? Coop.Session.PeerCount : 0;
                     string label = n > 0 ? (n == 1 ? Lang.T("Co-op · 1 player  (F1)") : Lang.F("Co-op · {0} players  (F1)", n)) : Lang.T("Co-op  (F1)");
+                    UiMouse.Claim(new Rect(12, 12, 210, 34));
                     if (GUI.Button(new Rect(12, 12, 210, 34), label)) _open = true;
                 }
                 if (!_open) return;
@@ -128,6 +129,7 @@ namespace CCoop.Plugin.UI
                 _rect = GUILayout.Window(WindowId, _rect, id => Body(rt), "CasualtiesCoop " + CoopPlugin.Version, GUILayout.Width(Width));
                 _rect.x = Mathf.Clamp(_rect.x, 0f, Mathf.Max(0f, Screen.width / scale - 80f));
                 _rect.y = Mathf.Clamp(_rect.y, 0f, Mathf.Max(0f, Screen.height / scale - 40f));
+                UiMouse.Claim(_rect);
             }
             finally
             {

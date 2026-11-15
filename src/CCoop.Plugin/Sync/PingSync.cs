@@ -43,7 +43,7 @@ namespace CCoop.Plugin.Sync
 
         internal static Color ColorOf(byte id)
         {
-            var p = CoopPlugin.Instance != null && CoopPlugin.Instance.ColorBlindColors.Value ? SafePalette : Palette;
+            var p = CoopPlugin.Ready && CoopPlugin.Instance.ColorBlindColors.Value ? SafePalette : Palette;
             return p[id % p.Length];
         }
 

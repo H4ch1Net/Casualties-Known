@@ -181,7 +181,7 @@ namespace CCoop.Plugin.Net
                 SteamMatchmaking.SetLobbyMemberLimit(Lobby, max);
             Set(KeyMax, max.ToString());
             Set(KeyRules, rules ?? "");
-            Set(KeyLocked, string.IsNullOrEmpty(CoopPlugin.Instance.HostPassword.Value) ? "0" : "1");
+            Set(KeyLocked, string.IsNullOrEmpty(CoopPlugin.Instance.SessionPassword) ? "0" : "1");
             Set(KeyState, inRun ? "run" : "menu");
             Set(KeyLayer, layer ?? "");
             Set(KeyName, GameInfo.PlayerName);
@@ -238,7 +238,10 @@ namespace CCoop.Plugin.Net
             _joinDone = null;
             if (ioFailure || r.m_EChatRoomEnterResponse != (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess)
             {
-                done?.Invoke(false, null, "could not enter the lobby (" + (EChatRoomEnterResponse)r.m_EChatRoomEnterResponse + ")");
+                var refused = (EChatRoomEnterResponse)r.m_EChatRoomEnterResponse;
+                Log.Info("[steam] lobby " + r.m_ulSteamIDLobby + " refused entry: " + (ioFailure ? "no answer from Steam" : refused.ToString()));
+                done?.Invoke(false, null, ioFailure ? UI.Lang.T("Steam didn't answer. Check your connection and try again") : EnterProblem(refused));
+                if (refused == EChatRoomEnterResponse.k_EChatRoomEnterResponseDoesntExist) Refresh();
                 return;
             }
             Lobby = new CSteamID(r.m_ulSteamIDLobby);
@@ -262,6 +265,32 @@ namespace CCoop.Plugin.Net
             }
             SetPresence(info.Players);
             done?.Invoke(true, info, null);
+        }
+
+        /// <summary>Why Steam kept us out of a lobby, in words a player can act on.</summary>
+        private static string EnterProblem(EChatRoomEnterResponse r)
+        {
+            switch (r)
+            {
+                case EChatRoomEnterResponse.k_EChatRoomEnterResponseDoesntExist:
+                    return UI.Lang.T("that session has ended, or the invite is from an older one. Ask your friend to host again and send a new invite (or look under Find games)");
+                case EChatRoomEnterResponse.k_EChatRoomEnterResponseFull:
+                    return UI.Lang.T("the session is full");
+                case EChatRoomEnterResponse.k_EChatRoomEnterResponseNotAllowed:
+                    return UI.Lang.T("the session is invite only. Ask the host for an invite through Steam");
+                case EChatRoomEnterResponse.k_EChatRoomEnterResponseBanned:
+                case EChatRoomEnterResponse.k_EChatRoomEnterResponseYouBlockedMember:
+                case EChatRoomEnterResponse.k_EChatRoomEnterResponseMemberBlockedYou:
+                    return UI.Lang.T("you can't join this host's sessions");
+                case EChatRoomEnterResponse.k_EChatRoomEnterResponseLimited:
+                    return UI.Lang.T("limited Steam accounts can't join lobbies (Steam's rule)");
+                case EChatRoomEnterResponse.k_EChatRoomEnterResponseCommunityBan:
+                    return UI.Lang.T("Steam has blocked this account from lobbies");
+                case EChatRoomEnterResponse.k_EChatRoomEnterResponseRatelimitExceeded:
+                    return UI.Lang.T("too many tries in a row. Wait a minute and try again");
+                default:
+                    return UI.Lang.F("Steam couldn't open the lobby ({0})", r.ToString().Replace("k_EChatRoomEnterResponse", ""));
+            }
         }
 
         internal void Invite()

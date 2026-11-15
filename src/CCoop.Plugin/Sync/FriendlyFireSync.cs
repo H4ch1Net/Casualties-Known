@@ -29,7 +29,7 @@ namespace CCoop.Plugin.Sync
         private const float ForcePerDamage = 1.2f;
         private const float SwingHalfWidth = 1.75f;
 
-        internal static int HitsSent, HitsTaken, HitsRefused;
+        internal static int HitsSent, HitsTaken, HitsRefused, HitsSpared;
 
         /// <summary>The limb the last blow landed on here (for the self-test), or -1.</summary>
         internal static int LastLimb = -1;
@@ -61,6 +61,16 @@ namespace CCoop.Plugin.Sync
             {
                 var rec = Coop.Player(r.Id);
                 if (!rec.Alive || !Coop.InLayer(rec) || !r.Visible) continue;
+                if (CarrySync.Together(r.Id))
+                {
+                    // Never the one you carry, or who carries you.
+                    if (r.LimbPosition(1).HasValue && Vector2.Distance(r.LimbPosition(1).Value, origin) <= reach + SwingHalfWidth)
+                    {
+                        HitsSpared++;
+                        Log.Info("[ff] spared " + rec.Name + ": carrying");
+                    }
+                    continue;
+                }
                 for (int i = 0; i < 16; i++)
                 {
                     var p = r.LimbPosition(i);
@@ -120,7 +130,7 @@ namespace CCoop.Plugin.Sync
         private static void OnHit(byte origin, PlayerHit m)
         {
             if (m.Victim != Coop.LocalId) return;
-            if (!HostRules.Current.FriendlyFire) { HitsRefused++; return; }
+            if (!HostRules.Current.FriendlyFire || CarrySync.Together(origin)) { HitsRefused++; return; }
             var body = GameInfo.LocalBody;
             if (body == null || !body.alive || body.limbs == null || m.Limb >= body.limbs.Length) return;
             var limb = body.limbs[m.Limb];

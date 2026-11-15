@@ -72,6 +72,7 @@ namespace CCoop.Plugin.Runtime
             Add(new CarrySync());
             Add(new LootSync());
             Add(new SpawnSpread());
+            Add(new ArrivalGate());
             Add(new TeammateArrows());
             Add(new GestureSync());
             Add(new TeamMotion());
@@ -132,8 +133,8 @@ namespace CCoop.Plugin.Runtime
             ModVersion = CoopPlugin.Version,
             GameBuild = GameInfo.GameBuild,
             PlayerName = GameInfo.PlayerName,
-            MaxPlayers = CoopPlugin.Instance != null ? CoopPlugin.Instance.MaxPlayers.Value : 4,
-            Password = host ? (CoopPlugin.Instance.HostPassword.Value ?? "") : (_joinPassword ?? ""),
+            MaxPlayers = CoopPlugin.Ready ? CoopPlugin.Instance.MaxPlayers.Value : 4,
+            Password = host ? CoopPlugin.Instance.SessionPassword : (_joinPassword ?? ""),
             ExtraAdmission = host ? Admission : (Func<Hello, string, string>)null,
         };
 
@@ -152,7 +153,7 @@ namespace CCoop.Plugin.Runtime
             Connecting = true;
             LastMessage = Lang.N("Creating Steam lobby...");
             int max = CoopPlugin.Instance.MaxPlayers.Value;
-            bool locked = !string.IsNullOrEmpty(CoopPlugin.Instance.HostPassword.Value);
+            bool locked = !string.IsNullOrEmpty(CoopPlugin.Instance.SessionPassword);
             Lobby.Create(lobbyType ?? CoopPlugin.Instance.LobbyType.Value, max, locked, (ok, error) =>
             {
                 Connecting = false;
@@ -559,6 +560,7 @@ namespace CCoop.Plugin.Runtime
                 CoopWindow.Draw(this);
                 ConnectionBadge.Draw();
                 Notices.Draw();
+                UiMouse.EndFrame();
             }
             catch (Exception e)
             {

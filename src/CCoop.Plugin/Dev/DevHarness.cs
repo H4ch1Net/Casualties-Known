@@ -67,6 +67,9 @@ namespace CCoop.Plugin.Dev
         internal static readonly int LootOverride = int.TryParse(Env("CCOOP_LOOT"), out var loot) ? loot : -1;
         internal static readonly int DangerOverride = int.TryParse(Env("CCOOP_DANGER"), out var danger) ? danger : -1;
 
+        /// <summary>CCOOP_NOGATE=1: nobody waits for the team on a new layer (old self-tests time their steps from arrival).</summary>
+        internal static readonly bool NoArrivalGate = Env("CCOOP_NOGATE") == "1";
+
         /// <summary>CCOOP_FF=0/1: the friendly-fire rule for this test (never the player's config).</summary>
         internal static readonly int FfOverride = int.TryParse(Env("CCOOP_FF"), out var ff) ? ff : -1;
 
@@ -378,7 +381,7 @@ namespace CCoop.Plugin.Dev
             // A run that starts in the End lab (layer 12; the client learns the depth from the host).
             if (StartLayer == 12 || (_stage == 0 && WorldGeneration.world != null && WorldGeneration.world.biomeDepth == 11)) { EndLabTest(); return; }
             HoldAsleep();
-            if ((_stage >= 200 && _stage < 211) || (_stage >= 220 && _stage < 230))
+            if ((_stage >= 200 && _stage < 211) || (_stage >= 220 && _stage < 240))
             {
                 CareStages();
                 return;
@@ -410,6 +413,7 @@ namespace CCoop.Plugin.Dev
                 int x0 = Coop.IsHost ? 100 : 200;
                 for (int x = x0; x < x0 + 5; x++) for (int y = 100; y < 105; y++) w.SetBlock(new Vector2Int(x, y), 1);
                 Log.Info("DEV " + who + " wrote 25 blocks");
+                ShowerTest("first");
                 ItemTest();
                 ExplosionTest();
                 DecayCraftTest();
@@ -446,6 +450,7 @@ namespace CCoop.Plugin.Dev
             }
             if (_stage == 2)
             {
+                ShowerTest("second");
                 _stage = 3;
                 _stageAt = Time.unscaledTime + 3f;
                 _descentEpoch = Coop.Epoch;
@@ -685,6 +690,20 @@ namespace CCoop.Plugin.Dev
             b.shock = 0f;
             b.Stand(true);
             Log.Info("DEV " + (Coop.IsHost ? "host" : "client") + " steadies itself before the care tests");
+        }
+
+        /// <summary>Presses the lifepod's shower button (if this layer has one): once per player in co-op.</summary>
+        private static void ShowerTest(string which)
+        {
+            var body = GameInfo.LocalBody;
+            LifepodButton best = null;
+            foreach (var b in UnityEngine.Object.FindObjectsOfType<LifepodButton>())
+                if (b != null && b.type != 0 && b.controller != null) { best = b; break; }
+            if (best == null || body == null) { Log.Info("DEV no lifepod shower on this layer"); return; }
+            float dirt = body.dirtyness;
+            best.OnUse();
+            Log.Info("DEV " + (Coop.IsHost ? "host" : "client") + " presses the shower (" + which + "): ran " + Sync.ShowerPerPlayerPatch.Fired +
+                     ", dirt " + dirt.ToString("F0"));
         }
 
         private static byte OtherPlayer()
@@ -1072,6 +1091,26 @@ namespace CCoop.Plugin.Dev
             }
         }
 
+        /// <summary>Swings at a teammate from beside them (friendly fire must never reach a carried teammate).</summary>
+        private static void SwingAt(byte id, string why)
+        {
+            var b = GameInfo.LocalBody;
+            var r = Coop.Get<PlayerSync>()?.Find(id);
+            var chest = r?.LimbPosition(1) ?? r?.ShownAt;
+            if (b == null || !chest.HasValue) return;
+            b.targetLookPos = chest.Value;
+            b.attackCooldown = 0f;
+            int before = FriendlyFireSync.HitsSent;
+            bool swung = b.Attack(new AttackInfo
+            {
+                damage = 30f, structuralDamage = 0f, distance = 4.5f, knockBack = 200f, cooldown = 0.2f,
+                attackAnim = Resources.Load<GameObject>("ClawAnim"), staminaUse = 1f,
+                swingSounds = new[] { "BSSwing1" }, volume = 0.3f, rotateAmount = 11.5f, unarmed = true,
+            }, 0);
+            Log.Info("DEV host swings at the teammate " + why + " (" + (swung ? "swung" : "couldn't") + ", hits sent " + before + " -> " + FriendlyFireSync.HitsSent +
+                     ", spared " + FriendlyFireSync.HitsSpared + ")");
+        }
+
         private void CareStages()
         {
             float now = Time.unscaledTime;
@@ -1285,6 +1324,63 @@ namespace CCoop.Plugin.Dev
                     break;
                 case 228:
                     Verify("caught");
+                    if (Coop.IsClient)
+                    {
+                        var b = GameInfo.LocalBody;
+                        b.StopClimbing();
+                        b.sleeping = true;
+                        b.consciousness = 10f;
+                        Log.Info("DEV client falls asleep");
+                    }
+                    _stage = 230; _stageAt = now + 2f;
+                    break;
+                case 230:
+                    if (Coop.IsHost)
+                    {
+                        WalkOver();
+                        var motion = Coop.Get<TeamMotion>();
+                        string why = motion.CantWake(other);
+                        if (why != null) Log.Info("DEV host can't wake the client: " + why);
+                        else { motion.Wake(other); Log.Info("DEV host wakes the client"); }
+                    }
+                    _stage = 231; _stageAt = now + 3f;
+                    break;
+                case 231:
+                    Log.Info("VERIFY woken " + (Coop.IsHost ? "host" : "client") + " sleeping " + GameInfo.LocalBody.sleeping +
+                             " consciousness " + GameInfo.LocalBody.consciousness.ToString("F0"));
+                    if (Coop.IsClient)
+                    {
+                        var b = GameInfo.LocalBody;
+                        if (b.sleeping) b.WakeUp();
+                        b.consciousness = 100f;
+                        b.shock = 0f;
+                        b.Stand(true);
+                        CarrySync.DevAutoAccept = true;
+                    }
+                    if (Coop.IsHost)
+                    {
+                        WalkOver();
+                        for (int i = 0; i < 2; i++) { var it = GameInfo.LocalBody.GetItem(i); if (it != null) GameInfo.LocalBody.DropItem(it); }
+                        Coop.Get<CarrySync>().Pick(other, CarryMode.Back);
+                        Log.Info("DEV host offers to carry the client, who is awake");
+                    }
+                    _stage = 232; _stageAt = now + 3f;
+                    break;
+                case 232:
+                    Log.Info("VERIFY ride " + (Coop.IsHost ? "host carrying " + Coop.Get<CarrySync>().CarryingId : "client carried by " + Coop.Get<CarrySync>().CarriedBy));
+                    if (Coop.IsHost) SwingAt(other, "it carries");
+                    _stage = 233; _stageAt = now + 2f;
+                    break;
+                case 233:
+                    Verify("ride");
+                    _stage = 235; _stageAt = now + 2f;
+                    break;
+                case 235:
+                    if (Coop.IsClient) { Coop.Get<CarrySync>().DevGetDown(); Log.Info("DEV client gets down"); CarrySync.DevAutoAccept = false; }
+                    _stage = 234; _stageAt = now + 2f;
+                    break;
+                case 234:
+                    Log.Info("VERIFY gotdown " + (Coop.IsHost ? "host carrying " + Coop.Get<CarrySync>().CarryingId : "client carried by " + Coop.Get<CarrySync>().CarriedBy));
                     if (Coop.IsClient) { _forceOut = true; Log.Info("DEV client passes out"); }
                     _stage = 205; _stageAt = now + 2f;
                     _waitUntil = now + 10f;
@@ -1301,6 +1397,7 @@ namespace CCoop.Plugin.Dev
                     break;
                 case 206:
                     if (Coop.IsHost) { BodyFreeze.PlaceAt((Vector2)GameInfo.LocalBody.transform.position + new Vector2(3f, 0f)); Log.Info("DEV host walks 3 m with the client"); }
+                    if (Coop.IsHost) SwingAt(other, "it carries (out cold)");
                     _stage = 207; _stageAt = now + 4f;
                     break;
                 case 207:

@@ -47,6 +47,7 @@ namespace CCoop.Plugin.Sync
             _lastQuake = 0f;
             HostAmbient = null;
             SharedSleep = false;
+            TeammateAsleep = false;
             _allOutSince = -1f;
         }
 
@@ -224,8 +225,23 @@ namespace CCoop.Plugin.Sync
             finally { Applying = false; }
         }
 
+        /// <summary>A teammate in this layer is asleep (for sleeping together).</summary>
+        internal static bool TeammateAsleep;
+
         internal override void Tick()
         {
+            bool was = TeammateAsleep;
+            TeammateAsleep = false;
+            string sleeper = null;
+            if (Coop.WorldLive)
+                foreach (var p in Coop.Players.Values)
+                    if (p.Id != Coop.LocalId && p.Alive && p.Sleeping && Coop.InLayer(p)) { TeammateAsleep = true; sleeper = p.Name; break; }
+            if (TeammateAsleep && !was)
+            {
+                var me = GameInfo.LocalBody;
+                if (me != null && me.alive && !me.sleeping)
+                    CoopRuntime.Notice(Lang.F("{0} fell asleep. You can nap now too, however rested you are", sleeper));
+            }
             var w = WorldGeneration.world;
             if (w == null || !Coop.WorldLive) return;
             if (!Coop.IsHost)
@@ -288,6 +304,29 @@ namespace CCoop.Plugin.Sync
             if (!Coop.IsClient || !Coop.WorldLive || !ClockSync.HostAmbient.HasValue) return;
             if (Time.unscaledTime - ClockSync.HostAmbientAt > 5f) return;
             __instance.ambientTemperature = ClockSync.HostAmbient.Value;
+        }
+    }
+
+    /// <summary>
+    /// Sleeping together. Everyone gets tired at their own pace, so one player is rarely
+    /// sleepy when the other is (and time only races while all of them sleep). While a
+    /// teammate sleeps, the game's own "no sleep restrictions" run setting holds for the
+    /// local player: you can lie down beside them however rested you are, and you stay
+    /// asleep until fully rested instead of waking early, unless something is actually
+    /// wrong (cold, pain, sickness, hunger, thirst, water): those still wake you.
+    /// </summary>
+    [HarmonyLib.HarmonyPatch(typeof(WorldGeneration), nameof(WorldGeneration.GetRunSettingBool))]
+    internal static class SleepTogetherPatch
+    {
+        private static void Postfix(string name, ref bool __result)
+        {
+            if (__result || !ClockSync.TeammateAsleep || name != "nosleeprestrictions" || !Coop.WorldLive) return;
+            var b = GameInfo.LocalBody;
+            if (b == null || !b.alive) return;
+            if (b.sleeping && (b.temperature < 30f || b.temperature > 40.5f || b.averagePain > 31f || b.inWater ||
+                               b.sicknessAmount > 55f || b.hunger < 35f || b.thirst < 35f || b.septicShock > 35f || b.totalHappiness < -50f))
+                return;
+            __result = true;
         }
     }
 }

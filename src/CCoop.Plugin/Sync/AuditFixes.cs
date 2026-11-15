@@ -45,7 +45,7 @@ namespace CCoop.Plugin.Sync
     internal static class GuardDiePatch
     {
         private static void Prefix() { if (Coop.IsClient && Coop.WorldLive) EntitySync.SuppressLoot++; }
-        private static void Postfix() { if (Coop.IsClient && Coop.WorldLive && EntitySync.SuppressLoot > 0) EntitySync.SuppressLoot--; }
+        private static void Finalizer() { if (EntitySync.SuppressLoot > 0) EntitySync.SuppressLoot--; }
     }
 
     /// <summary>
@@ -64,9 +64,9 @@ namespace CCoop.Plugin.Sync
                 WorldNet.Publish(new EntityAction { Id = id, Kind = EntityActionKind.TraderDropInventory });
         }
 
-        private static void Postfix()
+        private static void Finalizer()
         {
-            if (Coop.IsClient && Coop.WorldLive && EntitySync.SuppressLoot > 0) EntitySync.SuppressLoot--;
+            if (EntitySync.SuppressLoot > 0) EntitySync.SuppressLoot--;
         }
     }
 
@@ -82,9 +82,9 @@ namespace CCoop.Plugin.Sync
                 WorldNet.Publish(new EntityAction { Id = id, Kind = EntityActionKind.FanBreak, Arg = index });
         }
 
-        private static void Postfix()
+        private static void Finalizer()
         {
-            if (Coop.IsClient && Coop.WorldLive && EntitySync.SuppressLoot > 0) EntitySync.SuppressLoot--;
+            if (EntitySync.SuppressLoot > 0) EntitySync.SuppressLoot--;
         }
     }
 

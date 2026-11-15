@@ -326,7 +326,7 @@ namespace CCoop.Plugin.Sync
 
         internal override void Gui()
         {
-            if (!Coop.WorldLive || CoopPlugin.Instance == null || !CoopPlugin.Instance.ShowNames.Value || !HostRules.Current.NameTags || ConditionFx.Blind) return;
+            if (!Coop.WorldLive || !CoopPlugin.Ready || !CoopPlugin.Instance.ShowNames.Value || !HostRules.Current.NameTags || ConditionFx.Blind) return;
             var cam = Camera.main;
             if (cam == null) return;
             foreach (var r in _remotes.Values) r.DrawLabel(cam);

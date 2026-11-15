@@ -33,7 +33,7 @@ namespace CCoop.Plugin.Sync
         {
             get
             {
-                var v = CoopPlugin.Instance != null ? CoopPlugin.Instance.Respawn.Value : "NextLayer";
+                var v = CoopPlugin.Ready ? CoopPlugin.Instance.Respawn.Value : "NextLayer";
                 if (!string.IsNullOrEmpty(Dev.DevHarness.RespawnOverride)) v = Dev.DevHarness.RespawnOverride;
                 if (string.Equals(v, "Permadeath", StringComparison.OrdinalIgnoreCase)) return RespawnRule.Permadeath;
                 if (string.Equals(v, "Quick", StringComparison.OrdinalIgnoreCase)) return RespawnRule.Quick;
@@ -45,6 +45,7 @@ namespace CCoop.Plugin.Sync
         internal static RespawnRule Rule => HostRules.Current.Respawn;
 
         private static bool _wiped;
+        private RespawnRule _lastRule = RespawnRule.NextLayer;
 
         /// <summary>The death screen waits while teammates may still carry the run.</summary>
         internal static bool HoldDeathScreen => Coop.InSession && GameInfo.InRunScene && !_wiped;
@@ -151,6 +152,19 @@ namespace CCoop.Plugin.Sync
             _wasAlive = alive;
 
             if (Coop.WorldLive) WatchTeammates();
+
+            // The host switched to quick respawns while we're dead: the countdown starts
+            // now (not from when we died, which could bring us back at once or never).
+            var rule = Rule;
+            if (rule != _lastRule)
+            {
+                if (rule == RespawnRule.Quick && Spectating && _diedAt >= 0f)
+                {
+                    _diedAt = Time.unscaledTime;
+                    Log.Info("[life] quick respawns are on now; back in " + (int)QuickDelay + " s");
+                }
+                _lastRule = rule;
+            }
 
             if (Spectating)
             {

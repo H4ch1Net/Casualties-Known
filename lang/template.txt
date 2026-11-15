@@ -5,6 +5,26 @@
 # Untranslated lines show in English. Put the file beside the mod (BepInEx/plugins/CasualtiesCoop/lang/)
 # or in the game's data folder under CasualtiesCoop/lang/.
 
+# Net/SteamLobby.cs
+Steam didn't answer. Check your connection and try again
+= 
+that session has ended, or the invite is from an older one. Ask your friend to host again and send a new invite (or look under Find games)
+= 
+the session is full
+= 
+the session is invite only. Ask the host for an invite through Steam
+= 
+you can't join this host's sessions
+= 
+limited Steam accounts can't join lobbies (Steam's rule)
+= 
+Steam has blocked this account from lobbies
+= 
+too many tries in a row. Wait a minute and try again
+= 
+Steam couldn't open the lobby ({0})
+= 
+
 # Runtime/CoopRuntime.cs
 You are banned from this host's sessions.
 = 
@@ -67,6 +87,18 @@ Leave your current session before joining another.
 CasualtiesCoop {0} is out (you have {1}): {2}
 = 
 
+# Sync/ArrivalGate.cs
+Setting off without {0}
+= 
+Waiting for {0} to arrive
+= 
+Waiting for the team to arrive
+= 
+Everyone sets off together. Up to {0} s more · {1} to go ahead without them
+= 
+Everyone sets off together, as soon as the whole team is in.
+= 
+
 # Sync/AuditFixes.cs
 Saving is off in co-op. Press Continue to descend together, or leave from the co-op menu (F1).
 = 
@@ -74,13 +106,19 @@ Saving is off in co-op. Press Continue to descend together, or leave from the co
 # Sync/CarrySync.cs
 You need to be in the layer.
 = 
-Empty your hand to drag them.
+You can't carry anyone right now.
+= 
+You're being carried yourself.
+= 
+Empty a hand to drag them.
 = 
 Take off your backpack to carry them on your back.
 = 
 Empty both hands to carry them in your arms.
 = 
-{0} can walk.
+{0} is carrying you.
+= 
+Offered to carry {0}
 = 
 Dragging
 = 
@@ -90,11 +128,17 @@ Carrying in your arms:
 = 
 Put {0} down
 = 
+{0} offers to carry you
+= 
+{0} would rather walk
+= 
 {0} is dragging you
 = 
 {0} is carrying you
 = 
 {0} got down
+= 
+Press {0} to get down.
 = 
 Slow going, and no jumping.
 = 
@@ -103,6 +147,18 @@ They weigh on you: you can't jump as high.
 Both arms full: slower, and only small hops.
 = 
 Right-click them to put them down.
+= 
+drag you along
+= 
+carry you on their back
+= 
+carry you in their arms
+= 
+{0} offers to {1}
+= 
+Climb on
+= 
+I'll walk
 = 
 
 # Sync/Chat.cs
@@ -120,6 +176,8 @@ Out cold
 = 
 Time speeds up only once every living player is asleep or out cold.
 = 
+{0} fell asleep. You can nap now too, however rested you are
+= 
 
 # Sync/CoopSaves.cs
 Your character is saved. To carry on together, host from the co-op window: this run is picked, and the others get their own characters back.
@@ -133,6 +191,10 @@ The host didn't answer; try crafting again
 A teammate is crafting with that
 = 
 A teammate got to it first
+= 
+You hurt your hands and ruined it: this needs INT {0} (you have {1})
+= 
+It fell apart: this needs INT {0} (you have {1})
 = 
 
 # Sync/EndLabTeam.cs
@@ -212,6 +274,10 @@ No one close enough to hug.
 = 
 {0} hugged you
 = 
+Click a gesture (or press its number). Esc to close
+= 
+Move the mouse onto a gesture and let go
+= 
 
 # Sync/GiveSync.cs
 Hold the item you want to give.
@@ -234,17 +300,19 @@ You no longer have the {0}
 = 
 can't take it right now
 = 
-has no free hand or slot
-= 
 You have no free hand or slot
 = 
 You can't take it right now
 = 
 {0} no longer has it
 = 
+{0} couldn't be made here
+= 
 You took {0} from {1}
 = 
 {0} gave you {1}
+= 
+Your hands are full: the {0} is at your feet
 = 
 {0} offers you {1}
 = 
@@ -500,6 +568,8 @@ enemies much tougher with more players
 = 
 Host rules: {0}
 = 
+Rules now: {0}
+= 
 
 # Sync/RunFlow.cs
 In the menu. Start a run when everyone has joined.
@@ -554,6 +624,14 @@ They're too far to reach.
 = 
 *reaches down*
 = 
+Give them a moment ({0} s).
+= 
+*shakes them awake*
+= 
+*shakes them*
+= 
+{0} woke you up
+= 
 Give them a minute ({0} s).
 = 
 *shakes {0} by the shoulders*
@@ -575,6 +653,8 @@ Helping {0} carry the {1}
 {0} let go of your load
 = 
 {0} is pulling you up
+= 
+You couldn't take {0}'s hand
 = 
 You caught {0}
 = 
@@ -1048,13 +1128,27 @@ Give {0}
 = 
 Put them down
 = 
+They're carrying you.
+= 
+Waiting for {0} to climb on...
+= 
 Carry them:
+= 
+Offer to carry them (they can say no):
 = 
 Drag
 = 
 On your back
 = 
 In your arms
+= 
+Wake them up
+= 
+Shake them
+= 
+They wake as if they'd slept (a short sleep is a poor one).
+= 
+Helps them come round, if their body lets them.
 = 
 Give a leg-up
 = 

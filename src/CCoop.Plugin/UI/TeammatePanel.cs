@@ -99,6 +99,7 @@ namespace CCoop.Plugin.UI
                 _rect.x = Screen.width / k - 420f;
                 _rect.height = 0;
                 _rect = GUILayout.Window(0x0C010, _rect, id => Body((byte)_open), Coop.Player((byte)_open).Name, GUILayout.Width(400));
+                UiMouse.Claim(_rect);
             }
             finally { GUI.matrix = old; }
         }
@@ -270,22 +271,43 @@ namespace CCoop.Plugin.UI
             if (held != null && give != null && alive && GUILayout.Button(Lang.F("Give {0}", Medic.Pretty(held.id)))) give.Offer(id);
             AskRow(id, give, alive && (v.Signs & BodySigns.Conscious) != 0);
 
-            // Carrying the downed: three ways, each with its own cost.
+            // Carrying: three ways, each with its own cost. Someone awake is asked first.
             if (carry != null)
             {
                 if (carry.Carrying(id))
                 {
                     if (GUILayout.Button(Lang.T("Put them down"), GUILayout.Height(26))) carry.PutDown();
                 }
-                else if (CarrySync.Downed(id))
+                else if (carry.CarriedBy == id)
                 {
-                    GUILayout.Label(Lang.T("Carry them:"), _small);
+                    GUILayout.Label(Lang.T("They're carrying you."), _small);
+                }
+                else if (carry.Offered(id))
+                {
+                    GUILayout.Label(Lang.F("Waiting for {0} to climb on...", Coop.Player(id).Name), _small);
+                }
+                else
+                {
+                    bool down = CarrySync.Downed(id);
+                    GUILayout.Label(down ? Lang.T("Carry them:") : Lang.T("Offer to carry them (they can say no):"), _small);
                     GUILayout.BeginHorizontal();
                     CarryButton(carry, id, CarryMode.Drag, Lang.T("Drag"));
                     CarryButton(carry, id, CarryMode.Back, Lang.T("On your back"));
                     CarryButton(carry, id, CarryMode.Arms, Lang.T("In your arms"));
                     GUILayout.EndHorizontal();
                 }
+            }
+
+            // Waking someone, instead of hitting them.
+            if (motion != null && alive && (v.Signs & BodySigns.Conscious) == 0)
+            {
+                bool asleep = (v.Signs & BodySigns.Sleeping) != 0;
+                string wakeWhy = motion.CantWake(id);
+                GUI.enabled = wakeWhy == null;
+                if (GUILayout.Button(asleep ? Lang.T("Wake them up") : Lang.T("Shake them"))) motion.Wake(id);
+                GUI.enabled = true;
+                GUILayout.Label(wakeWhy ?? (asleep ? Lang.T("They wake as if they'd slept (a short sleep is a poor one).")
+                                                   : Lang.T("Helps them come round, if their body lets them.")), _small);
             }
 
             // Moving together.

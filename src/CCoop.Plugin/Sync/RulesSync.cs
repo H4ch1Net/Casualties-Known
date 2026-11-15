@@ -100,7 +100,7 @@ namespace CCoop.Plugin.Sync
                 ExitShare = (byte)Mathf.Clamp(Dev.DevHarness.ExitShareOverride >= 0 ? Dev.DevHarness.ExitShareOverride : c.ExitShare.Value, 0, 100),
                 SpeedUp = c.AllowSpeedUp.Value,
                 MaxPlayers = (byte)Mathf.Clamp(c.MaxPlayers.Value, 2, NetSession.MaxPeers),
-                Locked = !string.IsNullOrEmpty(c.HostPassword.Value),
+                Locked = !string.IsNullOrEmpty(c.SessionPassword),
                 Arrows = c.HostArrows.Value,
                 NameTags = c.HostNameTags.Value,
                 SpawnApart = c.SpawnApart.Value,
@@ -110,6 +110,18 @@ namespace CCoop.Plugin.Sync
                 DangerScale = (byte)Mathf.Clamp(Dev.DevHarness.DangerOverride >= 0 ? Dev.DevHarness.DangerOverride : c.DangerScale.Value, 0, 2),
             };
         }
+
+        /// <summary>The same play rules (ignoring the player cap and the password).</summary>
+        internal bool SameRulesAs(HostRules o)
+        {
+            if (o == null) return false;
+            var c = Clone(o);
+            c.MaxPlayers = MaxPlayers;
+            c.Locked = Locked;
+            return SameAs(c);
+        }
+
+        private static HostRules Clone(HostRules o) => FromMessage(o.ToMessage());
 
         internal bool SameAs(HostRules o) =>
             o != null && o.Respawn == Respawn && o.ExitShare == ExitShare && o.SpeedUp == SpeedUp &&
@@ -243,7 +255,11 @@ namespace CCoop.Plugin.Sync
                 if (old != null && !old.SameAs(HostRules.Current) && Coop.InSession)
                     CoopRuntime.Notice(Lang.F("Host rules: {0}", HostRules.Current.Shown()));
             });
-            if (s.IsHost) HostRules.Current = HostRules.FromConfig();
+            if (s.IsHost)
+            {
+                HostRules.Current = HostRules.FromConfig();
+                Log.Info("[rules] at the start: " + HostRules.Current.Describe() + ", max " + HostRules.Current.MaxPlayers + (HostRules.Current.Locked ? ", password" : ""));
+            }
         }
 
         internal override void Detach() => HostRules.Current = new HostRules();
@@ -260,14 +276,27 @@ namespace CCoop.Plugin.Sync
             var live = Coop.Runtime?.HostConfig;
             if (live != null)
             {
-                live.Password = cfg.HostPassword.Value ?? "";
+                live.Password = cfg.SessionPassword;
                 live.MaxPlayers = Mathf.Clamp(cfg.MaxPlayers.Value, 2, NetSession.MaxPeers);
             }
             var now = HostRules.FromConfig();
             if (now.SameAs(HostRules.Current)) return;
+            var was = HostRules.Current;
             HostRules.Current = now;
             Session.Broadcast(now.ToMessage());
             Log.Info("[rules] " + now.Describe() + ", max " + now.MaxPlayers + (now.Locked ? ", password" : ""));
+            // The host sees each change land too (once the clicking stops), so a rule that
+            // didn't take is plain to see.
+            if (!was.SameRulesAs(now)) _announceAt = Time.unscaledTime + 1.2f;
+        }
+
+        private float _announceAt = -1f;
+
+        internal override void LateTick()
+        {
+            if (_announceAt < 0f || Time.unscaledTime < _announceAt) return;
+            _announceAt = -1f;
+            if (Coop.IsHost && Coop.InSession) CoopRuntime.Notice(Lang.F("Rules now: {0}", HostRules.Current.Shown()));
         }
     }
 }

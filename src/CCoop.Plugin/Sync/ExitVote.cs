@@ -54,7 +54,32 @@ namespace CCoop.Plugin.Sync
         private float _liveSince;
         private const float LoadingGrace = 60f;
 
-        internal override void OnWorldLive() => _liveSince = Time.unscaledTime;
+        internal override void OnWorldLive()
+        {
+            _liveSince = Time.unscaledTime;
+            ClearExitPanel();
+        }
+
+        /// <summary>
+        /// The game's descend panel slows the player to a walk (no jumping) until its own
+        /// Continue button is pressed. In co-op the team goes down together, so a player
+        /// brought along never presses it: on a new layer it goes away, and so does the walk.
+        /// The End lab and the tutorial keep theirs (they walk the player on purpose).
+        /// </summary>
+        private static void ClearExitPanel()
+        {
+            try
+            {
+                var w = WorldGeneration.world;
+                if (w != null && w.savePanel != null && w.savePanel.activeSelf) w.savePanel.SetActive(false);
+                var b = GameInfo.LocalBody;
+                if (b == null || !b.forceWalk || EndLabScript.instance != null) return;
+                if (UnityEngine.Object.FindObjectOfType<TutorialHandler>() != null) return;
+                b.forceWalk = false;
+                Log.Info("[exit] the new layer lets us run and jump again");
+            }
+            catch (System.Exception e) { Log.Debug("[exit] clearing the panel: " + e.Message); }
+        }
 
         internal override void OnWorldLost()
         {

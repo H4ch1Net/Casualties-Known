@@ -145,7 +145,7 @@ namespace CCoop.Plugin.Sync
             {
                 // A shot at oneself (ignoreBody false) only ever hits the shooter; any
                 // other player shot hits teammates only by the host's rule.
-                info.ignoreBody = !m.IgnoreBody || !HostRules.Current.FriendlyFire;
+                info.ignoreBody = !m.IgnoreBody || !HostRules.Current.FriendlyFire || CarrySync.Together(origin);
             }
             else if (m.HasAim)
             {

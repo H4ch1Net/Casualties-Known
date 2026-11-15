@@ -24,6 +24,9 @@ namespace CCoop.Plugin.Sync
 
         internal static bool Granting;
 
+        /// <summary>The game is making a recipe here right now (its result is ours, never a duplicate).</summary>
+        internal static bool InMake;
+
         private readonly Dictionary<uint, KeyValuePair<byte, float>> _held = new Dictionary<uint, KeyValuePair<byte, float>>();
         private Recipe _pending;
         private byte _request;
@@ -154,7 +157,46 @@ namespace CCoop.Plugin.Sync
     [HarmonyPatch(typeof(Recipe), nameof(Recipe.TryMake))]
     internal static class CraftMakePatch
     {
-        private static bool Prefix(Recipe __instance) => Coop.Get<CraftSync>()?.BeforeMake(__instance) ?? true;
+        private static bool Prefix(Recipe __instance)
+        {
+            bool go = Coop.Get<CraftSync>()?.BeforeMake(__instance) ?? true;
+            CraftSync.InMake = go;
+            return go;
+        }
+
+        private static void Finalizer() => CraftSync.InMake = false;
+    }
+
+    /// <summary>
+    /// The game's own rule: below a recipe's INT, half the time the result comes out
+    /// worse (one short), hurts the hands and is lost (three short) or is just lost.
+    /// It only plays the crafting sound, so the item seems to vanish. Say what happened.
+    /// </summary>
+    [HarmonyPatch(typeof(RecipeResult), nameof(RecipeResult.SpawnResult))]
+    internal static class CraftFailNoticePatch
+    {
+        private static void Prefix(int recipeInt)
+        {
+            if (!Coop.InSession) return;
+            try
+            {
+                var body = PlayerCamera.main != null ? PlayerCamera.main.body : null;
+                if (body == null || body.skills == null) return;
+                int have = body.skills.INT;
+                int gap = have - recipeInt;
+                if (gap >= -1) return;
+                // SpawnResult's first draw decides it; peek at it without using it up.
+                var st = UnityEngine.Random.state;
+                float v = UnityEngine.Random.value;
+                UnityEngine.Random.state = st;
+                if (v >= 0.5f) return;
+                CoopRuntime.Notice(gap == -3
+                    ? Lang.F("You hurt your hands and ruined it: this needs INT {0} (you have {1})", recipeInt, have)
+                    : Lang.F("It fell apart: this needs INT {0} (you have {1})", recipeInt, have));
+                Log.Info("[craft] the game's INT check spoiled a craft (INT " + have + " of " + recipeInt + ")");
+            }
+            catch (Exception e) { Log.Debug("[craft] fail notice: " + e.Message); }
+        }
     }
 
     /// <summary>A ground item worn down or drained by crafting: everyone gets its new state.</summary>

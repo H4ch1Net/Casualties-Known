@@ -274,6 +274,14 @@ namespace CCoop.Plugin.Sync
 
         internal override void LateTick()
         {
+            // The hold on duplicate loot only lasts for one call into the game; by the end
+            // of a frame it must be off again, or whatever this client makes next (a
+            // crafted tool) would be thrown away as a duplicate.
+            if (SuppressLoot != 0)
+            {
+                Log.Info("[entity] the duplicate-loot hold was left on (" + SuppressLoot + "); cleared");
+                SuppressLoot = 0;
+            }
             if (!Coop.WorldLive)
             {
                 _spawnQueue.Clear();
@@ -462,7 +470,7 @@ namespace CCoop.Plugin.Sync
         private static void Postfix(GameObject __result)
         {
             if (__result == null || !Coop.WorldLive) return;
-            if (EntitySync.SuppressLoot > 0 && Coop.IsClient)
+            if (EntitySync.SuppressLoot > 0 && Coop.IsClient && !CraftSync.InMake)
             {
                 // A local duplicate of loot the host is making. Destroyed at end of frame,
                 // so the caller can still finish configuring it.

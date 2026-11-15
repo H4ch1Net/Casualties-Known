@@ -131,6 +131,29 @@ namespace CCoop.Plugin.Sync
             if (_warmth != null) _warmth.enabled = shouldShow && Coop.Player(_id).Alive;
             if (!shouldShow) return;
             Interpolate();
+            HoldToAnchor();
+        }
+
+        /// <summary>
+        /// Carrying, on the carrier's own screen: the carried teammate is drawn held by
+        /// our real body, not where their last update (a ping ago) put them, so they don't
+        /// trail behind every step. <see cref="PinLimb"/> is the limb that is held.
+        /// </summary>
+        internal Func<Vector2?> PinAnchor;
+        internal int PinLimb = -1;
+
+        private void HoldToAnchor()
+        {
+            if (PinAnchor == null || PinLimb < 0 || _rig == null || PinLimb >= _rig.Limbs.Length) return;
+            var limb = _rig.Limbs[PinLimb];
+            var at = PinAnchor();
+            if (limb == null || !at.HasValue) return;
+            Vector3 delta = (Vector3)(at.Value - (Vector2)limb.position);
+            if (delta.sqrMagnitude > 64f) return;  // far off: something else is wrong; draw them where they are
+            var body = _rig.BodyRoot;
+            body.position += delta;
+            foreach (var l in _rig.Limbs)
+                if (l != null && !l.IsChildOf(body)) l.position += delta;
         }
 
         private int EffectiveCharacter => _character >= 0 ? _character : 0;

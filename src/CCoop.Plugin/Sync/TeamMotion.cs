@@ -126,6 +126,53 @@ namespace CCoop.Plugin.Sync
             Log.Info("[move] reaching down to " + Coop.Player(target).Name);
         }
 
+        private const float WakeCooldown = 6f;
+        private readonly Dictionary<byte, float> _wokeAt = new Dictionary<byte, float>();
+        private float _shakenAt = -100f;
+
+        internal string CantWake(byte target)
+        {
+            string why = Medic.CantTreat(target, LegUpReach + 0.6f);
+            if (why != null) return why;
+            if (_wokeAt.TryGetValue(target, out var at) && Time.unscaledTime - at < WakeCooldown)
+                return Lang.F("Give them a moment ({0} s).", Mathf.CeilToInt(WakeCooldown - (Time.unscaledTime - at)));
+            return null;
+        }
+
+        /// <summary>Wake a sleeping teammate, or shake one who is out cold.</summary>
+        internal void Wake(byte target)
+        {
+            string why = CantWake(target);
+            if (why != null) { CoopRuntime.Notice(why); return; }
+            _wokeAt[target] = Time.unscaledTime;
+            Session.Broadcast(new TeamMove { Kind = MoveKind.Wake, Target = target });
+            bool asleep = Coop.Player(target).Sleeping;
+            Say(asleep ? Lang.T("*shakes them awake*") : Lang.T("*shakes them*"));
+            Log.Info("[move] " + (asleep ? "waking " : "shaking ") + Coop.Player(target).Name);
+        }
+
+        private void Woken(Body body, string who)
+        {
+            if (!body.alive) return;
+            if (body.sleeping)
+            {
+                // The game's own waking: a short sleep counts as a bad one.
+                body.WakeUp();
+                CoopRuntime.Notice(Lang.F("{0} woke you up", who));
+                Log.Info("[move] woken up by " + who);
+                return;
+            }
+            if (body.conscious) return;
+            // Out cold: a shake helps them come round, as far as their body allows (the
+            // game pulls consciousness back toward what blood, oxygen and pain permit).
+            bool again = Time.unscaledTime - _shakenAt < 30f;
+            _shakenAt = Time.unscaledTime;
+            float before = body.consciousness;
+            body.consciousness = Mathf.Min(100f, body.consciousness + (again ? 8f : 16f));
+            body.adrenaline += again ? 6f : 12f;
+            Log.Info("[move] shaken by " + who + ": consciousness " + before.ToString("F0") + " -> " + body.consciousness.ToString("F0"));
+        }
+
         internal string CantSnap(byte target)
         {
             if (_snapGiven.TryGetValue(target, out var at) && Time.unscaledTime - at < SnapCooldown)
@@ -208,6 +255,9 @@ namespace CCoop.Plugin.Sync
             if (m.Target != Coop.LocalId || body == null) return;
             switch (m.Kind)
             {
+                case MoveKind.Wake:
+                    Woken(body, who);
+                    break;
                 case MoveKind.LegUp:
                     _legUpUntil = Time.unscaledTime + m.F;
                     _legUpFrom = origin;
@@ -246,25 +296,62 @@ namespace CCoop.Plugin.Sync
             }
         }
 
+        private static readonly AccessTools.FieldRef<Body, float> JumpCooldown = AccessTools.FieldRefAccess<Body, float>("jumpCooldown");
+        private float _pullFromY;
+
         private void TakeHand(Body body, Vector2 hand, string who)
         {
-            if (!body.alive || !body.conscious || body.currentClimbable != null) return;
+            if (!body.alive || !body.conscious)
+            {
+                Log.Info("[move] " + who + " reached down, but we can't take a hand right now");
+                return;
+            }
+            if (body.currentClimbable != null && body.currentClimbable != _rope) body.StopClimbing();
             DropRope();
             try
             {
+                if (!body.standing) body.Stand();
                 var go = new GameObject("CasualtiesCoop.Hand");
                 var rope = go.AddComponent<Climbable>();
-                rope.points = new List<Vector2> { body.transform.position, hand };
+                rope.points = PullPath(body.transform.position, hand);
                 rope.downwardsVelocity = -7f;  // negative: it carries you up without input
                 rope.CalculateTotalLength();
                 if (Climbable.allClimbables == null) Climbable.allClimbables = new List<Climbable>();
                 _rope = rope;
-                _ropeUntil = Time.unscaledTime + 6f;
+                _ropeUntil = Time.unscaledTime + 4f + rope.totalLength / 5f;
+                _pullFromY = body.transform.position.y;
+                JumpCooldown(body) = 0f;            // a jump just before mustn't stop the grab
+                rope.lastStartedClimbing = -100f;
                 body.StartClimbing(rope);
-                CoopRuntime.Notice(Lang.F("{0} is pulling you up", who));
-                Log.Info("[move] pulled up by " + who + (body.currentClimbable == rope ? "" : " (couldn't grab)"));
+                bool took = body.currentClimbable == rope;
+                CoopRuntime.Notice(took ? Lang.F("{0} is pulling you up", who) : Lang.F("You couldn't take {0}'s hand", who));
+                Log.Info("[move] pulled up by " + who + " along " + rope.points.Count + " points, " + rope.totalLength.ToString("F1") + " m" + (took ? "" : " (couldn't grab)"));
+                if (!took) DropRope();
             }
             catch (Exception e) { Log.Warn("[move] pull failed: " + e.Message); }
+        }
+
+        /// <summary>
+        /// A way up to the helper's hand through open air: straight if nothing is in the
+        /// way, else up the wall and over the edge, else across and up. A straight line
+        /// through the ledge's corner would only press the climber into the rock.
+        /// </summary>
+        internal static List<Vector2> PullPath(Vector2 from, Vector2 hand)
+        {
+            int ground = LayerMask.GetMask("Ground");
+            bool Clear(Vector2 a, Vector2 b) => !Physics2D.Linecast(a, b, ground);
+            float top = Mathf.Max(hand.y, from.y) + 0.8f;
+            var end = new Vector2(hand.x, top);
+            if (Clear(from, end)) return new List<Vector2> { from, end };
+            var up = new Vector2(from.x, top);
+            if (Clear(from, up) && Clear(up, end)) return new List<Vector2> { from, up, end };
+            var across = new Vector2(hand.x, from.y);
+            if (Clear(from, across) && Clear(across, end)) return new List<Vector2> { from, across, end };
+            // Somewhere between: as high as the rock allows beside the climber, then over.
+            var hit = Physics2D.Linecast(from, up, ground);
+            float y = hit.collider != null ? Mathf.Max(from.y, hit.point.y - 1.2f) : top;
+            var partway = new Vector2(from.x, y);
+            return new List<Vector2> { from, partway, new Vector2(Mathf.Lerp(from.x, hand.x, 0.5f), top), end };
         }
 
         private void DropRope()
@@ -317,7 +404,16 @@ namespace CCoop.Plugin.Sync
             if (!Coop.WorldLive || body == null) return;
             float now = Time.unscaledTime;
 
-            if (_rope != null && (now > _ropeUntil || body.currentClimbable != _rope)) DropRope();
+            if (_rope != null)
+            {
+                bool up = body.currentClimbable == _rope && body.climbableProgress >= _rope.totalLength - 0.1f;
+                if (up || now > _ropeUntil || body.currentClimbable != _rope)
+                {
+                    float rose = body.transform.position.y - _pullFromY;
+                    Log.Info("[move] " + (up ? "made it up" : body.currentClimbable != _rope ? "let go of the hand" : "the pull ran out of time") + " (" + rose.ToString("+0.0;-0.0") + " m)");
+                    DropRope();
+                }
+            }
 
             if (_liftingFor >= 0)
             {

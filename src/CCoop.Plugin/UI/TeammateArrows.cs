@@ -17,7 +17,7 @@ namespace CCoop.Plugin.UI
 
         internal override void Gui()
         {
-            if (!Coop.WorldLive || !HostRules.Current.Arrows || CoopPlugin.Instance == null || !CoopPlugin.Instance.ShowArrows.Value || ConditionFx.Blind) return;
+            if (!Coop.WorldLive || !HostRules.Current.Arrows || !CoopPlugin.Ready || !CoopPlugin.Instance.ShowArrows.Value || ConditionFx.Blind) return;
             var cam = Camera.main;
             var me = GameInfo.LocalBody;
             if (cam == null || me == null) return;

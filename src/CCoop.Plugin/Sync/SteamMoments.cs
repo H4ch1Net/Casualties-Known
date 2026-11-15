@@ -22,7 +22,7 @@ namespace CCoop.Plugin.Sync
         private readonly Dictionary<byte, bool> _alive = new Dictionary<byte, bool>();
 
         private static bool Enabled =>
-            CoopPlugin.Instance != null && CoopPlugin.Instance.SteamTimeline.Value && SteamServices.Ready;
+            CoopPlugin.Ready && CoopPlugin.Instance.SteamTimeline.Value && SteamServices.Ready;
 
         internal override void Detach()
         {

@@ -86,7 +86,9 @@ namespace CCoop.Plugin.Protocol
                 .Add<CraftClaim>((ushort)(b + 80), Delivery.Reliable)
                 .Add<GiveAsk>((ushort)(b + 81), Delivery.Reliable)
                 .Add<FluidChunks>((ushort)(b + 82), Delivery.Reliable)
-                .Add<PlayerHit>((ushort)(b + 83), Delivery.Reliable);
+                .Add<PlayerHit>((ushort)(b + 83), Delivery.Reliable)
+                .Add<CarryOffer>((ushort)(b + 84), Delivery.Reliable)
+                .Add<ArrivalStatus>((ushort)(b + 85), Delivery.Reliable);
             // Other mods' messages (CCoopApi), after ours, so they share the fingerprint.
             return CCoop.CCoopApi.AddTo(registry);
         }
@@ -1295,6 +1297,32 @@ namespace CCoop.Plugin.Protocol
     /// <summary>Start or stop carrying a downed teammate (sent by the carrier, or by the carried on waking).</summary>
     internal enum CarryMode : byte { Drag = 0, Back = 1, Arms = 2 }
 
+    /// <summary>Host -> all: whether the team may set off on this layer yet, and who it waits for.</summary>
+    internal sealed class ArrivalStatus : IMessage
+    {
+        public ushort Epoch;
+        public bool Open;
+        public string Waiting = "";
+        public float Left;
+
+        public void Write(PacketWriter w) { w.WriteUInt16(Epoch); w.WriteBool(Open); w.WriteString(Waiting); w.WriteSingle(Left); }
+        public void Read(ref PacketReader r) { Epoch = r.ReadUInt16(); Open = r.ReadBool(); Waiting = r.ReadString(); Left = r.ReadSingle(); }
+    }
+
+    internal enum CarryOfferOp : byte { Offer = 0, Accept = 1, Decline = 2 }
+
+    /// <summary>Carrying a teammate who is awake (one who can't walk, say) needs their say-so.</summary>
+    internal sealed class CarryOffer : IMessage
+    {
+        public byte Carrier;
+        public byte Target;
+        public CarryMode Mode;
+        public CarryOfferOp Op;
+
+        public void Write(PacketWriter w) { w.WriteByte(Carrier); w.WriteByte(Target); w.WriteByte((byte)Mode); w.WriteByte((byte)Op); }
+        public void Read(ref PacketReader r) { Carrier = r.ReadByte(); Target = r.ReadByte(); Mode = (CarryMode)r.ReadByte(); Op = (CarryOfferOp)r.ReadByte(); }
+    }
+
     internal sealed class CarryCommand : IMessage
     {
         public byte Carrier;
@@ -1327,6 +1355,9 @@ namespace CCoop.Plugin.Protocol
         /// <summary>Faller -> catcher: caught (F = fall speed). Landed on someone who wasn't ready: LandedOn.</summary>
         Caught = 6,
         LandedOn = 7,
+
+        /// <summary>Helper -> target: a shake (or, if they sleep, waking them). F is unused.</summary>
+        Wake = 8,
     }
 
     /// <summary>Helping each other move: leg-ups, pulls, lifting together, catching.</summary>

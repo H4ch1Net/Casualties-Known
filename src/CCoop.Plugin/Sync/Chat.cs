@@ -49,16 +49,44 @@ namespace CCoop.Plugin.Sync
 
         internal override void Tick()
         {
-            if (Typing || !Coop.InSession || CoopPlugin.Instance == null) return;
-            if (CoopWindow.TypingInField || ConsoleOpen()) return;
-            var alt = CoopPlugin.Instance.AltChatKey.Value;
-            if (Input.GetKeyDown(CoopPlugin.Instance.ChatKey.Value) || Input.GetKeyDown(KeyCode.KeypadEnter) ||
-                (alt != KeyCode.None && Input.GetKeyDown(alt) && !GameUses(alt)))
+            if (!Coop.InSession || !CoopPlugin.Ready) return;
+            if (Typing)
             {
-                _openedBy = Input.GetKeyDown(alt) ? alt : KeyCode.Return;
-                Open();
+                // Enter and Esc work from the keyboard state too, so chat never depends
+                // on which IMGUI control Unity thinks has focus.
+                if (Time.frameCount > _openedFrame + 1 && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)))
+                {
+                    string text = _draft;
+                    Close();
+                    if (string.IsNullOrEmpty((text ?? "").Trim())) Log.Info("[chat] closed (nothing typed)");
+                    Send(text);
+                }
+                else if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    Close();
+                    Log.Info("[chat] closed");
+                }
+                return;
             }
+            var alt = CoopPlugin.Instance.AltChatKey.Value;
+            bool pressed = Input.GetKeyDown(CoopPlugin.Instance.ChatKey.Value) || Input.GetKeyDown(KeyCode.KeypadEnter) ||
+                           (alt != KeyCode.None && Input.GetKeyDown(alt) && !GameUses(alt));
+            if (!pressed) return;
+            if (CoopWindow.TypingInField || ConsoleOpen())
+            {
+                if (Time.unscaledTime - _ignoredLogAt > 5f)
+                {
+                    _ignoredLogAt = Time.unscaledTime;
+                    Log.Info("[chat] key ignored: " + (ConsoleOpen() ? "the game's console is open" : "a co-op window text field has the keyboard"));
+                }
+                return;
+            }
+            _openedBy = alt != KeyCode.None && Input.GetKeyDown(alt) ? alt : KeyCode.Return;
+            Open();
+            Log.Info("[chat] opened with " + _openedBy);
         }
+
+        private static float _ignoredLogAt = -100f;
 
         private static KeyCode _openedBy;
 
@@ -224,11 +252,12 @@ namespace CCoop.Plugin.Sync
                     GUI.Label(new Rect(x - 52f, y + 2f, 50f, 24f), Lang.T("Say:"), _style);
                     GUI.SetNextControlName("ccoop_chat");
                     _draft = GUI.TextField(new Rect(x, y, width, 26f), _draft ?? "", MaxLength, _field);
+                    if (Event.current.type == EventType.Layout && GUI.GetNameOfFocusedControl() != "ccoop_chat") _focusPending = true;
                     if (_focusPending)
                     {
                         GUI.FocusControl("ccoop_chat");
                         _focusPending = false;
-                        if (Net.SteamServices.OnScreenKeyboard)
+                        if (Net.SteamServices.OnScreenKeyboard && Time.frameCount <= _openedFrame + 2)
                             Net.SteamServices.ShowKeyboard(new Rect(x * k, y * k, width * k, 26f * k));
                     }
                 }

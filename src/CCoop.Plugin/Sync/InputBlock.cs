@@ -18,6 +18,9 @@ namespace CCoop.Plugin.Sync
     {
         internal static bool Blocking => Chat.Typing || UI.CoopWindow.TypingInField;
 
+        /// <summary>The game's controls are held (typing, or a gesture wheel waiting for a click).</summary>
+        internal static bool HoldGame => Blocking || GestureSync.HoldingInput;
+
         internal static bool ConsoleOpen
         {
             get
@@ -54,11 +57,14 @@ namespace CCoop.Plugin.Sync
     [HarmonyPatch(typeof(KeyBinds), nameof(KeyBinds.GetBind))]
     internal static class KeyBindsBlockPatch
     {
-        private static bool Prefix(ref KeyCode __result)
+        private static bool Prefix(string action, ref KeyCode __result)
         {
-            if (!InputBlock.Blocking) return true;
-            __result = KeyCode.None;
-            return false;
+            if (InputBlock.HoldGame || ((action == "attack" || action == "iteminteract") && UI.UiMouse.Over))
+            {
+                __result = KeyCode.None;
+                return false;
+            }
+            return true;
         }
     }
 }
