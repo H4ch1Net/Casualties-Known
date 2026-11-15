@@ -27,6 +27,7 @@ namespace CCoop.Plugin.Runtime
         internal static bool Ready => !ReferenceEquals(Instance, null);
 
         internal ConfigEntry<string> PlayerName;
+        internal ConfigEntry<int> Character;
         internal ConfigEntry<string> Language;
         internal ConfigEntry<int> MaxPlayers;
         internal ConfigEntry<int> Port;
@@ -79,6 +80,8 @@ namespace CCoop.Plugin.Runtime
 
             PlayerName = Config.Bind("General", "PlayerName", "",
                 "Name shown to other players. Empty uses your Steam name.");
+            Character = Config.Bind("General", "Character", 0,
+                "Your character in co-op runs: 0 Experiment, 1 Milky, 2 Dune (picked in the co-op lobby; locked ones fall back to Experiment).");
             MaxPlayers = Config.Bind("Host", "MaxPlayers", 4,
                 new ConfigDescription("Players allowed in a session you host, including you.", new AcceptableValueRange<int>(2, 8)));
             LobbyType = Config.Bind("Host", "LobbyType", "FriendsOnly",

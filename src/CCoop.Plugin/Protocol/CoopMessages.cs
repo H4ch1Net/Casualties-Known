@@ -88,7 +88,8 @@ namespace CCoop.Plugin.Protocol
                 .Add<FluidChunks>((ushort)(b + 82), Delivery.Reliable)
                 .Add<PlayerHit>((ushort)(b + 83), Delivery.Reliable)
                 .Add<CarryOffer>((ushort)(b + 84), Delivery.Reliable)
-                .Add<ArrivalStatus>((ushort)(b + 85), Delivery.Reliable);
+                .Add<ArrivalStatus>((ushort)(b + 85), Delivery.Reliable)
+                .Add<DustPuff>((ushort)(b + 86), Delivery.Unreliable);
             // Other mods' messages (CCoopApi), after ours, so they share the fingerprint.
             return CCoop.CCoopApi.AddTo(registry);
         }
@@ -1307,6 +1308,16 @@ namespace CCoop.Plugin.Protocol
 
         public void Write(PacketWriter w) { w.WriteUInt16(Epoch); w.WriteBool(Open); w.WriteString(Waiting); w.WriteSingle(Left); }
         public void Read(ref PacketReader r) { Epoch = r.ReadUInt16(); Open = r.ReadBool(); Waiting = r.ReadString(); Left = r.ReadSingle(); }
+    }
+
+    /// <summary>A dust cloud a player's body made (a step, a jump, a landing, a blow on a wall).</summary>
+    internal sealed class DustPuff : IMessage
+    {
+        public byte Size;   // 0 mini, 1 small, 2 big
+        public float X, Y, VX, VY;
+
+        public void Write(PacketWriter w) { w.WriteByte(Size); w.WriteSingle(X); w.WriteSingle(Y); w.WriteSingle(VX); w.WriteSingle(VY); }
+        public void Read(ref PacketReader r) { Size = r.ReadByte(); X = r.ReadSingle(); Y = r.ReadSingle(); VX = r.ReadSingle(); VY = r.ReadSingle(); }
     }
 
     internal enum CarryOfferOp : byte { Offer = 0, Accept = 1, Decline = 2 }

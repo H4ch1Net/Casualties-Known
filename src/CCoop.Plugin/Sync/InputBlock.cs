@@ -80,4 +80,15 @@ namespace CCoop.Plugin.Sync
             return true;
         }
     }
+
+    /// <summary>A teammate under the mouse gets the game's own hover label (name, right-click: Interact).</summary>
+    [HarmonyPatch(typeof(GlobalDark), nameof(GlobalDark.HandleTooltip))]
+    internal static class TeammateTooltipPatch
+    {
+        private static void Prefix(GlobalDark __instance)
+        {
+            try { if (UI.TeammatePanel.HoverTip(out var tip)) __instance.tooltipText = tip; }
+            catch { /* the game's tooltip goes on as it was */ }
+        }
+    }
 }

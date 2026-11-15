@@ -55,6 +55,27 @@ namespace CCoop.Plugin.UI
         /// </summary>
         internal static bool ClaimsPress => _self != null && _self._claims && Input.GetKeyDown(KeyBindsBlockPatch.Raw("iteminteract"));
 
+        /// <summary>
+        /// The game's own hover label for a teammate under the mouse, as it shows "You" over
+        /// your own body: their name, and the right-click icon with what it does.
+        /// </summary>
+        internal static bool HoverTip(out (string, string) tip)
+        {
+            tip = ("", "");
+            var p = _self;
+            if (p == null || p._hovered < 0 || p._menu == p._hovered || UiMouse.Over || !Coop.WorldLive) return false;
+            var id = (byte)p._hovered;
+            string desc = "<sprite index=20>" + Lang.T("Interact");
+            var v = Coop.Get<VitalsSync>()?.Of(id);
+            if (v != null)
+            {
+                string state = Status(v);
+                if (state != Lang.T("ok")) desc = "<color=#" + ColorUtility.ToHtmlStringRGB(StatusColor(v)) + ">" + state + "</color>\n" + desc;
+            }
+            tip = (Coop.Player(id).Name, desc);
+            return true;
+        }
+
         internal static void Open(byte id)
         {
             var p = Coop.Get<TeammatePanel>();
@@ -147,16 +168,6 @@ namespace CCoop.Plugin.UI
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(k, k, 1f));
             try
             {
-                if (_hovered >= 0 && _open != _hovered && _menu != _hovered)
-                {
-                    var m = e.mousePosition;
-                    var v = Coop.Get<VitalsSync>()?.Of((byte)_hovered);
-                    string state = v == null ? "" : " · " + Status(v);
-                    string hint = Coop.Player((byte)_hovered).Name + state;
-                    var hs = UiSkin.Fit(_hint, hint);
-                    var size = hs.CalcSize(new GUIContent(hint));
-                    GUI.Box(new Rect(m.x + 18f, m.y + 10f, size.x + 4f, size.y + 2f), hint, hs);
-                }
                 if (_open >= 0)
                 {
                     _rect.x = Screen.width / k - _rect.width - 20f;
@@ -367,7 +378,7 @@ namespace CCoop.Plugin.UI
             _menuRect.height = 0;
 
             string name = Coop.Player(id).Name;
-            _menuRect = GUILayout.Window(0x0C011, _menuRect, _ => MenuBody(id, v), name, UiSkin.Fit(_menuWindow, name), GUILayout.MinWidth(190));
+            _menuRect = GUILayout.Window(0x0C011, _menuRect, _ => MenuBody(id, v), name, UiSkin.Fit(_menuWindow, name), GUILayout.MinWidth(170));
             GUI.BringWindowToFront(0x0C011);
             UiMouse.Claim(_menuRect);
 
@@ -387,6 +398,8 @@ namespace CCoop.Plugin.UI
             var rec = Coop.Player(id);
             bool below = me != null && rec.HasPosition && rec.Position.y < me.transform.position.y - 1f &&
                          Vector2.Distance(me.transform.position, rec.Position) <= TeamMotion.PullReach;
+            string tipShown = _iconTip;
+            _iconTipNext = "";
 
             if (Item(Lang.T("Health"))) Open(id);
 
@@ -394,54 +407,65 @@ namespace CCoop.Plugin.UI
             if (cant != null)
             {
                 // Out of reach, or you can't: what still works from here.
-                if (carry != null && carry.Carrying(id) && Item(Lang.T("Put them down"))) { carry.PutDown(); _menu = -1; }
-                if (motion != null && awake && below && Item(Lang.T("Pull them up"))) { motion.PullUp(id); _menu = -1; }
+                if (carry != null && carry.Carrying(id) && Item(Lang.T("Put down"))) { carry.PutDown(); _menu = -1; }
+                if (motion != null && awake && below && Item(Lang.T("Pull up"))) { motion.PullUp(id); _menu = -1; }
                 Note(cant);
+                EndIcons();
                 return;
             }
 
             var held = Medic.HeldItem(me);
-            if (held != null && give != null && alive && Item(Lang.F("Give {0}", Medic.Pretty(held.id)))) { give.Offer(id); _menu = -1; }
+            if (held != null && give != null && alive && ItemWithIcon(Lang.T("Give"), held.id)) { give.Offer(id); _menu = -1; }
 
-            // "Ask for…": what they visibly carry. They choose whether to hand it over.
+            // "Ask for": what they visibly carry, as pictures. They choose whether to hand it over.
             var kit = Coop.Get<PlayerSync>()?.Find(id)?.Kit;
             if (give != null && awake && kit != null && HasAny(kit))
             {
-                if (give.Asking(id)) Note(Lang.T("Waiting for them to answer..."));
-                else if (Item(Lang.T("Ask for...") + (_sub == 1 ? "" : " >"))) _sub = _sub == 1 ? 0 : 1;
-                if (_sub == 1 && !give.Asking(id))
-                    for (int slot = 0; slot < kit.Length; slot++)
-                        if (!string.IsNullOrEmpty(kit[slot]) && Item("    " + Medic.Pretty(kit[slot]))) { give.AskFor(id, slot, kit[slot]); _menu = -1; }
+                if (give.Asking(id)) Note(Lang.T("Asked. Waiting..."));
+                else
+                {
+                    if (Item(Lang.T("Ask for") + (_sub == 1 ? "" : "  >"))) _sub = _sub == 1 ? 0 : 1;
+                    if (_sub == 1)
+                    {
+                        var ids = new List<string>();
+                        var slots = new List<int>();
+                        for (int slot = 0; slot < kit.Length; slot++)
+                            if (!string.IsNullOrEmpty(kit[slot])) { ids.Add(kit[slot]); slots.Add(slot); }
+                        int pick = IconGrid(ids, tipShown);
+                        if (pick >= 0) { give.AskFor(id, slots[pick], ids[pick]); _menu = -1; }
+                    }
+                }
             }
 
             // Searching a body that can't stop you.
             var loot = Coop.Get<LootSync>()?.Of(id);
             if (loot != null)
             {
-                if (Item(Lang.T("Search them") + (_sub == 2 ? "" : " >"))) _sub = _sub == 2 ? 0 : 2;
+                if (Item(Lang.T("Search") + (_sub == 2 ? "" : "  >"))) _sub = _sub == 2 ? 0 : 2;
                 if (_sub == 2)
                 {
-                    if (loot.Count == 0) Note(Lang.T("Nothing on them to take."));
-                    foreach (var en in loot)
-                        if (Item("    " + Lang.F("Take {0}", Medic.Pretty(en.ItemId)))) Coop.Get<LootSync>().Take(id, en.Key);
+                    if (loot.Count == 0) Note(Lang.T("Nothing to take."));
+                    var ids = new List<string>();
+                    foreach (var en in loot) ids.Add(en.ItemId);
+                    int pick = IconGrid(ids, tipShown);
+                    if (pick >= 0) Coop.Get<LootSync>().Take(id, loot[pick].Key);
                 }
             }
 
             // Carrying: three ways, each with its own cost. Someone awake is asked first.
             if (carry != null)
             {
-                if (carry.Carrying(id)) { if (Item(Lang.T("Put them down"))) { carry.PutDown(); _menu = -1; } }
-                else if (carry.CarriedBy == id) Note(Lang.T("They're carrying you."));
-                else if (carry.Offered(id)) Note(Lang.F("Waiting for {0} to climb on...", rec.Name));
+                if (carry.Carrying(id)) { if (Item(Lang.T("Put down"))) { carry.PutDown(); _menu = -1; } }
+                else if (carry.CarriedBy == id) Note(Lang.T("Carrying you."));
+                else if (carry.Offered(id)) Note(Lang.T("Offered. Waiting..."));
                 else
                 {
                     // Why a way is out, once each (most reasons are the same for all three).
                     var why = new List<string>();
-                    CarryItem(carry, id, CarryMode.Drag, Lang.T("Drag them"), why);
-                    CarryItem(carry, id, CarryMode.Back, Lang.T("Carry on your back"), why);
-                    CarryItem(carry, id, CarryMode.Arms, Lang.T("Carry in your arms"), why);
+                    CarryItem(carry, id, CarryMode.Drag, Lang.T("Drag"), why);
+                    CarryItem(carry, id, CarryMode.Back, Lang.T("Carry on back"), why);
+                    CarryItem(carry, id, CarryMode.Arms, Lang.T("Carry in arms"), why);
                     foreach (var w in why) Note(w);
-                    if (!CarrySync.Downed(id) && why.Count < 3) Note(Lang.T("They're asked first."));
                 }
             }
 
@@ -449,24 +473,66 @@ namespace CCoop.Plugin.UI
             {
                 bool asleep = (v.Signs & BodySigns.Sleeping) != 0;
                 string why = motion.CantWake(id);
-                if (Item(asleep ? Lang.T("Wake them up") : Lang.T("Shake them"), why == null)) { motion.Wake(id); _menu = -1; }
+                if (Item(asleep ? Lang.T("Wake up") : Lang.T("Shake"), why == null)) { motion.Wake(id); _menu = -1; }
                 if (why != null) Note(why);
             }
 
             if (motion != null && awake)
             {
-                if ((v.Signs & BodySigns.Standing) != 0 && Item(Lang.T("Give a leg-up"))) { motion.GiveLegUp(id); _menu = -1; }
-                if (below && Item(Lang.T("Pull them up"))) { motion.PullUp(id); _menu = -1; }
+                if ((v.Signs & BodySigns.Standing) != 0 && Item(Lang.T("Leg-up"))) { motion.GiveLegUp(id); _menu = -1; }
+                if (below && Item(Lang.T("Pull up"))) { motion.PullUp(id); _menu = -1; }
                 if (v.Mood <= -50)
                 {
                     string why = motion.CantSnap(id);
-                    if (Item(Lang.T("Snap them out of it"), why == null)) { motion.Snap(id); _menu = -1; }
+                    if (Item(Lang.T("Snap out of it"), why == null)) { motion.Snap(id); _menu = -1; }
                     if (why != null) Note(why);
                 }
-                string heavy = TeamMotion.HeavyHeld(id, out var weight);
-                if (motion.LiftingFor(id)) { if (Item(Lang.T("Stop helping carry"))) { motion.StopLifting(true); _menu = -1; } }
-                else if (heavy != null && Item(Lang.F("Help carry their {0}", Medic.Pretty(heavy)))) { motion.StartLifting(id); _menu = -1; }
+                string heavy = TeamMotion.HeavyHeld(id, out _);
+                if (motion.LiftingFor(id)) { if (Item(Lang.T("Stop helping"))) { motion.StopLifting(true); _menu = -1; } }
+                else if (heavy != null && ItemWithIcon(Lang.T("Help carry"), heavy)) { motion.StartLifting(id); _menu = -1; }
             }
+            EndIcons();
+        }
+
+        private string _iconTip = "", _iconTipNext = "";
+
+        /// <summary>After the menu's controls: the hovered picture's name becomes next frame's label.</summary>
+        private void EndIcons()
+        {
+            if (Event.current.type == EventType.Repaint) _iconTip = _iconTipNext;
+        }
+
+        /// <summary>Items as a grid of their pictures; the one under the mouse is named below. Returns the one clicked, or -1.</summary>
+        private int IconGrid(List<string> ids, string tipShown)
+        {
+            const float cell = 42f;
+            const int perRow = 4;
+            int picked = -1;
+            for (int i = 0; i < ids.Count; i += perRow)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Space(8);
+                for (int j = i; j < Mathf.Min(ids.Count, i + perRow); j++)
+                {
+                    var r = GUILayoutUtility.GetRect(cell, cell, GUILayout.Width(cell), GUILayout.Height(cell));
+                    if (GUI.Button(r, GUIContent.none)) picked = j;
+                    if (!ItemIcons.Draw(new Rect(r.x + 5f, r.y + 5f, r.width - 10f, r.height - 10f), ids[j]) && Event.current.type == EventType.Repaint)
+                        GUI.Label(r, "?", _menuNote);
+                    if (r.Contains(Event.current.mousePosition)) _iconTipNext = Medic.Pretty(ids[j]);
+                }
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.Label(string.IsNullOrEmpty(tipShown) ? " " : tipShown, _menuNote);
+            return picked;
+        }
+
+        /// <summary>A menu line with an item's picture at its right end.</summary>
+        private static bool ItemWithIcon(string label, string itemId)
+        {
+            bool hit = GUILayout.Button(label, UiSkin.Fit(_item, label), GUILayout.Height(30));
+            var r = GUILayoutUtility.GetLastRect();
+            ItemIcons.Draw(new Rect(r.xMax - 30f, r.y + 3f, 24f, 24f), itemId);
+            return hit;
         }
 
         private static bool HasAny(string[] kit)
@@ -478,12 +544,12 @@ namespace CCoop.Plugin.UI
         private static bool Item(string label, bool enabled = true)
         {
             GUI.enabled = enabled;
-            bool hit = GUILayout.Button(label, UiSkin.Fit(_item, label), GUILayout.Height(24));
+            bool hit = GUILayout.Button(label, UiSkin.Fit(_item, label), GUILayout.Height(26));
             GUI.enabled = true;
             return hit && enabled;
         }
 
-        private static void Note(string text) => GUILayout.Label(text, _menuNote, GUILayout.MaxWidth(240));
+        private static void Note(string text) => GUILayout.Label(text, _menuNote, GUILayout.MaxWidth(200));
 
         private void CarryItem(CarrySync carry, byte id, CarryMode mode, string label, List<string> refusals)
         {

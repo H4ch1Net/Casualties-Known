@@ -41,7 +41,11 @@ namespace CCoop.Plugin.Sync
             s.On<PlayerLook>((o, m) => Remote(o)?.ApplyLook(m));
             s.On<PlayerKit>((o, m) => Remote(o)?.ApplyKit(m));
             s.On<PlayerAttack>((o, m) => Remote(o)?.PlayAttack(m));
-            s.On<PlayerTalk>((o, m) => Remote(o)?.Say(m.Text));
+            s.On<PlayerTalk>((o, m) =>
+            {
+                string heard = Hearing.Heard(o, m.Text);
+                if (heard != null) Remote(o)?.Say(heard);
+            });
             s.Established += () => _nextProfile = 0;
         }
 

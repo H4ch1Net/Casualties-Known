@@ -90,9 +90,12 @@ namespace CCoop.Plugin.Sync
             if (w == null || grid == null) return;
             int width = grid.GetLength(0), height = grid.GetLength(1);
             var dirty = new HashSet<int>();
+            int effects = 0;
             foreach (var e in m.Edits)
             {
                 if (e.X >= width || e.Y >= height) continue;
+                // A block someone else broke: the dust, debris and sound the game makes for the breaker.
+                if (e.Block == 0 && grid[e.X, e.Y] != 0 && effects < MaxBreakEffects && BreakEffect(w, new Vector2Int(e.X, e.Y), grid[e.X, e.Y], effects < 3)) effects++;
                 grid[e.X, e.Y] = e.Block;
                 if (e.Block == 0) ClearCrack(w, new Vector2Int(e.X, e.Y));
                 dirty.Add((e.X / WorldGeneration.CHUNKSIZE) * 1024 + e.Y / WorldGeneration.CHUNKSIZE);
@@ -106,6 +109,46 @@ namespace CCoop.Plugin.Sync
 
             // The host is the hub: the edit must also reach the other clients, which
             // WorldNet does, and must be part of the host's own world, which this is.
+        }
+
+        private const int MaxBreakEffects = 12;
+        private const float EffectRange = 40f;
+        private static GameObject _dust;
+
+        /// <summary>As WorldGeneration.DamageBlock does when a block breaks: debris in the block's own texture, a dust cloud, its hit sound.</summary>
+        private static bool BreakEffect(WorldGeneration w, Vector2Int pos, ushort was, bool sound)
+        {
+            try
+            {
+                Vector2 at = w.BlockToWorldPos(pos);
+                var cam = Camera.main;
+                if (cam == null || Vector2.Distance(cam.transform.position, at) > EffectRange) return false;
+                var sprite = w.GetClosestChunk(pos).GetSprite(new Vector3Int(pos.x % WorldGeneration.CHUNKSIZE - w.HALFCHUNKSIZE, pos.y % WorldGeneration.CHUNKSIZE - w.HALFCHUNKSIZE, 0));
+                if (sprite != null && w.blockBreakPrefab != null)
+                {
+                    var debris = UnityEngine.Object.Instantiate(w.blockBreakPrefab, at, Quaternion.identity);
+                    var ps = debris.GetComponent<ParticleSystem>();
+                    if (ps != null)
+                    {
+                        var shape = ps.shape;
+                        shape.texture = sprite.texture;
+                        ps.Play();
+                    }
+                }
+                if (_dust == null) _dust = Resources.Load<GameObject>("DustBig");
+                if (_dust != null) UnityEngine.Object.Instantiate(_dust, at, Quaternion.identity);
+                if (sound)
+                {
+                    var info = w.GetBlockInfo(was);
+                    if (info != null && !string.IsNullOrEmpty(info.hitsound)) Sound.Play(info.hitsound, at);
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                Log.Debug("break effect: " + e.Message);
+                return false;
+            }
         }
 
         private static void ClearCrack(WorldGeneration w, Vector2Int pos)

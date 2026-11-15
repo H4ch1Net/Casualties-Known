@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace CCoop.Plugin.UI
 {
@@ -32,6 +33,56 @@ namespace CCoop.Plugin.UI
             _last = _drawing;
             _drawing = t;
             _drawing.Clear();
+            Shield();
+        }
+
+        private static GameObject _shield;
+        private static readonly List<RectTransform> _blocks = new List<RectTransform>();
+
+        /// <summary>
+        /// The game's own buttons (uGUI, through its EventSystem) know nothing of the overlay:
+        /// a click on the co-op window would also press whatever game button lies under it.
+        /// So each rect we claim gets an invisible block on top of the game's canvases.
+        /// </summary>
+        private static void Shield()
+        {
+            try
+            {
+                if (_shield == null)
+                {
+                    _blocks.Clear();
+                    _shield = new GameObject("CasualtiesCoop.ClickShield", typeof(RectTransform));
+                    Object.DontDestroyOnLoad(_shield);
+                    var canvas = _shield.AddComponent<Canvas>();
+                    canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                    canvas.sortingOrder = 32000;
+                    _shield.AddComponent<GraphicRaycaster>();
+                }
+                while (_blocks.Count < _last.Count)
+                {
+                    var go = new GameObject("Block", typeof(RectTransform), typeof(Image));
+                    go.transform.SetParent(_shield.transform, false);
+                    var img = go.GetComponent<Image>();
+                    img.color = new Color(0f, 0f, 0f, 0f);
+                    img.raycastTarget = true;
+                    var rt = (RectTransform)go.transform;
+                    rt.anchorMin = rt.anchorMax = Vector2.zero;
+                    rt.pivot = Vector2.zero;
+                    _blocks.Add(rt);
+                }
+                var root = (RectTransform)_shield.transform;
+                float scale = root.lossyScale.x > 0f ? root.lossyScale.x : 1f;
+                for (int i = 0; i < _blocks.Count; i++)
+                {
+                    bool on = i < _last.Count;
+                    if (_blocks[i].gameObject.activeSelf != on) _blocks[i].gameObject.SetActive(on);
+                    if (!on) continue;
+                    var r = _last[i];  // screen pixels, from the top
+                    _blocks[i].anchoredPosition = new Vector2(r.xMin, Screen.height - r.yMax) / scale;
+                    _blocks[i].sizeDelta = new Vector2(r.width, r.height) / scale;
+                }
+            }
+            catch { _shield = null; }
         }
 
         /// <summary>The mouse is over something of ours that takes clicks.</summary>

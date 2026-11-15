@@ -303,7 +303,7 @@ namespace CCoop.Plugin.Dev
             }
             if (now < _shotAt) return;
             // Even steps set a screen up; odd steps capture it on a later frame.
-            string[] names = { "1-host", "2-find", "3-lan", "4-password", "5-online", "6-online-150" };
+            string[] names = { "1-host", "2-find", "3-lan", "4-password", "5-online", "6-online-150", "7-rules", "8-options", "9-dropdown" };
             int step = _shotStage / 2;
             if (step >= names.Length)
             {
@@ -329,8 +329,11 @@ namespace CCoop.Plugin.Dev
                     Coop.Runtime.PasswordPrompt = new Net.LobbyInfo { Host = GameInfo.PlayerName, HostId = GameInfo.SteamId, Locked = true, Players = 2, Max = 4 };
                     Coop.Runtime.LastMessage = GameInfo.PlayerName + "'s session needs a password.";
                     break;
-                case 4: Coop.Runtime.PasswordPrompt = null; Coop.Runtime.HostLan(); break;
+                case 4: Coop.Runtime.PasswordPrompt = null; Coop.Runtime.HostLan(); UI.CoopWindow.DevSelectLobbyTab(0); break;
                 case 5: UI.CoopWindow.DevScale = 1.5f; break;
+                case 6: UI.CoopWindow.DevScale = 0f; UI.CoopWindow.DevSelectLobbyTab(1); break;
+                case 7: UI.CoopWindow.DevSelectLobbyTab(2); break;
+                case 8: UI.CoopWindow.DevSelectLobbyTab(1); UI.GameRows.DevOpen("respawn"); break;
             }
             _shotStage++;
             _shotAt = now + 2f;

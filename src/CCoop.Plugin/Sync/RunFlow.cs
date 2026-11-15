@@ -91,7 +91,9 @@ namespace CCoop.Plugin.Sync
                 Depth = WorldGeneration.world != null ? WorldGeneration.world.biomeDepth : 0,
                 RunId = CoopSaves.RunId ?? "",
             };
-            var settings = WorldGeneration.runSettings;
+            // On the menu, the run being set up (the lobby's or the game's screen); in a run, the run's.
+            var pre = PreRunScript.instance;
+            var settings = GameInfo.OnMainMenu && pre != null && pre.runSettings != null ? pre.runSettings : WorldGeneration.runSettings;
             if (settings != null)
             {
                 foreach (var kv in settings)
@@ -225,6 +227,7 @@ namespace CCoop.Plugin.Sync
                 TargetDepth = _hostRun.Depth;
                 // Rejoining a run we've played before: bring our own character back.
                 int saved = string.IsNullOrEmpty(_hostRun.RunId) ? -1 : CoopSaves.PrepareLoad(_hostRun.RunId);
+                PreRunScript.characterSelected = UI.CharacterPick.Current;  // the pick from the lobby
                 if (saved >= 0)
                 {
                     PreRunScript.characterSelected = saved;
@@ -241,20 +244,47 @@ namespace CCoop.Plugin.Sync
             }
         }
 
-        private static Dictionary<string, object> ToSettings(List<RunSettingValue> list)
+        /// <summary>
+        /// The host's settings as the game wants them: every key the game reads, with the
+        /// exact type it unboxes (a missing key or a wrong type would throw in the game).
+        /// </summary>
+        internal static Dictionary<string, object> ToSettings(List<RunSettingValue> list)
         {
             var d = new Dictionary<string, object>();
+            try
+            {
+                var normal = RunSettings.GetPreset("normal");
+                if (normal != null && normal.presetValues != null)
+                    foreach (var kv in normal.presetValues) d[kv.Key] = kv.Value;
+            }
+            catch { /* the game's presets aren't there: take the host's as they are */ }
             foreach (var s in list)
             {
+                object raw;
                 switch (s.Kind)
                 {
-                    case 0: d[s.Key] = s.F; break;
-                    case 1: d[s.Key] = s.I; break;
-                    case 2: d[s.Key] = s.I != 0; break;
-                    default: d[s.Key] = s.S; break;
+                    case 0: raw = s.F; break;
+                    case 1: raw = s.I; break;
+                    case 2: raw = s.I != 0; break;
+                    default: raw = s.S; break;
                 }
+                d[s.Key] = UI.RunPresets.Coerce(s.Key, raw) ?? raw;
             }
             return d;
+        }
+
+        private Dictionary<string, object> _hostSettingsCache;
+        private RunInfo _hostSettingsFor;
+
+        /// <summary>Client: the host's run settings (on the menu, the run it's setting up), or null.</summary>
+        internal Dictionary<string, object> HostSettings
+        {
+            get
+            {
+                if (_hostRun == null || _hostRun.Settings == null || _hostRun.Settings.Count == 0) return null;
+                if (!ReferenceEquals(_hostSettingsFor, _hostRun)) { _hostSettingsFor = _hostRun; _hostSettingsCache = ToSettings(_hostRun.Settings); }
+                return _hostSettingsCache;
+            }
         }
 
         private void StartClientRegen()
@@ -303,6 +333,23 @@ namespace CCoop.Plugin.Sync
         }
 
         private bool _hostWasInRun;
+        private string _menuSettingsSent;
+        private float _menuSettingsCheck;
+
+        /// <summary>Host on the menu: the run being set up changed (lobby or game screen), so everyone sees it.</summary>
+        private void MenuSettingsChanged()
+        {
+            if (Time.unscaledTime < _menuSettingsCheck) return;
+            _menuSettingsCheck = Time.unscaledTime + 0.25f;
+            var pre = PreRunScript.instance;
+            if (!GameInfo.OnMainMenu || pre == null || pre.runSettings == null) return;
+            var sb = new System.Text.StringBuilder();
+            foreach (var kv in pre.runSettings) sb.Append(kv.Key).Append('=').Append(kv.Value).Append(';');
+            string sig = sb.ToString();
+            if (sig == _menuSettingsSent) return;
+            _menuSettingsSent = sig;
+            Session.Broadcast(BuildRunInfo());
+        }
 
         private void HostTick()
         {
@@ -313,6 +360,7 @@ namespace CCoop.Plugin.Sync
                 if (!inRun) Coop.SetWorldLive(false);
                 Session.Broadcast(BuildRunInfo());
             }
+            if (!inRun) MenuSettingsChanged();
             if (!inRun || Coop.WorldLive) return;
             if (!WorldAccess.Settled || WorldAccess.Regenerating) return;
             if (WorldGeneration.world.biomeOverride != WorldGeneration.OverrideSceneType.None) return;

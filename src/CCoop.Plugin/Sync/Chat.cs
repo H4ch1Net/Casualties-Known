@@ -221,6 +221,13 @@ namespace CCoop.Plugin.Sync
                 var body = GameInfo.LocalBody;
                 if (Coop.WorldLive && body != null && body.alive) return;
             }
+            if (m.Kind == ChatLine.Spoken)
+            {
+                // Said out loud: what reaches you depends on how far they are (Barotrauma's way).
+                string heard = Hearing.Heard(origin, m.Text);
+                if (heard == null) return;
+                m = new ChatLine { Text = heard, Kind = m.Kind };
+            }
             Show(origin, m);
         }
 

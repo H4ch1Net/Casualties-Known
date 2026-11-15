@@ -327,6 +327,18 @@ Keep it
 Could not load the host's world: {0}
 = 
 
+# Sync/LeaveRun.cs
+Press again to leave
+= 
+Everyone goes back to the menu. The run is saved.
+= 
+Your character is saved for when you join again.
+= 
+Back to the menu
+= 
+Leave to the menu
+= 
+
 # Sync/LifeSync.cs
 Permadeath: you're spectating for the rest of the run
 = 
@@ -714,13 +726,91 @@ Saved to {0}. Attach the folder's files to your report.
 = 
 Couldn't save the report: {0}
 = 
+Add a place
+= 
 you
 = 
 Open
 = 
 Invite
 = 
+Close
+= 
+One place fewer
+= 
+Your character
+= 
 host
+= 
+Run settings
+= 
+Co-op rules
+= 
+Options
+= 
+Session
+= 
+Difficulty
+= 
+Players
+= 
+Death and descent
+= 
+When you die
+= 
+Next layer
+= 
+Permadeath
+= 
+Quick
+= 
+Descend when
+= 
+First arrives
+= 
+Half are there
+= 
+All are there
+= 
+Together
+= 
+Teammate arrows
+= 
+Name tags
+= 
+Spawn apart
+= 
+Friendly fire
+= 
+Voices carry
+= 
+Balance
+= 
+Loot
+= 
+Enemies
+= 
+Voice
+= 
+Voice chat
+= 
+Hold {0}
+= 
+Off
+= 
+Send above
+= 
+all
+= 
+Open mic sends only what's louder than this. The bar under it is your mic now.
+= 
+Display
+= 
+Arrows at the screen edge to teammates out of sight.
+= 
+Reduce flashes and shaking
+= 
+Colour-blind safe colours
 = 
 NAME
 = 
@@ -766,13 +856,7 @@ Some hooks failed to install ({0}). The game was probably updated; parts of co-o
 = 
 The game changed under these features: {0}. They may not work until the mod is updated.
 = 
-Rules (change them any time)
-= 
-Run settings
-= 
-Run settings (the host's)
-= 
-Start a run
+Start the run
 = 
 Invite Steam friends
 = 
@@ -792,8 +876,6 @@ Co-op · {0} players  (F1)
 = 
 Co-op  (F1)
 = 
-Close
-= 
 Host
 = 
 Find games
@@ -812,7 +894,7 @@ Banned players ({0})
 = 
 Unban
 = 
-Difficulty
+Sets all the co-op rules below at once. The game's own run settings stay as they are.
 = 
 Who can join
 = 
@@ -822,17 +904,9 @@ Only people you invite through Steam can join.
 = 
 Steam friends can join from Find games, your profile ("Join Game") or an invite.
 = 
-Players
-= 
 Password
 = 
-When you die
-= 
-Next layer
-= 
-Permadeath
-= 
-Quick
+Players need it to join. Empty: no password.
 = 
 The dead spectate for the rest of the run.
 = 
@@ -840,39 +914,25 @@ The dead spectate, then come back beside a teammate after {0} s.
 = 
 The dead spectate, then come back healed when the team reaches the next layer.
 = 
-Descend when
+How many of the team must be at the exit before everyone goes down.
 = 
-First arrives
+Arrows at the screen edge point to teammates out of sight.
 = 
-Half are there
+Names above teammates.
 = 
-All are there
+Each player starts a layer somewhere else instead of together.
 = 
-(Set to {0}% in the config.)
+Shots and blows hurt teammates.
 = 
-Help
+How far voices and speech are heard.
 = 
-Teammate arrows
+Fast-forward
 = 
-Name tags
+Anyone may speed up time. Off: time runs at normal speed (sleep still fast-forwards).
 = 
-Spawn apart
+Shared: one layer's loot for the team. More: each extra player adds some.
 = 
-Danger
-= 
-Friendly fire (shots and blows hurt teammates)
-= 
-Voices carry
-= 
-Loot
-= 
-Enemies
-= 
-Speed-up
-= 
-Anyone may fast-forward time
-= 
-Time always runs at normal speed (sleep still fast-forwards)
+Enemies get stronger with each extra player.
 = 
 Continue a co-op run ({0})
 = 
@@ -928,17 +988,13 @@ Password needed
 = 
 Cancel
 = 
+Rules (change them any time)
+= 
+Run settings (the host's)
+= 
 Players ({0}/{1})
 = 
 Players who join get their own characters back from this run; newcomers start fresh.
-= 
-Voice
-= 
-Hold {0}
-= 
-Off
-= 
-Send above
 = 
 everything
 = 
@@ -947,10 +1003,6 @@ Show arrows to teammates who are off screen
 Co-op milestones ({0}/{1})
 = 
 done
-= 
-Reduce flashes and shaking
-= 
-Colour-blind safe colours
 = 
 Check
 = 
@@ -1013,6 +1065,10 @@ The game's {0} settings.
 Changed from normal:
 = 
 
+# UI/RunSetup.cs
+Waiting for the host's run settings...
+= 
+
 # UI/TeamReceipt.cs
 Your teammates are still playing. Stay on this screen until they finish: leaving ends the run for everyone.
 = 
@@ -1042,13 +1098,15 @@ down
 = 
 
 # UI/TeammatePanel.cs
+Interact
+= 
+ok
+= 
 dead {0} s
 = 
 dying
 = 
 bleeding
-= 
-ok
 = 
 They're not on this layer.
 = 
@@ -1100,43 +1158,39 @@ Hold for CPR
 = 
 Health
 = 
-Put them down
+Put down
 = 
-Pull them up
+Pull up
 = 
-Give {0}
+Give
 = 
-Waiting for them to answer...
+Asked. Waiting...
 = 
-Ask for...
+Ask for
 = 
-Search them
+Search
 = 
-Nothing on them to take.
+Nothing to take.
 = 
-Take {0}
+Carrying you.
 = 
-They're carrying you.
+Offered. Waiting...
 = 
-Waiting for {0} to climb on...
+Drag
 = 
-Drag them
+Carry on back
 = 
-Carry on your back
+Carry in arms
 = 
-Carry in your arms
+Wake up
 = 
-They're asked first.
+Shake
 = 
-Wake them up
+Leg-up
 = 
-Shake them
+Snap out of it
 = 
-Give a leg-up
+Stop helping
 = 
-Snap them out of it
-= 
-Stop helping carry
-= 
-Help carry their {0}
+Help carry
 = 

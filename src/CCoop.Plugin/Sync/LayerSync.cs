@@ -178,7 +178,73 @@ namespace CCoop.Plugin.Sync
 
             foreach (var p in StructureRecorder.Placements)
                 snap.Structures.Add(new LayerSnapshot.Structure { Prefab = p.Prefab, X = p.Pos.x, Y = p.Pos.y });
+            CaptureDecals(w, snap);
             return snap;
+        }
+
+        /// <summary>The back-wall decorations' kinds: they live under the chunks, not at the root, so the object sweep misses them.</summary>
+        private static string DecalKey(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            if (name.StartsWith("wallholes", StringComparison.Ordinal)) return "wallholes";
+            if (name.StartsWith("blastmark", StringComparison.Ordinal)) return "blastmark";
+            return null;
+        }
+
+        private static void CaptureDecals(WorldGeneration w, LayerSnapshot snap)
+        {
+            try
+            {
+                var chunks = WorldAccess.Chunks;
+                if (chunks == null) return;
+                foreach (var chunk in chunks)
+                {
+                    if (chunk == null) continue;
+                    var t = chunk.transform;
+                    for (int i = 0; i < t.childCount; i++)
+                    {
+                        var c = t.GetChild(i);
+                        string key = DecalKey(c.name);
+                        if (key == null) continue;
+                        var audio = c.GetComponent<AudioSource>();
+                        snap.Decals.Add(new LayerSnapshot.Decal { Key = key, X = c.position.x, Y = c.position.y, Rotation = c.eulerAngles.z, Pitch = audio != null ? audio.pitch : 1f });
+                    }
+                }
+            }
+            catch (Exception e) { Log.Debug("[layer] decals: " + e.Message); }
+        }
+
+        /// <summary>Client: its own randomly placed decorations go; the host's take their places.</summary>
+        private static int ApplyDecals(WorldGeneration w, LayerSnapshot snap)
+        {
+            int made = 0;
+            try
+            {
+                var chunks = WorldAccess.Chunks;
+                if (chunks == null) return 0;
+                foreach (var chunk in chunks)
+                {
+                    if (chunk == null) continue;
+                    var t = chunk.transform;
+                    for (int i = t.childCount - 1; i >= 0; i--)
+                        if (DecalKey(t.GetChild(i).name) != null) UnityEngine.Object.Destroy(t.GetChild(i).gameObject);
+                }
+                var prefabs = new Dictionary<string, GameObject>();
+                foreach (var d in snap.Decals)
+                {
+                    if (!prefabs.TryGetValue(d.Key, out var prefab)) prefabs[d.Key] = prefab = Resources.Load("Special/" + d.Key) as GameObject;
+                    if (prefab == null) continue;
+                    var pos = new Vector2(d.X, d.Y);
+                    var chunk = w.GetClosestChunk(w.WorldToBlockPos(pos));
+                    if (chunk == null) continue;
+                    var go = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.Euler(0f, 0f, d.Rotation), chunk.transform);
+                    var audio = go.GetComponent<AudioSource>();
+                    if (audio != null) audio.pitch = d.Pitch;
+                    made++;
+                }
+            }
+            catch (Exception e) { Log.Debug("[layer] decals: " + e.Message); }
+            return made;
         }
 
         private static int ActiveModifierSlot()
@@ -283,6 +349,8 @@ namespace CCoop.Plugin.Sync
             try
             {
                 purged = RemoveUnregisteredContent();
+                int decals = ApplyDecals(w, snap);
+                if (decals > 0) Log.Info("[layer] " + decals + " back-wall decorations from the host");
                 ApplyModifier(snap.ModifierSlot);
                 // Content modifiers (Flooded, Dried) rewrite water as they initialise, and
                 // Turbulent rolls its own gravity: the host's state wins over both.

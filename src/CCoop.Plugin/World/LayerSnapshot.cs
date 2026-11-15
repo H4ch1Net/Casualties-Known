@@ -12,7 +12,7 @@ namespace CCoop.Plugin.World
     internal sealed class LayerSnapshot
     {
         private const uint Magic = 0x4C434343; // "CCCL"
-        private const int Version = 4;
+        private const int Version = 5;
         private const int MaxInflated = 48 * 1024 * 1024;
 
         internal sealed class Entity
@@ -37,6 +37,13 @@ namespace CCoop.Plugin.World
             public float X, Y;
         }
 
+        /// <summary>A decoration on a chunk's back wall (wall holes, blast marks): placed at random, so the host's.</summary>
+        internal sealed class Decal
+        {
+            public string Key;
+            public float X, Y, Rotation, Pitch = 1f;
+        }
+
         public ushort Epoch;
         public int Depth;
         public int ModifierSlot = -1;   // index into LayerModifier.availableModifiers
@@ -49,6 +56,7 @@ namespace CCoop.Plugin.World
         public byte[] Fluid = new byte[0];
         public List<Entity> Entities = new List<Entity>();
         public List<Structure> Structures = new List<Structure>();
+        public List<Decal> Decals = new List<Decal>();
 
         public byte[] Encode()
         {
@@ -81,6 +89,7 @@ namespace CCoop.Plugin.World
             }
             foreach (var e in Entities) Key(e.Key);
             foreach (var s in Structures) Key(s.Prefab);
+            foreach (var d in Decals) Key(d.Key);
 
             w.WriteInt32(keys.Count);
             foreach (var k in keys) w.WriteString(k);
@@ -114,6 +123,16 @@ namespace CCoop.Plugin.World
                 w.WriteInt32(keyIndex[s.Prefab ?? ""]);
                 w.WriteSingle(s.X);
                 w.WriteSingle(s.Y);
+            }
+
+            w.WriteInt32(Decals.Count);
+            foreach (var d in Decals)
+            {
+                w.WriteInt32(keyIndex[d.Key ?? ""]);
+                w.WriteSingle(d.X);
+                w.WriteSingle(d.Y);
+                w.WriteSingle(d.Rotation);
+                w.WriteSingle(d.Pitch);
             }
 
             return Compression.Deflate(w.Buffer, 0, w.Length);
@@ -178,6 +197,14 @@ namespace CCoop.Plugin.World
             {
                 int k = r.ReadInt32();
                 s.Structures.Add(new Structure { Prefab = k >= 0 && k < keys.Length ? keys[k] : "", X = r.ReadSingle(), Y = r.ReadSingle() });
+            }
+
+            int decals = r.ReadInt32();
+            if (decals < 0 || decals > 200000) throw new FormatException("bad decal count");
+            for (int i = 0; i < decals && !r.Failed; i++)
+            {
+                int k = r.ReadInt32();
+                s.Decals.Add(new Decal { Key = k >= 0 && k < keys.Length ? keys[k] : "", X = r.ReadSingle(), Y = r.ReadSingle(), Rotation = r.ReadSingle(), Pitch = r.ReadSingle() });
             }
 
             if (r.Failed || !r.AtEnd) throw new FormatException("snapshot is truncated or malformed");

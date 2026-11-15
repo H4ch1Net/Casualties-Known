@@ -242,113 +242,75 @@ namespace CCoop.Plugin.UI
         private static readonly int[] ExitShares = { 0, 50, 100 };
 
         /// <summary>
-        /// The host's rules: before hosting (Host tab) and live while hosting (the Rules
-        /// panel). Everything here is config, read every frame by <see cref="RulesSync"/>.
+        /// The host's rules: before hosting (Host tab) and live while hosting. Everything
+        /// here is config, read every frame by <see cref="RulesSync"/>. Laid out as the
+        /// game's own Custom settings: one line each, explanations on hover. How many
+        /// players fit is set on the player places themselves.
         /// </summary>
         private static void RulesEditor(CoopRuntime rt, NetSession live)
         {
             var cfg = CoopPlugin.Instance;
             bool steamLobby = live == null ? GameInfo.SteamReady : rt.TransportKind == "Steam" && rt.Lobby.InLobby;
-
             var rules = HostRules.FromConfig();
+
+            GameRows.Header(Lang.T("Session"));
             int preset = rules.Preset;
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Difficulty"), GUILayout.Width(134));
-            int pickPreset = GUILayout.Toolbar(preset, Lang.All(HostRules.PresetNames));
-            GUILayout.EndHorizontal();
-            if (pickPreset != preset && pickPreset >= 0) HostRules.ApplyPreset(pickPreset);
+            var presetNames = new List<string>(Lang.All(HostRules.PresetNames));
+            if (preset < 0) presetNames.Add(Lang.T("Custom"));
+            int pickPreset = GameRows.Choice("difficulty", Lang.T("Difficulty"), preset < 0 ? presetNames.Count - 1 : preset, presetNames.ToArray(),
+                Lang.T("Sets all the co-op rules below at once. The game's own run settings stay as they are."));
+            if (pickPreset != preset && pickPreset >= 0 && pickPreset < HostRules.PresetNames.Length) HostRules.ApplyPreset(pickPreset);
 
             if (steamLobby)
             {
                 int cur = Mathf.Max(0, System.Array.IndexOf(LobbyTypes, cfg.LobbyType.Value));
-                GUILayout.BeginHorizontal();
-                GUILayout.Label(Lang.T("Who can join"), GUILayout.Width(134));
-                int pick = GUILayout.Toolbar(cur, new[] { Lang.T("Friends"), Lang.T("Public"), Lang.T("Invite only") });
-                GUILayout.EndHorizontal();
+                int pick = GameRows.Choice("jointype", Lang.T("Who can join"), cur, new[] { Lang.T("Friends"), Lang.T("Public"), Lang.T("Invite only") },
+                    cur == 1 ? Lang.T("Listed for everyone under Find games. Add a password to keep strangers out.")
+                    : cur == 2 ? Lang.T("Only people you invite through Steam can join.")
+                    : Lang.T("Steam friends can join from Find games, your profile (\"Join Game\") or an invite."));
                 if (pick != cur)
                 {
                     cfg.LobbyType.Value = LobbyTypes[pick];
                     if (live != null) rt.Lobby.SetType(LobbyTypes[pick]);
                 }
-                GUILayout.Label(pick == 1
-                    ? Lang.T("Listed for everyone under Find games. Add a password to keep strangers out.")
-                    : pick == 2
-                        ? Lang.T("Only people you invite through Steam can join.")
-                        : Lang.T("Steam friends can join from Find games, your profile (\"Join Game\") or an invite."), _small);
             }
-
-            int floor = Mathf.Max(2, live != null ? live.PeerCount : 2);
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Players"), GUILayout.Width(134));
-            if (GUILayout.Button(Lang.T("-"), GUILayout.MinWidth(28), GUILayout.ExpandWidth(false)) && cfg.MaxPlayers.Value > floor) cfg.MaxPlayers.Value--;
-            GUILayout.Label(cfg.MaxPlayers.Value.ToString(), GUILayout.Width(24));
-            if (GUILayout.Button(Lang.T("+"), GUILayout.MinWidth(28), GUILayout.ExpandWidth(false)) && cfg.MaxPlayers.Value < NetSession.MaxPeers) cfg.MaxPlayers.Value++;
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Password"), GUILayout.Width(134));
-            string pw = Field(live == null ? "hostpw" : "livepw", cfg.HostPassword.Value, 64, true);
+            var pwAt = GameRows.Slot(Lang.T("Password"), Lang.T("Players need it to join. Empty: no password."));
+            string pw = FieldAt(pwAt, live == null ? "hostpw" : "livepw", cfg.HostPassword.Value, 64, true);
             if (pw != cfg.HostPassword.Value) cfg.HostPassword.Value = pw;
-            GUILayout.EndHorizontal();
 
+            GameRows.Header(Lang.T("Death and descent"));
             int rule = Mathf.Max(0, System.Array.IndexOf(RespawnRules, cfg.Respawn.Value));
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("When you die"), GUILayout.Width(134));
-            int newRule = GUILayout.Toolbar(rule, new[] { Lang.T("Next layer"), Lang.T("Permadeath"), Lang.T("Quick") });
-            GUILayout.EndHorizontal();
+            int newRule = GameRows.Choice("respawn", Lang.T("When you die"), rule, new[] { Lang.T("Next layer"), Lang.T("Permadeath"), Lang.T("Quick") },
+                rule == 1 ? Lang.T("The dead spectate for the rest of the run.")
+                : rule == 2 ? Lang.F("The dead spectate, then come back beside a teammate after {0} s.", (int)LifeSync.QuickDelay)
+                : Lang.T("The dead spectate, then come back healed when the team reaches the next layer."));
             if (newRule != rule) cfg.Respawn.Value = RespawnRules[newRule];
-            GUILayout.Label(newRule == 1 ? Lang.T("The dead spectate for the rest of the run.")
-                : newRule == 2 ? Lang.F("The dead spectate, then come back beside a teammate after {0} s.", (int)LifeSync.QuickDelay)
-                : Lang.T("The dead spectate, then come back healed when the team reaches the next layer."), _small);
 
             int share = cfg.ExitShare.Value;
-            int shareAt = share <= 0 ? 0 : share >= 100 ? 2 : share == 50 ? 1 : -1;
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Descend when"), GUILayout.Width(134));
-            int newShare = GUILayout.Toolbar(shareAt, new[] { Lang.T("First arrives"), Lang.T("Half are there"), Lang.T("All are there") });
-            GUILayout.EndHorizontal();
-            if (newShare != shareAt && newShare >= 0) cfg.ExitShare.Value = ExitShares[newShare];
-            if (shareAt < 0) GUILayout.Label(Lang.F("(Set to {0}% in the config.)", share), _small);
+            int shareAt = share <= 0 ? 0 : share >= 100 ? 2 : share == 50 ? 1 : 1;
+            int newShare = GameRows.Choice("descend", Lang.T("Descend when"), shareAt, new[] { Lang.T("First arrives"), Lang.T("Half are there"), Lang.T("All are there") },
+                Lang.T("How many of the team must be at the exit before everyone goes down."));
+            if (newShare != shareAt) cfg.ExitShare.Value = ExitShares[newShare];
 
-            // One toggle a line once translated text gets long (a German "Teammate arrows" is not short).
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Help"), GUILayout.Width(134));
-            GUILayout.BeginVertical();
-            bool narrow = Wide(Width - 170f, " " + Lang.T("Teammate arrows"), " " + Lang.T("Name tags"), " " + Lang.T("Spawn apart"));
-            if (!narrow) GUILayout.BeginHorizontal();
-            cfg.HostArrows.Value = GUILayout.Toggle(cfg.HostArrows.Value, " " + Lang.T("Teammate arrows"), GUILayout.ExpandWidth(false));
-            cfg.HostNameTags.Value = GUILayout.Toggle(cfg.HostNameTags.Value, " " + Lang.T("Name tags"), GUILayout.ExpandWidth(false));
-            cfg.SpawnApart.Value = GUILayout.Toggle(cfg.SpawnApart.Value, " " + Lang.T("Spawn apart"), GUILayout.ExpandWidth(false));
-            if (!narrow) GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Danger"), GUILayout.Width(134));
-            cfg.FriendlyFire.Value = GUILayout.Toggle(cfg.FriendlyFire.Value, " " + Lang.T("Friendly fire (shots and blows hurt teammates)"));
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Voices carry"), GUILayout.Width(134));
-            int pct = Mathf.RoundToInt(GUILayout.HorizontalSlider(cfg.VoiceRangePercent.Value, 25f, 100f, GUILayout.Width(200)) / 5f) * 5;
+            GameRows.Header(Lang.T("Together"));
+            cfg.HostArrows.Value = GameRows.Toggle(Lang.T("Teammate arrows"), cfg.HostArrows.Value, Lang.T("Arrows at the screen edge point to teammates out of sight."));
+            cfg.HostNameTags.Value = GameRows.Toggle(Lang.T("Name tags"), cfg.HostNameTags.Value, Lang.T("Names above teammates."));
+            cfg.SpawnApart.Value = GameRows.Toggle(Lang.T("Spawn apart"), cfg.SpawnApart.Value, Lang.T("Each player starts a layer somewhere else instead of together."));
+            cfg.FriendlyFire.Value = GameRows.Toggle(Lang.T("Friendly fire"), cfg.FriendlyFire.Value, Lang.T("Shots and blows hurt teammates."));
+            float voice = GameRows.Slider(Lang.T("Voices carry"), cfg.VoiceRangePercent.Value, 25f, 100f, cfg.VoiceRangePercent.Value + "%",
+                Lang.T("How far voices and speech are heard."));
+            int pct = Mathf.RoundToInt(voice / 5f) * 5;
             if (pct != cfg.VoiceRangePercent.Value) cfg.VoiceRangePercent.Value = pct;
-            GUILayout.Label(Lang.F("{0}%", pct), GUILayout.Width(50));
-            GUILayout.EndHorizontal();
+            cfg.AllowSpeedUp.Value = GameRows.Toggle(Lang.T("Fast-forward"), cfg.AllowSpeedUp.Value,
+                Lang.T("Anyone may speed up time. Off: time runs at normal speed (sleep still fast-forwards)."));
 
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Loot"), GUILayout.Width(134));
-            int loot = GUILayout.Toolbar(Mathf.Clamp(cfg.LootScale.Value, 0, 1), Lang.All(HostRules.LootNames));
+            GameRows.Header(Lang.T("Balance"));
+            int loot = GameRows.Choice("loot", Lang.T("Loot"), Mathf.Clamp(cfg.LootScale.Value, 0, 1), Lang.All(HostRules.LootNames),
+                Lang.T("Shared: one layer's loot for the team. More: each extra player adds some."));
             if (loot != cfg.LootScale.Value) cfg.LootScale.Value = loot;
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Enemies"), GUILayout.Width(134));
-            int danger = GUILayout.Toolbar(Mathf.Clamp(cfg.DangerScale.Value, 0, 2), Lang.All(HostRules.DangerNames));
+            int danger = GameRows.Choice("enemies", Lang.T("Enemies"), Mathf.Clamp(cfg.DangerScale.Value, 0, 2), Lang.All(HostRules.DangerNames),
+                Lang.T("Enemies get stronger with each extra player."));
             if (danger != cfg.DangerScale.Value) cfg.DangerScale.Value = danger;
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Speed-up"), GUILayout.Width(134));
-            cfg.AllowSpeedUp.Value = GUILayout.Toggle(cfg.AllowSpeedUp.Value, " " + (cfg.AllowSpeedUp.Value ? Lang.T("Anyone may fast-forward time") : Lang.T("Time always runs at normal speed (sleep still fast-forwards)")));
-            GUILayout.EndHorizontal();
         }
 
         private static bool _showSaves;
@@ -570,7 +532,7 @@ namespace CCoop.Plugin.UI
             }
 
             GUILayout.Space(6);
-            if (GUILayout.Button(s.IsHost ? Lang.T("End session") : Lang.T("Leave session"), GUILayout.Height(26))) rt.Leave();
+            if (GUILayout.Button(s.IsHost ? Lang.T("End session") : Lang.T("Leave session"), GUILayout.Height(26))) LeaveSession(rt, s);
 
             var history = Notices.History;
             if (history.Count > 0)
@@ -621,21 +583,13 @@ namespace CCoop.Plugin.UI
 
         private static void MilestoneList()
         {
-            _showMilestones = GUILayout.Toggle(_showMilestones, " " + Lang.F("Co-op milestones ({0}/{1})", Milestones.Reached, Milestones.All.Length));
-            if (!_showMilestones) return;
-            GUILayout.BeginVertical(_box);
+            GameRows.Header(Lang.F("Co-op milestones ({0}/{1})", Milestones.Reached, Milestones.All.Length));
             foreach (var d in Milestones.All)
             {
                 float n = Milestones.Count(d.Key);
                 bool done = n >= d.Goal;
-                GUILayout.BeginHorizontal();
-                GUILayout.Label((done ? "✓ " : "   ") + Lang.T(d.Title), GUILayout.Width(150));
-                GUILayout.Label(Lang.T(d.Text), _small);
-                GUILayout.FlexibleSpace();
-                GUILayout.Label(done ? Lang.T("done") : Mathf.FloorToInt(n) + "/" + d.Goal + (d.Unit ?? ""), _small, GUILayout.Width(70));
-                GUILayout.EndHorizontal();
+                GameRows.Info(Lang.T(d.Title), done ? Lang.T("done") : Mathf.FloorToInt(n) + "/" + d.Goal + (d.Unit ?? ""), Lang.T(d.Text), done ? (Color?)UiSkin.Good : null);
             }
-            GUILayout.EndVertical();
         }
 
         /// <summary>Personal display options: these never change anything for anyone else.</summary>
@@ -725,6 +679,15 @@ namespace CCoop.Plugin.UI
             GUI.SetNextControlName("ccoop_" + id);
             string v = secret ? GUILayout.PasswordField(value ?? "", '*', max) : GUILayout.TextField(value ?? "", max);
             if (Event.current.type == EventType.Repaint) FieldRects[id] = GUILayoutUtility.GetLastRect();
+            return v;
+        }
+
+        /// <summary>A named text field at a fixed place (inside a settings row).</summary>
+        private static string FieldAt(Rect r, string id, string value, int max, bool secret)
+        {
+            GUI.SetNextControlName("ccoop_" + id);
+            string v = secret ? GUI.PasswordField(r, value ?? "", '*', max) : GUI.TextField(r, value ?? "", max);
+            if (Event.current.type == EventType.Repaint) FieldRects[id] = r;
             return v;
         }
 

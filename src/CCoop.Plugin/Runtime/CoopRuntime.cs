@@ -79,6 +79,7 @@ namespace CCoop.Plugin.Runtime
             Add(new CoopSaves());
             Add(new TeammatePanel());
             Add(new TerrainSync());
+            Add(new DustSync());
             Add(new EntitySync());
             Add(new ItemSync());
             Add(new CreatureSync());
