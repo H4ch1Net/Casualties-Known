@@ -24,6 +24,8 @@ namespace CCoop.Plugin.Sync
         internal static bool Typing { get; private set; }
 
         private static string _draft = "";
+        private static bool _radio;
+        private static readonly Color RadioColor = new Color(0.55f, 1f, 0.6f);
         private static bool _focusPending;
         private static int _openedFrame = -1;
 
@@ -183,6 +185,17 @@ namespace CCoop.Plugin.Sync
         }
 
         internal static void DevOpen() => Open();
+
+        /// <summary>Radio lines this player heard through a radio (self-test).</summary>
+        internal static int RadioHeard;
+
+        /// <summary>Self-test: says a line into the radio.</summary>
+        internal void DevRadio(string text)
+        {
+            _radio = true;
+            try { Send(text); }
+            finally { _radio = false; }
+        }
         internal static void DevClose() => Close();
 
         internal void Send(string text)
@@ -202,7 +215,8 @@ namespace CCoop.Plugin.Sync
             }
             else if (inLayer)
             {
-                kind = ChatLine.Spoken;
+                // Into the radio (still said out loud, so people nearby hear the voice), or just said.
+                kind = _radio && Radio.Usable ? ChatLine.Radio : ChatLine.Spoken;
                 text = ConditionFx.SpeakThroughJaw(body, text);
                 text = InputBlock.Speak(body, text) ?? text;
             }
@@ -221,12 +235,19 @@ namespace CCoop.Plugin.Sync
                 var body = GameInfo.LocalBody;
                 if (Coop.WorldLive && body != null && body.alive) return;
             }
-            if (m.Kind == ChatLine.Spoken)
+            if (m.Kind == ChatLine.Radio && Radio.Usable)
+            {
+                RadioHeard++;
+                Radio.Blip();
+                Show(origin, m);
+                return;
+            }
+            if (m.Kind == ChatLine.Spoken || m.Kind == ChatLine.Radio)
             {
                 // Said out loud: what reaches you depends on how far they are (Barotrauma's way).
                 string heard = Hearing.Heard(origin, m.Text);
                 if (heard == null) return;
-                m = new ChatLine { Text = heard, Kind = m.Kind };
+                m = new ChatLine { Text = heard, Kind = ChatLine.Spoken };
             }
             Show(origin, m);
         }
@@ -235,10 +256,11 @@ namespace CCoop.Plugin.Sync
         {
             string name = Coop.Player(origin).Name;
             if (string.IsNullOrEmpty(name)) name = "?";
-            var color = m.Kind == ChatLine.Ghost ? new Color(0.7f, 0.75f, 0.9f) : Color.white;
+            var color = m.Kind == ChatLine.Ghost ? new Color(0.7f, 0.75f, 0.9f) : m.Kind == ChatLine.Radio ? RadioColor : Color.white;
             string text = origin == Coop.LocalId ? m.Text : ConditionFx.AsRead(m.Text, name);
-            Add((m.Kind == ChatLine.Ghost ? "(" + Lang.T("dead") + ") " : "") + name + ": " + text, color);
-            Log.Info("[chat] " + name + (m.Kind == ChatLine.Ghost ? " (dead)" : "") + ": " + text);
+            string tag = m.Kind == ChatLine.Ghost ? "(" + Lang.T("dead") + ") " : m.Kind == ChatLine.Radio ? "(" + Lang.T("radio") + ") " : "";
+            Add(tag + name + ": " + text, color);
+            Log.Info("[chat] " + name + (m.Kind == ChatLine.Ghost ? " (dead)" : m.Kind == ChatLine.Radio ? " (radio)" : "") + ": " + text);
         }
 
         private static void Add(string text, Color color)
@@ -282,6 +304,12 @@ namespace CCoop.Plugin.Sync
                             Close();
                             e.Use();
                         }
+                        else if (e.keyCode == KeyCode.Tab)
+                        {
+                            // Say it, or radio it.
+                            if (Radio.Usable || _radio) _radio = !_radio;
+                            e.Use();
+                        }
                     }
                 }
 
@@ -314,9 +342,13 @@ namespace CCoop.Plugin.Sync
                     // The key that opened chat mustn't also become its first letter.
                     if (Time.frameCount == _openedFrame && _openedBy != KeyCode.Return) _draft = "";
                     // "Say:" then the field, both clear of the game's buttons on the left.
-                    string say = Lang.T("Say:");
+                    if (_radio && !Radio.Usable) _radio = false;
+                    string say = _radio ? Lang.T("Radio:") : Radio.Usable ? Lang.T("Say (Tab: radio):") : Lang.T("Say:");
                     float sw = _style.CalcSize(new GUIContent(say)).x;
+                    var sayColor = _style.normal.textColor;
+                    if (_radio) _style.normal.textColor = RadioColor;
                     GUI.Label(new Rect(x, y + 3f, sw + 4f, 24f), say, _style);
+                    _style.normal.textColor = sayColor;
                     GUI.SetNextControlName("ccoop_chat");
                     _draft = GUI.TextField(new Rect(x + sw + 8f, y, width - sw - 8f, 26f), _draft ?? "", MaxLength, UiSkin.Fit(_field, _draft));
                     if (Event.current.type == EventType.Layout && GUI.GetNameOfFocusedControl() != "ccoop_chat") _focusPending = true;

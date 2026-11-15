@@ -98,7 +98,7 @@ namespace CCoop.Plugin.UI
             GUILayout.BeginArea(new Rect(14f, h - Bar + 10f, w - 28f, Bar - 18f));
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(Lang.T("Back"), GUILayout.MinWidth(120f), GUILayout.ExpandHeight(true))) _open = false;
-            GUILayout.Label(GameRows.Tip ?? "", _tipStyle, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+            GUILayout.FlexibleSpace();
             Actions(rt, s);
             if (GUILayout.Button(new GUIContent(Lang.T("Bug report"), Lang.T("Saves your co-op logs and session details to a folder on your desktop.")), GUILayout.MinWidth(120f), GUILayout.ExpandHeight(true)))
             {
@@ -110,6 +110,8 @@ namespace CCoop.Plugin.UI
 
             KeyboardForFocusedField();
             GameRows.EndFrame();
+            // Buttons' own hover text, in the game's label.
+            if (Event.current.type == EventType.Repaint && !string.IsNullOrEmpty(GUI.tooltip)) GameTooltip.Set(GUI.tooltip);
         }
 
         private static void Line(Rect r) => GUI.DrawTexture(r, GameLook.Solid(new Color(1f, 1f, 1f, 0.85f)));
@@ -327,6 +329,7 @@ namespace CCoop.Plugin.UI
             GameRows.Toggle(Lang.T("Name tags"), r.NameTags);
             GameRows.Toggle(Lang.T("Spawn apart"), r.SpawnApart);
             GameRows.Toggle(Lang.T("Friendly fire"), r.FriendlyFire);
+            GameRows.Toggle(Lang.T("Radios"), r.Radios);
             GameRows.Slider(Lang.T("Voices carry"), r.VoicePercent, 25f, 100f, r.VoicePercent + "%");
             GameRows.Header(Lang.T("Balance"));
             GameRows.Choice("ro.loot", Lang.T("Loot"), Mathf.Clamp(r.LootScale, 0, 1), Lang.All(HostRules.LootNames));

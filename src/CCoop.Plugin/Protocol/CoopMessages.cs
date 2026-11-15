@@ -279,7 +279,7 @@ namespace CCoop.Plugin.Protocol
     /// <summary>A chat line: plain (menus), spoken by the character, or a ghost's (dead, heard only by the dead).</summary>
     internal sealed class ChatLine : IMessage
     {
-        public const byte Plain = 0, Spoken = 1, Ghost = 2;
+        public const byte Plain = 0, Spoken = 1, Ghost = 2, Radio = 3;
 
         public string Text = "";
         public byte Kind;
@@ -1447,6 +1447,7 @@ namespace CCoop.Plugin.Protocol
         public bool FriendlyFire;
         public byte LootScale;
         public byte DangerScale;
+        public bool Radios = true;
 
         public void Write(PacketWriter w)
         {
@@ -1462,6 +1463,7 @@ namespace CCoop.Plugin.Protocol
             w.WriteBool(FriendlyFire);
             w.WriteByte(LootScale);
             w.WriteByte(DangerScale);
+            w.WriteBool(Radios);
         }
 
         public void Read(ref PacketReader r)
@@ -1478,6 +1480,7 @@ namespace CCoop.Plugin.Protocol
             FriendlyFire = r.ReadBool();
             LootScale = r.ReadByte();
             DangerScale = r.ReadByte();
+            Radios = r.ReadBool();
         }
     }
 

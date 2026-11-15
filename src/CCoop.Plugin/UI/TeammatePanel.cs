@@ -518,11 +518,10 @@ namespace CCoop.Plugin.UI
                     if (GUI.Button(r, GUIContent.none)) picked = j;
                     if (!ItemIcons.Draw(new Rect(r.x + 5f, r.y + 5f, r.width - 10f, r.height - 10f), ids[j]) && Event.current.type == EventType.Repaint)
                         GUI.Label(r, "?", _menuNote);
-                    if (r.Contains(Event.current.mousePosition)) _iconTipNext = Medic.Pretty(ids[j]);
+                    if (Event.current.type == EventType.Repaint && r.Contains(Event.current.mousePosition)) GameTooltip.Set(Medic.Pretty(ids[j]));
                 }
                 GUILayout.EndHorizontal();
             }
-            GUILayout.Label(string.IsNullOrEmpty(tipShown) ? " " : tipShown, _menuNote);
             return picked;
         }
 
@@ -532,6 +531,7 @@ namespace CCoop.Plugin.UI
             bool hit = GUILayout.Button(label, UiSkin.Fit(_item, label), GUILayout.Height(30));
             var r = GUILayoutUtility.GetLastRect();
             ItemIcons.Draw(new Rect(r.xMax - 30f, r.y + 3f, 24f, 24f), itemId);
+            if (Event.current.type == EventType.Repaint && r.Contains(Event.current.mousePosition)) GameTooltip.Set(Medic.Pretty(itemId));
             return hit;
         }
 

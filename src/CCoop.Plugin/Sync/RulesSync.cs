@@ -31,6 +31,9 @@ namespace CCoop.Plugin.Sync
         /// <summary>0: enemies as the run settings say; 1: tougher with more players; 2: much tougher.</summary>
         public byte DangerScale;
 
+        /// <summary>Everyone has a radio: what they say into it reaches the others anywhere on the layer.</summary>
+        public bool Radios = true;
+
         internal static readonly string[] LootNames = { Lang.N("Shared"), Lang.N("More for more players") };
         internal static readonly string[] DangerNames = { Lang.N("As set"), Lang.N("Tougher"), Lang.N("Much tougher") };
 
@@ -108,6 +111,7 @@ namespace CCoop.Plugin.Sync
                 FriendlyFire = Dev.DevHarness.FfOverride >= 0 ? Dev.DevHarness.FfOverride == 1 : c.FriendlyFire.Value,
                 LootScale = (byte)Mathf.Clamp(Dev.DevHarness.LootOverride >= 0 ? Dev.DevHarness.LootOverride : c.LootScale.Value, 0, 1),
                 DangerScale = (byte)Mathf.Clamp(Dev.DevHarness.DangerOverride >= 0 ? Dev.DevHarness.DangerOverride : c.DangerScale.Value, 0, 2),
+                Radios = c.Radios.Value,
             };
         }
 
@@ -127,7 +131,7 @@ namespace CCoop.Plugin.Sync
             o != null && o.Respawn == Respawn && o.ExitShare == ExitShare && o.SpeedUp == SpeedUp &&
             o.MaxPlayers == MaxPlayers && o.Locked == Locked && o.Arrows == Arrows && o.NameTags == NameTags &&
             o.SpawnApart == SpawnApart && o.VoicePercent == VoicePercent && o.FriendlyFire == FriendlyFire &&
-            o.LootScale == LootScale && o.DangerScale == DangerScale;
+            o.LootScale == LootScale && o.DangerScale == DangerScale && o.Radios == Radios;
 
         internal string RespawnText =>
             Respawn == RespawnRule.Permadeath ? "permadeath"
@@ -168,12 +172,13 @@ namespace CCoop.Plugin.Sync
             if (LootScale > 0) parts.Add(Lang.T("more loot for more players"));
             if (DangerScale == 1) parts.Add(Lang.T("enemies tougher with more players"));
             if (DangerScale >= 2) parts.Add(Lang.T("enemies much tougher with more players"));
+            if (!Radios) parts.Add(Lang.T("no radios"));
             return string.Join(" · ", parts.ToArray());
         }
 
         /// <summary>Compact form for the lobby advert: "r0e50s1".</summary>
         internal string Encode() => "r" + (int)Respawn + "e" + ExitShare + "s" + (SpeedUp ? 1 : 0) + "a" + (Arrows ? 1 : 0) +
-                                       "n" + (NameTags ? 1 : 0) + "p" + (SpawnApart ? 1 : 0) + "v" + VoicePercent + "f" + (FriendlyFire ? 1 : 0) + "l" + LootScale + "d" + DangerScale;
+                                       "n" + (NameTags ? 1 : 0) + "p" + (SpawnApart ? 1 : 0) + "v" + VoicePercent + "f" + (FriendlyFire ? 1 : 0) + "l" + LootScale + "d" + DangerScale + "o" + (Radios ? 1 : 0);
 
         internal static HostRules Decode(string s)
         {
@@ -198,6 +203,7 @@ namespace CCoop.Plugin.Sync
                     else if (k == 'f') r.FriendlyFire = v != 0;
                     else if (k == 'l') r.LootScale = (byte)Mathf.Clamp(v, 0, 1);
                     else if (k == 'd') r.DangerScale = (byte)Mathf.Clamp(v, 0, 2);
+                    else if (k == 'o') r.Radios = v != 0;
                 }
                 return r;
             }
@@ -218,6 +224,7 @@ namespace CCoop.Plugin.Sync
             FriendlyFire = FriendlyFire,
             LootScale = LootScale,
             DangerScale = DangerScale,
+            Radios = Radios,
         };
 
         internal static HostRules FromMessage(RulesMessage m) => new HostRules
@@ -234,6 +241,7 @@ namespace CCoop.Plugin.Sync
             FriendlyFire = m.FriendlyFire,
             LootScale = (byte)Mathf.Clamp(m.LootScale, 0, 1),
             DangerScale = (byte)Mathf.Clamp(m.DangerScale, 0, 2),
+            Radios = m.Radios,
         };
     }
 

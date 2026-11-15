@@ -297,6 +297,8 @@ namespace CCoop.Plugin.UI
             cfg.HostNameTags.Value = GameRows.Toggle(Lang.T("Name tags"), cfg.HostNameTags.Value, Lang.T("Names above teammates."));
             cfg.SpawnApart.Value = GameRows.Toggle(Lang.T("Spawn apart"), cfg.SpawnApart.Value, Lang.T("Each player starts a layer somewhere else instead of together."));
             cfg.FriendlyFire.Value = GameRows.Toggle(Lang.T("Friendly fire"), cfg.FriendlyFire.Value, Lang.T("Shots and blows hurt teammates."));
+            cfg.Radios.Value = GameRows.Toggle(Lang.T("Radios"), cfg.Radios.Value,
+                Lang.T("Everyone has a radio. Press Tab in the chat box to talk on it: the others hear you clearly, anywhere on the layer."));
             float voice = GameRows.Slider(Lang.T("Voices carry"), cfg.VoiceRangePercent.Value, 25f, 100f, cfg.VoiceRangePercent.Value + "%",
                 Lang.T("How far voices and speech are heard."));
             int pct = Mathf.RoundToInt(voice / 5f) * 5;
@@ -729,9 +731,34 @@ namespace CCoop.Plugin.UI
             if (Recent.Count > 6) Recent.RemoveAt(0);
         }
 
+        private static float _alertAt = -99f;
+
+        /// <summary>
+        /// In a run, notices go through the game's own alert line (PlayerCamera.DoAlert), one
+        /// after another so a burst doesn't overwrite itself; elsewhere they're drawn here.
+        /// </summary>
+        private static bool AsGameAlerts()
+        {
+            var cam = PlayerCamera.main;
+            if (!GameInfo.InRunScene || cam == null || cam.body == null || !cam.body.alive) return false;
+            float now = Time.unscaledTime;
+            Lines.RemoveAll(l => l.Until + 6f < now);  // too late to matter
+            float gap = Lines.Count > 2 ? 1.5f : 2.5f;
+            if (Lines.Count > 0 && now - _alertAt >= gap)
+            {
+                try { cam.DoAlert(Lines[0].Text); }
+                catch { return false; }
+                Lines.RemoveAt(0);
+                _alertAt = now;
+            }
+            return true;
+        }
+
         internal static void Draw()
         {
             if (Lines.Count == 0) return;
+            if (Event.current.type == EventType.Repaint && AsGameAlerts()) return;
+            if (GameInfo.InRunScene && PlayerCamera.main != null && PlayerCamera.main.body != null && PlayerCamera.main.body.alive) return;
             if (_style == null)
             {
                 _style = new GUIStyle(GUI.skin.box) { alignment = TextAnchor.MiddleCenter, fontSize = UiSkin.Body, wordWrap = false };

@@ -91,7 +91,7 @@ namespace CCoop.Plugin.UI
             {
                 GUI.Label(new Rect(r.x + 10f, r.y, r.width * 0.62f, Mathf.Min(height, RowH)), label, UiSkin.Fit(_label, label));
                 Fill(new Rect(r.x, r.yMax - 1f, r.width, 1f), new Color(1f, 1f, 1f, 0.22f));
-                if (!string.IsNullOrEmpty(tip) && r.Contains(Event.current.mousePosition)) _tipNext = tip;
+                if (!string.IsNullOrEmpty(tip) && r.Contains(Event.current.mousePosition)) { _tipNext = tip; GameTooltip.Set(label, tip); }
             }
             return r;
         }

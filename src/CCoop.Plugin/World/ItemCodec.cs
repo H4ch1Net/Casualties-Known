@@ -177,7 +177,7 @@ namespace CCoop.Plugin.World
                     custom.state = spec.CustomState;
                     if (!string.IsNullOrEmpty(spec.CustomData))
                     {
-                        try { custom.data = JsonConvert.DeserializeObject<object[]>(spec.CustomData); }
+                        try { custom.data = Retype(JsonConvert.DeserializeObject<object[]>(spec.CustomData), custom.data); }
                         catch { /* leave the prefab's data */ }
                     }
                 }
@@ -226,6 +226,30 @@ namespace CCoop.Plugin.World
                 try { field.SetValue(component, prop.Value.ToObject(field.FieldType)); }
                 catch (Exception e) { Log.Debug("item field " + typeName + "." + prop.Name + ": " + e.Message); }
             }
+        }
+
+        /// <summary>
+        /// JSON gives back numbers as double and long, but the game's item scripts unbox
+        /// their data as float or int ((float)data[0]) and throw on anything else. Each value
+        /// takes the type the item's own data had there (or float / int when it had none).
+        /// </summary>
+        private static object[] Retype(object[] values, object[] template)
+        {
+            if (values == null) return null;
+            for (int i = 0; i < values.Length; i++)
+            {
+                object want = template != null && i < template.Length ? template[i] : null;
+                object v = values[i];
+                try
+                {
+                    if (want is float || (want == null && v is double)) values[i] = Convert.ToSingle(v, System.Globalization.CultureInfo.InvariantCulture);
+                    else if (want is int || (want == null && v is long)) values[i] = Convert.ToInt32(v, System.Globalization.CultureInfo.InvariantCulture);
+                    else if (want is bool && !(v is bool)) values[i] = Convert.ToBoolean(v, System.Globalization.CultureInfo.InvariantCulture);
+                    else if (want is double) values[i] = Convert.ToDouble(v, System.Globalization.CultureInfo.InvariantCulture);
+                }
+                catch { if (want != null) values[i] = want; }
+            }
+            return values;
         }
     }
 }

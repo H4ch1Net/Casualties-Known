@@ -166,6 +166,12 @@ You can't speak while unconscious.
 = 
 dead
 = 
+radio
+= 
+Radio:
+= 
+Say (Tab: radio):
+= 
 Say:
 = 
 
@@ -570,6 +576,8 @@ enemies tougher with more players
 = 
 enemies much tougher with more players
 = 
+no radios
+= 
 Host rules: {0}
 = 
 Rules now: {0}
@@ -782,6 +790,8 @@ Spawn apart
 = 
 Friendly fire
 = 
+Radios
+= 
 Voices carry
 = 
 Balance
@@ -923,6 +933,8 @@ Names above teammates.
 Each player starts a layer somewhere else instead of together.
 = 
 Shots and blows hurt teammates.
+= 
+Everyone has a radio. Press Tab in the chat box to talk on it: the others hear you clearly, anywhere on the layer.
 = 
 How far voices and speech are heard.
 = 

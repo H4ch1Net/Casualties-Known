@@ -303,11 +303,12 @@ namespace CCoop.Plugin.Dev
             }
             if (now < _shotAt) return;
             // Even steps set a screen up; odd steps capture it on a later frame.
-            string[] names = { "1-host", "2-find", "3-lan", "4-password", "5-online", "6-online-150", "7-rules", "8-options", "9-dropdown" };
+            string[] names = { "1-host", "2-find", "3-lan", "4-password", "5-online", "6-online-150", "7-rules", "8-options", "9-dropdown", "10-tooltip" };
             int step = _shotStage / 2;
             if (step >= names.Length)
             {
                 UI.CoopWindow.DevScale = 0f;
+                UI.GameTooltip.DevShow(null, null, null);
                 Coop.Runtime.PasswordPrompt = null;
                 Log.Info("DEV shots saved to " + _shots);
                 _shotStage = 99;
@@ -334,6 +335,10 @@ namespace CCoop.Plugin.Dev
                 case 6: UI.CoopWindow.DevScale = 0f; UI.CoopWindow.DevSelectLobbyTab(1); break;
                 case 7: UI.CoopWindow.DevSelectLobbyTab(2); break;
                 case 8: UI.CoopWindow.DevSelectLobbyTab(1); UI.GameRows.DevOpen("respawn"); break;
+                case 9:
+                    UI.GameRows.DevOpen(null);
+                    UI.GameTooltip.DevShow(UI.Lang.T("Radios"), UI.Lang.T("Everyone has a radio. Press Tab in the chat box to talk on it: the others hear you clearly, anywhere on the layer."), new Vector2(1150f, 640f));
+                    break;
             }
             _shotStage++;
             _shotAt = now + 2f;
@@ -1323,6 +1328,7 @@ namespace CCoop.Plugin.Dev
                     if (Coop.IsHost)
                     {
                         Coop.Get<Chat>()?.Send("can you read this");
+                        Coop.Get<Chat>()?.DevRadio("radio check");
                         WalkOver();
                         GiveHand("morphine");
                         medic.Treat(other, 3, TreatKind.Item);
@@ -1670,6 +1676,7 @@ namespace CCoop.Plugin.Dev
             {
                 var chat = Coop.Get<Chat>();
                 chat?.Send("hello from the client");
+                chat?.DevRadio("radio check from the client");
                 Log.Info("DEV client said a chat line");
 
                 Chat.DevOpen();
@@ -1718,6 +1725,7 @@ namespace CCoop.Plugin.Dev
             var ps = Coop.Get<PlayerSync>();
             if (ps != null) foreach (var r in ps.Remotes) warming |= r.Warming;
             return "rules=" + HostRules.Current.Encode() + " chat=" + Chat.Count +
+                   " radio=" + (Radio.Usable ? "on" : "off") + "/" + Chat.RadioHeard +
                    " pings=" + (Coop.Get<PingSync>()?.Count ?? 0) +
                    " exit=" + (Coop.Get<ExitVote>()?.Describe() ?? "-") +
                    " threat=" + (cam != null ? cam.threatMusicTime.ToString("F1") : "-") +
