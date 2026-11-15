@@ -256,7 +256,7 @@ namespace CCoop.Plugin.Sync
             foreach (var o in _incoming.ToArray())
                 if (now - o.At > OfferLifetime) Answer(o, false);
             if (_incoming.Count == 0 && _asks.Count == 0) return;
-            if (_box == null) _box = new GUIStyle(GUI.skin.box) { fontSize = 14, alignment = TextAnchor.UpperCenter };
+            if (_box == null) _box = new GUIStyle(GUI.skin.box) { fontSize = UI.UiSkin.Body, alignment = TextAnchor.UpperCenter };
 
             float k = UI.CoopWindow.Scale;
             var old = GUI.matrix;
@@ -267,21 +267,14 @@ namespace CCoop.Plugin.Sync
                 float y = 170f;
                 foreach (var o in _incoming.ToArray())
                 {
-                    var r = new Rect(w / 2f - 190f, y, 380f, 66f);
-                    UI.UiMouse.Claim(r);
-                    GUI.Box(r, Lang.F("{0} offers you {1}", Coop.Player(o.From).Name, Medic.Pretty(o.ItemId)), _box);
-                    if (GUI.Button(new Rect(r.x + 40f, r.y + 32f, 140f, 26f), Lang.T("Take it"))) Answer(o, true);
-                    if (GUI.Button(new Rect(r.x + 200f, r.y + 32f, 140f, 26f), Lang.T("No thanks"))) Answer(o, false);
-                    y += 74f;
+                    int a = UI.UiSkin.Prompt(_box, w, ref y, Lang.F("{0} offers you {1}", Coop.Player(o.From).Name, Medic.Pretty(o.ItemId)), Lang.T("Take it"), Lang.T("No thanks"));
+                    if (a != 0) Answer(o, a == 1);
                 }
                 foreach (var a in _asks.ToArray())
                 {
-                    var r = new Rect(w / 2f - 190f, y, 380f, 66f);
-                    UI.UiMouse.Claim(r);
-                    GUI.Box(r, Lang.F("{0} asks for your {1}", Coop.Player(a.From).Name, Medic.Pretty(a.ItemId)), _box);
-                    if (GUI.Button(new Rect(r.x + 40f, r.y + 32f, 140f, 26f), Lang.T("Give it"))) GiveAsked(a);
-                    if (GUI.Button(new Rect(r.x + 200f, r.y + 32f, 140f, 26f), Lang.T("Keep it"))) Refuse(a);
-                    y += 74f;
+                    int ans = UI.UiSkin.Prompt(_box, w, ref y, Lang.F("{0} asks for your {1}", Coop.Player(a.From).Name, Medic.Pretty(a.ItemId)), Lang.T("Give it"), Lang.T("Keep it"));
+                    if (ans == 1) GiveAsked(a);
+                    else if (ans == 2) Refuse(a);
                 }
             }
             finally { GUI.matrix = old; }

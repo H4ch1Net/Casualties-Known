@@ -69,13 +69,13 @@ namespace CCoop.Plugin.UI
         private static void Styles()
         {
             if (_small != null) return;
-            _small = new GUIStyle(GUI.skin.label) { fontSize = 11, wordWrap = true };
-            _small.normal.textColor = new Color(0.85f, 0.85f, 0.85f);
-            _warn = new GUIStyle(_small) { fontStyle = FontStyle.Bold };
-            _warn.normal.textColor = new Color(1f, 0.55f, 0.45f);
-            _title = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold };
-            _hint = new GUIStyle(GUI.skin.box) { fontSize = 12 };
-            _rowSel = new GUIStyle(GUI.skin.button) { alignment = TextAnchor.MiddleLeft, fontSize = 11 };
+            _small = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Small, wordWrap = true };
+            _small.normal.textColor = UiSkin.Dim;
+            _warn = new GUIStyle(_small);
+            _warn.normal.textColor = UiSkin.Bad;
+            _title = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Head };
+            _hint = new GUIStyle(GUI.skin.box) { fontSize = UiSkin.Small };
+            _rowSel = new GUIStyle(GUI.skin.button) { alignment = TextAnchor.MiddleLeft, fontSize = UiSkin.Small };
         }
 
         internal override void Gui()
@@ -98,7 +98,8 @@ namespace CCoop.Plugin.UI
                 if (_open < 0) return;
                 _rect.x = Screen.width / k - 420f;
                 _rect.height = 0;
-                _rect = GUILayout.Window(0x0C010, _rect, id => Body((byte)_open), Coop.Player((byte)_open).Name, GUILayout.Width(400));
+                string name = Coop.Player((byte)_open).Name;
+                _rect = GUILayout.Window(0x0C010, _rect, id => Body((byte)_open), name, UiSkin.Fit(GUI.skin.window, name), GUILayout.Width(400));
                 UiMouse.Claim(_rect);
             }
             finally { GUI.matrix = old; }
@@ -222,7 +223,7 @@ namespace CCoop.Plugin.UI
                 {
                     GUILayout.BeginHorizontal();
                     GUILayout.Label(Medic.Pretty(e.ItemId), _small);
-                    if (GUILayout.Button(Lang.T("Take"), GUILayout.Width(60))) Coop.Get<LootSync>().Take(id, e.Key);
+                    if (GUILayout.Button(Lang.T("Take"), GUILayout.MinWidth(60), GUILayout.ExpandWidth(false))) Coop.Get<LootSync>().Take(id, e.Key);
                     GUILayout.EndHorizontal();
                 }
                 GUILayout.Space(4);

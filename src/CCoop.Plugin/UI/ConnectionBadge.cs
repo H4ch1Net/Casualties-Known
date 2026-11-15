@@ -51,12 +51,13 @@ namespace CCoop.Plugin.UI
 
             if (_style == null)
             {
-                _style = new GUIStyle(GUI.skin.box) { fontSize = 12, alignment = TextAnchor.MiddleCenter, wordWrap = true };
+                _style = new GUIStyle(GUI.skin.box) { fontSize = UiSkin.Small, alignment = TextAnchor.MiddleCenter, wordWrap = true };
                 _style.normal.textColor = Color.white;
             }
             var old = GUI.color;
             GUI.color = tint;
-            GUI.Box(new Rect(Screen.width - 330, 8, 320, 24), text, _style);
+            float h = _style.CalcHeight(new GUIContent(text), 320f);
+            GUI.Box(new Rect(Screen.width - 330, 8, 320, Mathf.Max(26f, h)), text, _style);
             GUI.color = old;
         }
     }

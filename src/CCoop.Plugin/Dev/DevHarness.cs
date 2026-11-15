@@ -121,8 +121,81 @@ namespace CCoop.Plugin.Dev
         }
 
         // Ticks even without a session: it is what starts one.
+        private int _uiDumped;
+        private static GUIStyle[] _specimen;
+
+        /// <summary>CCOOP_UIDUMP=1: the game's two pixel fonts at a range of sizes, to see which are crisp.</summary>
+        internal override void Gui()
+        {
+            if (Env("CCOOP_UIDUMP") != "1") return;
+            int[] sizes = { 8, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 32 };
+            if (_specimen == null)
+            {
+                _specimen = new GUIStyle[sizes.Length * 2];
+                for (int i = 0; i < sizes.Length; i++)
+                {
+                    _specimen[i] = new GUIStyle(GUI.skin.label) { font = UI.GameLook.Pixel, fontSize = sizes[i] };
+                    _specimen[i + sizes.Length] = new GUIStyle(GUI.skin.label) { font = UI.GameLook.Uni, fontSize = sizes[i] };
+                    _specimen[i].normal.textColor = Color.white;
+                    _specimen[i + sizes.Length].normal.textColor = Color.white;
+                }
+            }
+            GUI.DrawTexture(new Rect(300, 40, 1300, 760), UI.GameLook.Solid(new Color(0f, 0f, 0f, 0.92f)));
+            float y = 50;
+            for (int i = 0; i < sizes.Length; i++)
+            {
+                GUI.Label(new Rect(310, y, 640, 40), sizes[i] + " Retro Gaming: Waiting for h4ch1 Ää 0123", _specimen[i]);
+                GUI.Label(new Rect(960, y, 640, 40), sizes[i] + " Unifont: Waiting for h4ch1 Ää 李明 Жж", _specimen[i + sizes.Length]);
+                y += sizes[i] + 14;
+            }
+        }
+
+        /// <summary>CCOOP_UIDUMP=1: log the game's fonts and the look of its UI (for styling the mod's own).</summary>
+        private void UiDump()
+        {
+            if (Env("CCOOP_UIDUMP") != "1") return;
+            string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            int key = scene.GetHashCode();
+            if (_uiDumped == key) return;
+            if (Time.realtimeSinceStartup < 8f) return;
+            _uiDumped = key;
+            Log.Info("[uidump] scene " + scene);
+            UI.GameLook.DevExport(System.IO.Path.GetDirectoryName(Log.FilePath), new[] { "uiBlockSmall", "uiBlockMini", "uiBlockNano", "uigradientblack", "whitesquare", "userbarback", "gunmenubackground", "radialInnerCircle", "radialBar", "itemcraft", "woundview" });
+            foreach (var f in Resources.FindObjectsOfTypeAll<Font>())
+                Log.Info("[uidump] font '" + f.name + "' dynamic=" + f.dynamic + " size=" + f.fontSize + " lineHeight=" + f.lineHeight +
+                         " names=" + string.Join("|", f.fontNames ?? new string[0]) + " A=" + f.HasCharacter('A') + " \u00c4=" + f.HasCharacter('\u00c4') +
+                         " \u0416=" + f.HasCharacter('\u0416') + " \u674e=" + f.HasCharacter('\u674e'));
+            foreach (var t in Resources.FindObjectsOfTypeAll<TMPro.TMP_FontAsset>())
+                Log.Info("[uidump] tmp '" + t.name + "' source=" + (t.sourceFontFile != null ? t.sourceFontFile.name : "none") + " mode=" + t.atlasPopulationMode +
+                         " fallbacks=" + (t.fallbackFontAssetTable != null ? t.fallbackFontAssetTable.Count : 0));
+            int n = 0;
+            foreach (var txt in UnityEngine.Object.FindObjectsOfType<TMPro.TMP_Text>())
+            {
+                if (n++ > 40) break;
+                string s = (txt.text ?? "").Replace("\n", " ");
+                if (s.Length > 40) s = s.Substring(0, 40);
+                Log.Info("[uidump] text '" + s + "' font=" + (txt.font != null ? txt.font.name : "-") + " size=" + txt.fontSize + " color=" + ColorUtility.ToHtmlStringRGBA(txt.color) + " at " + txt.gameObject.name);
+            }
+            n = 0;
+            foreach (var img in UnityEngine.Object.FindObjectsOfType<UnityEngine.UI.Image>())
+            {
+                if (n++ > 60) break;
+                var sp = img.sprite;
+                Log.Info("[uidump] image " + img.gameObject.name + " sprite=" + (sp != null ? sp.name + " " + sp.rect.width + "x" + sp.rect.height + " border " + sp.border : "none") +
+                         " color=" + ColorUtility.ToHtmlStringRGBA(img.color) + " type=" + img.type);
+            }
+            foreach (var b in UnityEngine.Object.FindObjectsOfType<UnityEngine.UI.Selectable>())
+            {
+                var c = b.colors;
+                Log.Info("[uidump] selectable " + b.gameObject.name + " " + b.transition + " normal=" + ColorUtility.ToHtmlStringRGBA(c.normalColor) +
+                         " hover=" + ColorUtility.ToHtmlStringRGBA(c.highlightedColor) + " pressed=" + ColorUtility.ToHtmlStringRGBA(c.pressedColor) +
+                         " disabled=" + ColorUtility.ToHtmlStringRGBA(c.disabledColor));
+            }
+        }
+
         internal void Pump()
         {
+            try { UiDump(); } catch (Exception e) { Log.Info("[uidump] " + e.Message); }
             if (!_started && _startAt >= 0 && Time.realtimeSinceStartup > _startAt && GameInfo.OnMainMenu)
             {
                 if (_autostart == "steamhost")
@@ -1330,6 +1403,7 @@ namespace CCoop.Plugin.Dev
                         b.StopClimbing();
                         b.sleeping = true;
                         b.consciousness = 10f;
+                        CarrySync.DevAutoAccept = true;  // before the host's offer can arrive
                         Log.Info("DEV client falls asleep");
                     }
                     _stage = 230; _stageAt = now + 2f;

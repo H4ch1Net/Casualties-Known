@@ -39,6 +39,8 @@ namespace CCoop.Plugin.Sync
         private const float HugMood = 10f;
 
         private bool _wheelOpen;
+        private static float _boxW;
+        private static string _boxFor;
         private Vector2 _wheelCentre;
         private int _choice = -1;
         private readonly Dictionary<byte, float> _lastHug = new Dictionary<byte, float>();
@@ -95,7 +97,7 @@ namespace CCoop.Plugin.Sync
                     _openedAt = Time.unscaledTime;
                     // Around the mouse, but always whole on screen (the mouse may be at an
                     // edge, or outside the window altogether).
-                    float m = 180f * CoopWindow.Scale;
+                    float m = 220f * CoopWindow.Scale;
                     Vector2 at = Input.mousePosition;
                     _wheelCentre = new Vector2(Mathf.Clamp(at.x, Mathf.Min(m, Screen.width / 2f), Mathf.Max(Screen.width - m, Screen.width / 2f)),
                                                Mathf.Clamp(at.y, Mathf.Min(m, Screen.height / 2f), Mathf.Max(Screen.height - m, Screen.height / 2f)));
@@ -323,27 +325,44 @@ namespace CCoop.Plugin.Sync
         {
             if (_wheelStyle == null)
             {
-                _wheelStyle = new GUIStyle(GUI.skin.box) { fontSize = 14, alignment = TextAnchor.MiddleCenter };
-                _wheelSel = new GUIStyle(_wheelStyle) { fontStyle = FontStyle.Bold };
-                _wheelSel.normal.textColor = new Color(1f, 0.9f, 0.4f);
+                _wheelStyle = new GUIStyle(GUI.skin.box) { fontSize = UiSkin.Body, alignment = TextAnchor.MiddleCenter, wordWrap = false };
+                // The pick is inverted, as a selected choice is everywhere in the overlay.
+                _wheelSel = new GUIStyle(GUI.skin.button) { fontSize = UiSkin.Body, alignment = TextAnchor.MiddleCenter, wordWrap = false };
+                _wheelSel.normal.background = _wheelSel.onNormal.background;
+                _wheelSel.normal.textColor = _wheelSel.onNormal.textColor;
             }
             float k = CoopWindow.Scale;
-            var centre = new Vector2(_wheelCentre.x, Screen.height - _wheelCentre.y);
-            float radius = 110f * k;
-            var old = GUI.color;
-            for (int i = 0; i < Wheel.Length; i++)
+            var oldMatrix = GUI.matrix;
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(k, k, 1f));
+            try
             {
-                float angle = i * (360f / Wheel.Length) * Mathf.Deg2Rad;
-                var at = centre + new Vector2(Mathf.Sin(angle), -Mathf.Cos(angle)) * radius;
-                var r = new Rect(at.x - 55f * k, at.y - 16f * k, 110f * k, 32f * k);
-                GUI.color = i == _choice ? Color.white : new Color(1f, 1f, 1f, 0.8f);
-                GUI.Box(r, (i + 1) + "  " + Lang.T(Wheel[i].label), i == _choice ? _wheelSel : _wheelStyle);
+                var centre = new Vector2(_wheelCentre.x, Screen.height - _wheelCentre.y) / k;
+                // Every box as wide as the widest label (in the player's language).
+                if (_boxFor != Lang.Code)
+                {
+                    _boxFor = Lang.Code;
+                    _boxW = 0f;
+                    for (int i = 0; i < Wheel.Length; i++)
+                        _boxW = Mathf.Max(_boxW, _wheelSel.CalcSize(new GUIContent((i + 1) + "  " + Lang.T(Wheel[i].label))).x);
+                    _boxW += 10f;
+                }
+                const float radius = 125f, boxH = 30f;
+                var old = GUI.color;
+                for (int i = 0; i < Wheel.Length; i++)
+                {
+                    float angle = i * (360f / Wheel.Length) * Mathf.Deg2Rad;
+                    var at = centre + new Vector2(Mathf.Sin(angle), -Mathf.Cos(angle)) * radius;
+                    var r = new Rect(at.x - _boxW / 2f, at.y - boxH / 2f, _boxW, boxH);
+                    GUI.color = i == _choice ? Color.white : new Color(1f, 1f, 1f, 0.85f);
+                    GUI.Box(r, (i + 1) + "  " + Lang.T(Wheel[i].label), i == _choice ? _wheelSel : _wheelStyle);
+                }
+                GUI.color = old;
+                string hint = _sticky ? Lang.T("Click a gesture (or press its number). Esc to close")
+                                      : Lang.T("Move the mouse onto a gesture and let go");
+                var hs = _wheelStyle.CalcSize(new GUIContent(hint));
+                GUI.Box(new Rect(centre.x - hs.x / 2f, centre.y + radius + boxH, hs.x, hs.y + 2f), hint, _wheelStyle);
             }
-            GUI.color = old;
-            string hint = _sticky ? Lang.T("Click a gesture (or press its number). Esc to close")
-                                  : Lang.T("Move the mouse onto a gesture and let go");
-            var hr = new Rect(centre.x - 160f * k, centre.y + radius + 26f * k, 320f * k, 26f * k);
-            GUI.Box(hr, hint, _wheelStyle);
+            finally { GUI.matrix = oldMatrix; }
         }
     }
 

@@ -16,10 +16,10 @@ namespace CCoop.Plugin.UI
     internal static class CoopWindow
     {
         private const int WindowId = 0x0C00F;
-        private const float Width = 470f;
+        private const float Width = 490f;
 
         private static bool _open;
-        private static Rect _rect = new Rect(20, 60, Width, 10);
+        private static Rect _rect = new Rect(20, 112, Width, 10);  // below the game's held-item box
         private static string _address;
         private static string _lanPassword = "";
         private static string _promptPassword = "";
@@ -89,12 +89,12 @@ namespace CCoop.Plugin.UI
         private static void Styles()
         {
             if (_title != null) return;
-            _title = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold };
-            _small = new GUIStyle(GUI.skin.label) { fontSize = 11, wordWrap = true };
-            _small.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
+            _title = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Head };
+            _small = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Small, wordWrap = true };
+            _small.normal.textColor = UiSkin.Dim;
             _right = new GUIStyle(_small) { alignment = TextAnchor.MiddleRight, wordWrap = false };
             _bad = new GUIStyle(_small);
-            _bad.normal.textColor = new Color(1f, 0.6f, 0.45f);
+            _bad.normal.textColor = UiSkin.Bad;
             _box = new GUIStyle(GUI.skin.box);
         }
 
@@ -111,8 +111,10 @@ namespace CCoop.Plugin.UI
                 {
                     int n = Coop.InSession ? Coop.Session.PeerCount : 0;
                     string label = n > 0 ? (n == 1 ? Lang.T("Co-op · 1 player  (F1)") : Lang.F("Co-op · {0} players  (F1)", n)) : Lang.T("Co-op  (F1)");
-                    UiMouse.Claim(new Rect(12, 12, 210, 34));
-                    if (GUI.Button(new Rect(12, 12, 210, 34), label)) _open = true;
+                    var size = GUI.skin.button.CalcSize(new GUIContent(label));
+                    var r = new Rect(12, 12, Mathf.Max(150f, size.x + 12f), 34);
+                    UiMouse.Claim(r);
+                    if (GUI.Button(r, label)) _open = true;
                 }
                 if (!_open) return;
 
@@ -194,7 +196,7 @@ namespace CCoop.Plugin.UI
             {
                 GUILayout.BeginHorizontal(_box);
                 GUILayout.Label(Lang.T("Lost the host. Reconnecting (your character is saved)..."), _small);
-                if (GUILayout.Button(Lang.T("Stop"), GUILayout.Width(60))) rt.CancelReconnect();
+                if (GUILayout.Button(Lang.T("Stop"), GUILayout.MinWidth(60), GUILayout.ExpandWidth(false))) rt.CancelReconnect();
                 GUILayout.EndHorizontal();
             }
 
@@ -256,7 +258,7 @@ namespace CCoop.Plugin.UI
                         GUILayout.Label(string.IsNullOrEmpty(b.Name) ? b.Key : b.Name, GUILayout.Width(170));
                         GUILayout.Label(b.When, _small, GUILayout.Width(80));
                         GUILayout.FlexibleSpace();
-                        if (GUILayout.Button(Lang.T("Unban"), GUILayout.Width(60))) BanList.Unban(b.Key);
+                        if (GUILayout.Button(Lang.T("Unban"), GUILayout.MinWidth(60), GUILayout.ExpandWidth(false))) BanList.Unban(b.Key);
                         GUILayout.EndHorizontal();
                     }
                     GUILayout.EndScrollView();
@@ -280,7 +282,7 @@ namespace CCoop.Plugin.UI
             var rules = HostRules.FromConfig();
             int preset = rules.Preset;
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Difficulty"), GUILayout.Width(90));
+            GUILayout.Label(Lang.T("Difficulty"), GUILayout.Width(134));
             int pickPreset = GUILayout.Toolbar(preset, Lang.All(HostRules.PresetNames));
             GUILayout.EndHorizontal();
             if (pickPreset != preset && pickPreset >= 0) HostRules.ApplyPreset(pickPreset);
@@ -291,7 +293,7 @@ namespace CCoop.Plugin.UI
             {
                 int cur = Mathf.Max(0, System.Array.IndexOf(LobbyTypes, cfg.LobbyType.Value));
                 GUILayout.BeginHorizontal();
-                GUILayout.Label(Lang.T("Who can join"), GUILayout.Width(90));
+                GUILayout.Label(Lang.T("Who can join"), GUILayout.Width(134));
                 int pick = GUILayout.Toolbar(cur, new[] { Lang.T("Friends"), Lang.T("Public"), Lang.T("Invite only") });
                 GUILayout.EndHorizontal();
                 if (pick != cur)
@@ -308,15 +310,15 @@ namespace CCoop.Plugin.UI
 
             int floor = Mathf.Max(2, live != null ? live.PeerCount : 2);
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Players"), GUILayout.Width(90));
-            if (GUILayout.Button(Lang.T("-"), GUILayout.Width(28)) && cfg.MaxPlayers.Value > floor) cfg.MaxPlayers.Value--;
+            GUILayout.Label(Lang.T("Players"), GUILayout.Width(134));
+            if (GUILayout.Button(Lang.T("-"), GUILayout.MinWidth(28), GUILayout.ExpandWidth(false)) && cfg.MaxPlayers.Value > floor) cfg.MaxPlayers.Value--;
             GUILayout.Label(cfg.MaxPlayers.Value.ToString(), GUILayout.Width(24));
-            if (GUILayout.Button(Lang.T("+"), GUILayout.Width(28)) && cfg.MaxPlayers.Value < NetSession.MaxPeers) cfg.MaxPlayers.Value++;
+            if (GUILayout.Button(Lang.T("+"), GUILayout.MinWidth(28), GUILayout.ExpandWidth(false)) && cfg.MaxPlayers.Value < NetSession.MaxPeers) cfg.MaxPlayers.Value++;
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Password"), GUILayout.Width(90));
+            GUILayout.Label(Lang.T("Password"), GUILayout.Width(134));
             string pw = Field(live == null ? "hostpw" : "livepw", cfg.HostPassword.Value, 64, true);
             if (pw != cfg.HostPassword.Value) cfg.HostPassword.Value = pw;
             GUILayout.EndHorizontal();
@@ -324,7 +326,7 @@ namespace CCoop.Plugin.UI
 
             int rule = Mathf.Max(0, System.Array.IndexOf(RespawnRules, cfg.Respawn.Value));
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("When you die"), GUILayout.Width(90));
+            GUILayout.Label(Lang.T("When you die"), GUILayout.Width(134));
             int newRule = GUILayout.Toolbar(rule, new[] { Lang.T("Next layer"), Lang.T("Permadeath"), Lang.T("Quick") });
             GUILayout.EndHorizontal();
             if (newRule != rule) cfg.Respawn.Value = RespawnRules[newRule];
@@ -335,7 +337,7 @@ namespace CCoop.Plugin.UI
             int share = cfg.ExitShare.Value;
             int shareAt = share <= 0 ? 0 : share >= 100 ? 2 : share == 50 ? 1 : -1;
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Descend when"), GUILayout.Width(90));
+            GUILayout.Label(Lang.T("Descend when"), GUILayout.Width(134));
             int newShare = GUILayout.Toolbar(shareAt, new[] { Lang.T("First arrives"), Lang.T("Half are there"), Lang.T("All are there") });
             GUILayout.EndHorizontal();
             if (newShare != shareAt && newShare >= 0) cfg.ExitShare.Value = ExitShares[newShare];
@@ -344,9 +346,9 @@ namespace CCoop.Plugin.UI
 
             // One toggle a line once translated text gets long (a German "Teammate arrows" is not short).
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Help"), GUILayout.Width(90));
+            GUILayout.Label(Lang.T("Help"), GUILayout.Width(134));
             GUILayout.BeginVertical();
-            bool narrow = (Lang.T("Teammate arrows") + Lang.T("Name tags") + Lang.T("Spawn apart")).Length > 40;
+            bool narrow = Wide(Width - 170f, " " + Lang.T("Teammate arrows"), " " + Lang.T("Name tags"), " " + Lang.T("Spawn apart"));
             if (!narrow) GUILayout.BeginHorizontal();
             cfg.HostArrows.Value = GUILayout.Toggle(cfg.HostArrows.Value, " " + Lang.T("Teammate arrows"), GUILayout.ExpandWidth(false));
             cfg.HostNameTags.Value = GUILayout.Toggle(cfg.HostNameTags.Value, " " + Lang.T("Name tags"), GUILayout.ExpandWidth(false));
@@ -355,30 +357,30 @@ namespace CCoop.Plugin.UI
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Danger"), GUILayout.Width(90));
+            GUILayout.Label(Lang.T("Danger"), GUILayout.Width(134));
             cfg.FriendlyFire.Value = GUILayout.Toggle(cfg.FriendlyFire.Value, " " + Lang.T("Friendly fire (shots and blows hurt teammates)"));
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Voices carry"), GUILayout.Width(90));
+            GUILayout.Label(Lang.T("Voices carry"), GUILayout.Width(134));
             int pct = Mathf.RoundToInt(GUILayout.HorizontalSlider(cfg.VoiceRangePercent.Value, 25f, 100f, GUILayout.Width(200)) / 5f) * 5;
             if (pct != cfg.VoiceRangePercent.Value) cfg.VoiceRangePercent.Value = pct;
             GUILayout.Label(Lang.F("{0}%", pct), GUILayout.Width(50));
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Loot"), GUILayout.Width(90));
+            GUILayout.Label(Lang.T("Loot"), GUILayout.Width(134));
             int loot = GUILayout.Toolbar(Mathf.Clamp(cfg.LootScale.Value, 0, 1), Lang.All(HostRules.LootNames));
             if (loot != cfg.LootScale.Value) cfg.LootScale.Value = loot;
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Enemies"), GUILayout.Width(90));
+            GUILayout.Label(Lang.T("Enemies"), GUILayout.Width(134));
             int danger = GUILayout.Toolbar(Mathf.Clamp(cfg.DangerScale.Value, 0, 2), Lang.All(HostRules.DangerNames));
             if (danger != cfg.DangerScale.Value) cfg.DangerScale.Value = danger;
             GUILayout.EndHorizontal();
             GUILayout.Label(Lang.T("Scales with the number of players, on top of the game's own run settings."), _small);
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Lang.T("Speed-up"), GUILayout.Width(90));
+            GUILayout.Label(Lang.T("Speed-up"), GUILayout.Width(134));
             cfg.AllowSpeedUp.Value = GUILayout.Toggle(cfg.AllowSpeedUp.Value, " " + (cfg.AllowSpeedUp.Value ? Lang.T("Anyone may fast-forward time") : Lang.T("Time always runs at normal speed (sleep still fast-forwards)")));
             GUILayout.EndHorizontal();
         }
@@ -397,8 +399,8 @@ namespace CCoop.Plugin.UI
                 GUILayout.BeginHorizontal(_box);
                 bool picked = CoopSaves.PendingContinue == r.Id;
                 GUILayout.Label(Lang.F("Layer {0}", r.Layer) + " · " + r.When.ToString("MMM d HH:mm") + (r.Players.Length > 0 ? " · " + r.Players : ""), _small, GUILayout.Width(280));
-                if (GUILayout.Button(picked ? Lang.T("Picked") : Lang.T("Continue"), GUILayout.Width(70))) CoopSaves.PendingContinue = picked ? null : r.Id;
-                if (GUILayout.Button(Lang.T("Delete"), GUILayout.Width(55))) { CoopSaves.Delete(r.Id); if (picked) CoopSaves.PendingContinue = null; }
+                if (GUILayout.Button(picked ? Lang.T("Picked") : Lang.T("Continue"), GUILayout.MinWidth(70), GUILayout.ExpandWidth(false))) CoopSaves.PendingContinue = picked ? null : r.Id;
+                if (GUILayout.Button(Lang.T("Delete"), GUILayout.MinWidth(55), GUILayout.ExpandWidth(false))) { CoopSaves.Delete(r.Id); if (picked) CoopSaves.PendingContinue = null; }
                 GUILayout.EndHorizontal();
             }
             if (CoopSaves.PendingContinue != null) GUILayout.Label(Lang.T("Host, then press \"Start the saved run\" when your friends are in."), _small);
@@ -424,7 +426,7 @@ namespace CCoop.Plugin.UI
             _friendsTab = which == 0;
             GUILayout.FlexibleSpace();
             GUI.enabled = !lobby.Searching && !rt.Connecting;
-            if (GUILayout.Button(lobby.Searching ? Lang.T("Searching...") : Lang.T("Refresh"), GUILayout.Width(100))) Refresh(rt);
+            if (GUILayout.Button(lobby.Searching ? Lang.T("Searching...") : Lang.T("Refresh"), GUILayout.MinWidth(100), GUILayout.ExpandWidth(false))) Refresh(rt);
             GUI.enabled = !rt.Connecting;
             GUILayout.EndHorizontal();
 
@@ -451,7 +453,8 @@ namespace CCoop.Plugin.UI
             GUILayout.BeginHorizontal(_box);
             AvatarBox(l.HostId, 36);
             GUILayout.BeginVertical();
-            GUILayout.Label(l.Host + (l.Locked ? "  [" + Lang.T("password") + "]" : ""), GUILayout.Width(220));
+            string hostLine = l.Host + (l.Locked ? "  [" + Lang.T("password") + "]" : "");
+            GUILayout.Label(hostLine, UiSkin.Fit(GUI.skin.label, hostLine), GUILayout.Width(220));
             // The advert carries the layer number (older builds sent "Layer 5").
             string where = l.InRun ? (string.IsNullOrEmpty(l.Layer) ? Lang.T("In a run") : int.TryParse(l.Layer, out var depth) ? Lang.F("Layer {0}", depth) : l.Layer) : Lang.T("In the menu");
             string sub = where + " · " + Lang.F("{0}/{1} players", l.Players, l.Max);
@@ -470,7 +473,7 @@ namespace CCoop.Plugin.UI
 
             bool was = GUI.enabled;
             GUI.enabled = was && why == null && !full;
-            if (GUILayout.Button(full ? Lang.T("Full") : Lang.T("Join"), GUILayout.Width(60), GUILayout.Height(36)))
+            if (GUILayout.Button(full ? Lang.T("Full") : Lang.T("Join"), GUILayout.MinWidth(60), GUILayout.ExpandWidth(false), GUILayout.Height(36)))
             {
                 _promptPassword = "";
                 rt.JoinSteamLobby(l.Id);
@@ -493,7 +496,7 @@ namespace CCoop.Plugin.UI
             GUILayout.BeginHorizontal();
             GUILayout.Label(Lang.T("Password"), GUILayout.Width(70));
             _lanPassword = Field("lanpw", _lanPassword, 64, true);
-            if (GUILayout.Button(Lang.T("Join"), GUILayout.Width(70), GUILayout.Height(22))) rt.JoinLan(_address, _lanPassword);
+            if (GUILayout.Button(Lang.T("Join"), GUILayout.MinWidth(70), GUILayout.ExpandWidth(false), GUILayout.Height(22))) rt.JoinLan(_address, _lanPassword);
             GUILayout.EndHorizontal();
             GUILayout.Label(Lang.T("Leave the password empty if the host has none."), _small);
         }
@@ -522,7 +525,7 @@ namespace CCoop.Plugin.UI
                 rt.JoinSteamLobby(l.Id, pw);
             }
             GUI.enabled = true;
-            if (GUILayout.Button(Lang.T("Cancel"), GUILayout.Width(80), GUILayout.Height(28)))
+            if (GUILayout.Button(Lang.T("Cancel"), GUILayout.MinWidth(80), GUILayout.ExpandWidth(false), GUILayout.Height(28)))
             {
                 rt.PasswordPrompt = null;
                 rt.LastMessage = "";
@@ -579,7 +582,7 @@ namespace CCoop.Plugin.UI
 
             GUILayout.Space(6);
             GUILayout.Label(Lang.F("Players ({0}/{1})", s.PeerCount, HostRules.Current.MaxPlayers));
-            _scroll = GUILayout.BeginScrollView(_scroll, GUILayout.Height(Mathf.Min(8 + s.PeerCount * 36, 230)));
+            _scroll = GUILayout.BeginScrollView(_scroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.Height(Mathf.Min(12 + s.PeerCount * 64, 260)));
             var ids = new List<byte>();
             foreach (var p in s.Peers) ids.Add(p.Id);
             ids.Sort();
@@ -677,7 +680,7 @@ namespace CCoop.Plugin.UI
         private static void ComfortRow()
         {
             var cfg = CoopPlugin.Instance;
-            bool narrow = (Lang.T("Reduce flashes and shaking") + Lang.T("Colour-blind safe colours")).Length > 52;
+            bool narrow = Wide(Width - 40f, " " + Lang.T("Reduce flashes and shaking"), " " + Lang.T("Colour-blind safe colours"));
             if (!narrow) GUILayout.BeginHorizontal();
             cfg.ReduceFlashes.Value = GUILayout.Toggle(cfg.ReduceFlashes.Value, " " + Lang.T("Reduce flashes and shaking"), GUILayout.ExpandWidth(false));
             cfg.ColorBlindColors.Value = GUILayout.Toggle(cfg.ColorBlindColors.Value, " " + Lang.T("Colour-blind safe colours"), GUILayout.ExpandWidth(false));
@@ -687,45 +690,58 @@ namespace CCoop.Plugin.UI
         private static void PlayerRow(CoopRuntime rt, NetSession s, PeerInfo p, PlayerRecord rec)
         {
             bool me = p.Id == s.LocalId;
+            // Two lines: who they are (and what you can do), then how they're doing.
             GUILayout.BeginHorizontal(_box);
-            AvatarBox(rec.SteamId, 24);
+            AvatarBox(rec.SteamId, 32);
+            GUILayout.BeginVertical();
             var voice = Coop.Get<VoiceSync>();
             bool talking = voice != null && (me ? voice.Transmitting : voice.IsTalking(p.Id));
-            GUILayout.Label(p.Name + (me ? " (" + Lang.T("you") + ")" : "") + (p.IsHost ? " [" + Lang.T("host") + "]" : "") + (talking ? "  ((o))" : ""), GUILayout.Width(150));
-            GUILayout.Label(GameInfo.CharacterName(rec.Character), _small, GUILayout.Width(62));
-            GUILayout.Label(Lang.T(rec.Status), _small, GUILayout.Width(62));
+            string who = p.Name + (me ? " (" + Lang.T("you") + ")" : "") + (p.IsHost ? " [" + Lang.T("host") + "]" : "") + (talking ? "  ((o))" : "");
+            GUILayout.Label(who, UiSkin.Fit(GUI.skin.label, who));
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(GameInfo.CharacterName(rec.Character) + " · " + Lang.T(rec.Status), _small, GUILayout.ExpandWidth(false));
             var fpsColor = GUI.color;
-            if (rec.Fps > 0 && rec.Fps < ConnectionBadge.SlowFps) GUI.color = new Color(1f, 0.55f, 0.45f);
-            GUILayout.Label(rec.Fps > 0 ? rec.Fps + " fps" : "", _small, GUILayout.Width(46));
+            if (rec.Fps > 0 && rec.Fps < ConnectionBadge.SlowFps) GUI.color = UiSkin.Bad;
+            if (rec.Fps > 0) GUILayout.Label("· " + rec.Fps + " fps", _small, GUILayout.ExpandWidth(false));
             GUI.color = fpsColor;
-
             string ping = "";
             if (!p.IsHost && p.RoundTripMs >= 0)
             {
-                ping = p.RoundTripMs + " ms";
+                ping = "· " + p.RoundTripMs + " ms";
                 if (p.Quality >= 0f && p.Quality < 0.95f) ping += " · " + Mathf.RoundToInt((1f - p.Quality) * 100f) + "%";
             }
             var old = GUI.color;
             GUI.color = PingColor(p.RoundTripMs, p.Quality);
-            GUILayout.Label(ping, _small, GUILayout.Width(70));
+            if (ping.Length > 0) GUILayout.Label(ping, _small, GUILayout.ExpandWidth(false));
             GUI.color = old;
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            GUILayout.EndVertical();
 
             GUILayout.FlexibleSpace();
             // How loud this teammate's voice is for you (only you): 100% / 50% / muted / 150%.
-            if (!me && voice != null && VoiceSync.Available && GUILayout.Button(VoiceSync.VolumeLabel(rec), GUILayout.Width(56))) VoiceSync.CycleVolume(rec);
-            if (!me && Coop.WorldLive && rec.HasPosition && GUILayout.Button(Lang.T("Check"), GUILayout.Width(52))) TeammatePanel.Open(p.Id);
+            if (!me && voice != null && VoiceSync.Available && GUILayout.Button(VoiceSync.VolumeLabel(rec), GUILayout.MinWidth(56), GUILayout.ExpandWidth(false))) VoiceSync.CycleVolume(rec);
+            if (!me && Coop.WorldLive && rec.HasPosition && GUILayout.Button(Lang.T("Check"), GUILayout.MinWidth(52), GUILayout.ExpandWidth(false))) TeammatePanel.Open(p.Id);
             if (s.IsHost && !me)
             {
-                if (GUILayout.Button(Lang.T("Kick"), GUILayout.Width(42))) s.Kick(p.Id, Lang.N("Kicked by the host."));
+                if (GUILayout.Button(Lang.T("Kick"), GUILayout.MinWidth(42), GUILayout.ExpandWidth(false))) s.Kick(p.Id, Lang.N("Kicked by the host."));
                 bool was = GUI.enabled;
                 GUI.enabled = was && !string.IsNullOrEmpty(p.Address);
-                if (GUILayout.Button(Lang.T("Ban"), GUILayout.Width(40))) rt.Ban(p.Id);
+                if (GUILayout.Button(Lang.T("Ban"), GUILayout.MinWidth(40), GUILayout.ExpandWidth(false))) rt.Ban(p.Id);
                 GUI.enabled = was;
             }
             GUILayout.EndHorizontal();
         }
 
         // ------------------------------------------------------------------ helpers
+
+        /// <summary>Whether these toggles side by side would be wider than <paramref name="room"/> (then they stack).</summary>
+        private static bool Wide(float room, params string[] labels)
+        {
+            float w = 0f;
+            foreach (var l in labels) w += GUI.skin.toggle.CalcSize(new GUIContent(l)).x + 8f;
+            return w > room;
+        }
 
         private static void AvatarBox(ulong steamId, float size)
         {
@@ -786,22 +802,33 @@ namespace CCoop.Plugin.UI
             if (Lines.Count == 0) return;
             if (_style == null)
             {
-                _style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 14, fontStyle = FontStyle.Bold };
-                _style.normal.textColor = new Color(1f, 0.85f, 0.4f);
+                _style = new GUIStyle(GUI.skin.box) { alignment = TextAnchor.MiddleCenter, fontSize = UiSkin.Body, wordWrap = false };
+                foreach (var st in new[] { _style.normal, _style.hover, _style.active }) st.textColor = UiSkin.Ink;
             }
             float now = Time.unscaledTime;
             Lines.RemoveAll(l => l.Until < now);
-            float y = 50;
-            foreach (var l in Lines)
+            float k = CoopWindow.Scale;
+            var oldMatrix = GUI.matrix;
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(k, k, 1f));
+            try
             {
-                var shadow = new Rect(Screen.width / 2f - 299, y + 1, 600, 22);
-                var old = _style.normal.textColor;
-                _style.normal.textColor = Color.black;
-                GUI.Label(shadow, l.Text, _style);
-                _style.normal.textColor = old;
-                GUI.Label(new Rect(Screen.width / 2f - 300, y, 600, 22), l.Text, _style);
-                y += 22;
+                // Each notice in its own small block, like the game's pop-up notifications,
+                // fading out over its last second.
+                float w = Screen.width / k;
+                float y = 46f;
+                var oldColor = GUI.color;
+                foreach (var l in Lines)
+                {
+                    var style = UiSkin.Fit(_style, l.Text);
+                    var size = style.CalcSize(new GUIContent(l.Text));
+                    float bw = Mathf.Min(size.x + 4f, w - 40f);
+                    GUI.color = new Color(1f, 1f, 1f, Mathf.Clamp01(l.Until - now));
+                    GUI.Box(new Rect(w / 2f - bw / 2f, y, bw, size.y + 2f), l.Text, style);
+                    y += size.y + 6f;
+                }
+                GUI.color = oldColor;
             }
+            finally { GUI.matrix = oldMatrix; }
         }
     }
 }

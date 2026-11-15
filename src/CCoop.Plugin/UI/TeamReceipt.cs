@@ -126,16 +126,13 @@ namespace CCoop.Plugin.UI
         internal override void Gui()
         {
             if (_showFrom < 0f || Time.unscaledTime < _showFrom || Fates.Count < 2) return;
-            if (_style == null) _style = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true };
+            if (_style == null) _style = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Body, wordWrap = true };
             float a = Mathf.Clamp01((Time.unscaledTime - _showFrom) / 1.5f);
             var old = GUI.color;
             GUI.color = new Color(1f, 1f, 1f, a);
             float w = 400f, h = 78f + 24f * Fates.Count;
             var r = new Rect(Screen.width - w - 24f, 24f, w, h);
-            var tint = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, 0.6f * a);
-            GUI.DrawTexture(r, Texture2D.whiteTexture);
-            GUI.color = tint;
+            GUI.Box(r, GUIContent.none);
             GUILayout.BeginArea(new Rect(r.x + 10f, r.y + 8f, r.width - 20f, r.height - 12f));
             GUILayout.Label(Lang.T("Your team"), _style);
             foreach (var f in Fates.Values) GUILayout.Label(Line(f), _style);

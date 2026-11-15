@@ -22,7 +22,7 @@ namespace CCoop.Plugin.UI
             var me = GameInfo.LocalBody;
             if (cam == null || me == null) return;
             if (_arrow == null) _arrow = MakeArrow(32);
-            if (_label == null) _label = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontSize = 12, fontStyle = FontStyle.Bold };
+            if (_label == null) _label = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontSize = UiSkin.Small, wordWrap = false };
 
             Vector2 eye = LifeSync.Spectating ? (Coop.Get<LifeSync>()?.TargetPosition() ?? (Vector2)me.transform.position) : (Vector2)me.transform.position;
             var centre = new Vector2(Screen.width / 2f, Screen.height / 2f);

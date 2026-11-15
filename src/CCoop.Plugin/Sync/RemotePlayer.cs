@@ -330,8 +330,8 @@ namespace CCoop.Plugin.Sync
             if (!Visible) return;
             if (_name == null)
             {
-                _name = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 12, fontStyle = FontStyle.Bold };
-                _talk = new GUIStyle(GUI.skin.box) { alignment = TextAnchor.MiddleCenter, fontSize = 12, wordWrap = true };
+                _name = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = UI.UiSkin.Small, wordWrap = false };
+                _talk = new GUIStyle(GUI.skin.box) { alignment = TextAnchor.MiddleCenter, fontSize = UI.UiSkin.Small, wordWrap = true };
             }
             var head = _rig.Limbs.Length > 0 && _rig.Limbs[0] != null ? _rig.Limbs[0].position : _rig.BodyRoot.position;
             var sp = cam.WorldToScreenPoint(head + Vector3.up * 1.3f);
@@ -341,22 +341,26 @@ namespace CCoop.Plugin.Sync
             string label = rec.Name + (!rec.Alive ? " (dead)" : rec.Conscious ? "" : rec.Sleeping ? " (asleep)" : " (out cold)");
             var voice = Coop.Get<VoiceSync>();
             if (voice != null && voice.IsTalking(_id)) label += "  ((o))";
-            var old = _name.normal.textColor;
-            _name.normal.textColor = Color.black;
-            GUI.Label(new Rect(x - 99, y - 9, 200, 20), label, _name);
-            _name.normal.textColor = rec.Alive ? new Color(0.85f, 1f, 0.85f) : new Color(1f, 0.5f, 0.5f);
-            GUI.Label(new Rect(x - 100, y - 10, 200, 20), label, _name);
-            _name.normal.textColor = old;
+            // White on a one-pixel black outline, as the game writes over its world.
+            var nameStyle = UI.UiSkin.Fit(_name, label);
+            var old = nameStyle.normal.textColor;
+            nameStyle.normal.textColor = Color.black;
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                    if (dx != 0 || dy != 0) GUI.Label(new Rect(x - 100 + dx, y - 10 + dy, 200, 20), label, nameStyle);
+            nameStyle.normal.textColor = rec.Alive ? UI.UiSkin.Ink : UI.UiSkin.Bad;
+            GUI.Label(new Rect(x - 100, y - 10, 200, 20), label, nameStyle);
+            nameStyle.normal.textColor = old;
 
             var avatar = Net.SteamServices.Avatar(rec.SteamId);
             if (avatar != null)
             {
-                float half = _name.CalcSize(new GUIContent(label)).x / 2f;
+                float half = nameStyle.CalcSize(new GUIContent(label)).x / 2f;
                 GUI.DrawTexture(new Rect(x - half - 22, y - 9, 18, 18), avatar);
             }
 
             if (_speech != null && Time.unscaledTime < _speechUntil)
-                GUI.Box(new Rect(x - 130, y - 52, 260, 38), _speech, _talk);
+                GUI.Box(new Rect(x - 130, y - 52, 260, 38), _speech, UI.UiSkin.Fit(_talk, _speech));
         }
 
         private void Release()

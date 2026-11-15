@@ -12,10 +12,10 @@ namespace CCoop.Plugin.UI
         {
             if (_top == null)
             {
-                _top = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 18, fontStyle = FontStyle.Bold };
-                _top.normal.textColor = Color.white;
-                _bottom = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 13 };
-                _bottom.normal.textColor = new Color(0.85f, 0.85f, 0.85f);
+                _top = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = UiSkin.Head, wordWrap = false };
+                _top.normal.textColor = UiSkin.Ink;
+                _bottom = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = UiSkin.Small, wordWrap = true };
+                _bottom.normal.textColor = UiSkin.Dim;
             }
             float k = CoopWindow.Scale;
             var old = GUI.matrix;
@@ -24,12 +24,9 @@ namespace CCoop.Plugin.UI
             {
                 float w = Screen.width / k, h = Screen.height / k;
                 var box = new Rect(w / 2f - 280f, h - 96f - row * 70f, 560f, 62f);
-                var c = GUI.color;
-                GUI.color = new Color(0f, 0f, 0f, 0.55f);
-                GUI.DrawTexture(box, Texture2D.whiteTexture);
-                GUI.color = c;
-                GUI.Label(new Rect(box.x, box.y + 6f, box.width, 26f), top, _top);
-                if (!string.IsNullOrEmpty(bottom)) GUI.Label(new Rect(box.x, box.y + 34f, box.width, 22f), bottom, _bottom);
+                GUI.Box(box, GUIContent.none);
+                GUI.Label(new Rect(box.x, box.y + 6f, box.width, 26f), top, UiSkin.Fit(_top, top));
+                if (!string.IsNullOrEmpty(bottom)) GUI.Label(new Rect(box.x + 8f, box.y + 33f, box.width - 16f, 24f), bottom, UiSkin.Fit(_bottom, bottom));
             }
             finally
             {

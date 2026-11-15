@@ -175,7 +175,7 @@ namespace CCoop.Plugin.Sync
             if (!trying) return;
             if (_mic == null)
             {
-                _mic = new GUIStyle(GUI.skin.box) { fontSize = 13, alignment = TextAnchor.MiddleCenter };
+                _mic = new GUIStyle(GUI.skin.box) { fontSize = UI.UiSkin.Small, alignment = TextAnchor.MiddleCenter };
                 _mic.normal.textColor = Color.white;
             }
             bool speaking = CanSpeak();

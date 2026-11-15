@@ -195,8 +195,8 @@ namespace CCoop.Plugin.Sync
         {
             if (_style == null)
             {
-                _style = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true };
-                _field = new GUIStyle(GUI.skin.textField) { fontSize = 14 };
+                _style = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Body, wordWrap = true };
+                _field = new GUIStyle(GUI.skin.textField) { fontSize = UiSkin.Body };
             }
             float k = CoopWindow.Scale;
             var old = GUI.matrix;
@@ -236,22 +236,28 @@ namespace CCoop.Plugin.Sync
                     float age = now - l.At;
                     float alpha = Typing ? 1f : Mathf.Clamp01((FadeAfter - age) / 2f);
                     if (alpha <= 0f) continue;
-                    float lh = _style.CalcHeight(new GUIContent(l.Text), width);
+                    var ls = UiSkin.Fit(_style, l.Text);
+                    float lh = ls.CalcHeight(new GUIContent(l.Text), width);
                     lineY -= lh;
                     var c = l.Color;
-                    _style.normal.textColor = new Color(0f, 0f, 0f, alpha * 0.8f);
-                    GUI.Label(new Rect(x + 1, lineY + 1, width, lh), l.Text, _style);
-                    _style.normal.textColor = new Color(c.r, c.g, c.b, alpha);
-                    GUI.Label(new Rect(x, lineY, width, lh), l.Text, _style);
+                    var keep = ls.normal.textColor;
+                    ls.normal.textColor = new Color(0f, 0f, 0f, alpha * 0.85f);
+                    GUI.Label(new Rect(x + 1, lineY + 1, width, lh), l.Text, ls);
+                    ls.normal.textColor = new Color(c.r, c.g, c.b, alpha);
+                    GUI.Label(new Rect(x, lineY, width, lh), l.Text, ls);
+                    ls.normal.textColor = keep;
                 }
 
                 if (Typing)
                 {
                     // The key that opened chat mustn't also become its first letter.
                     if (Time.frameCount == _openedFrame && _openedBy != KeyCode.Return) _draft = "";
-                    GUI.Label(new Rect(x - 52f, y + 2f, 50f, 24f), Lang.T("Say:"), _style);
+                    // "Say:" then the field, both clear of the game's buttons on the left.
+                    string say = Lang.T("Say:");
+                    float sw = _style.CalcSize(new GUIContent(say)).x;
+                    GUI.Label(new Rect(x, y + 3f, sw + 4f, 24f), say, _style);
                     GUI.SetNextControlName("ccoop_chat");
-                    _draft = GUI.TextField(new Rect(x, y, width, 26f), _draft ?? "", MaxLength, _field);
+                    _draft = GUI.TextField(new Rect(x + sw + 8f, y, width - sw - 8f, 26f), _draft ?? "", MaxLength, UiSkin.Fit(_field, _draft));
                     if (Event.current.type == EventType.Layout && GUI.GetNameOfFocusedControl() != "ccoop_chat") _focusPending = true;
                     if (_focusPending)
                     {

@@ -553,7 +553,7 @@ namespace CCoop.Plugin.Runtime
             }
             try
             {
-                Fonts.Apply();
+                UiSkin.Apply();
                 if (Coop.Session != null)
                     foreach (var m in _modules) Safe(m.Gui, m, "gui");
                 ConditionFx.DrawFlash();

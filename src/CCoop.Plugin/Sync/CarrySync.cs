@@ -455,8 +455,14 @@ namespace CCoop.Plugin.Sync
             // Limp, but someone awake isn't put in shock (just kept off their feet).
             body.shock = Mathf.Max(body.shock, _riding ? 12f : 30f);
             if (body.standing) body.Ragdoll();
-            // Glide to the carrier rather than snapping (a carrier's step shouldn't fling the body).
-            _hold = Vector2.MoveTowards(_hold, anchor.Value, 16f * Time.fixedDeltaTime);
+            // Glide to the carrier rather than snapping (a carrier's step shouldn't fling the
+            // body), and never into rock: pushed into a wall, physics could pop the body out
+            // on the far side. Where the hold point is solid, the body waits for open air.
+            var next = Vector2.MoveTowards(_hold, anchor.Value, 16f * Time.fixedDeltaTime);
+            var w = WorldGeneration.world;
+            bool solid = false;
+            try { solid = w != null && w.GetBlock(next) != 0; } catch { /* outside the world */ }
+            if (!solid) _hold = next;
             rb.velocity = Vector2.zero;
             rb.MovePosition(_hold);
 
@@ -498,7 +504,7 @@ namespace CCoop.Plugin.Sync
 
         private void DrawOffers()
         {
-            if (_box == null) _box = new GUIStyle(GUI.skin.box) { fontSize = 14, alignment = TextAnchor.UpperCenter };
+            if (_box == null) _box = new GUIStyle(GUI.skin.box) { fontSize = UiSkin.Body, alignment = TextAnchor.UpperCenter };
             float k = CoopWindow.Scale;
             var old = GUI.matrix;
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(k, k, 1f));
@@ -508,13 +514,9 @@ namespace CCoop.Plugin.Sync
                 float y = 100f;
                 foreach (var kv in new List<KeyValuePair<byte, KeyValuePair<CarryMode, float>>>(_offers))
                 {
-                    var r = new Rect(w / 2f - 190f, y, 380f, 66f);
-                    UiMouse.Claim(r);
                     string how = kv.Value.Key == CarryMode.Drag ? Lang.T("drag you along") : kv.Value.Key == CarryMode.Back ? Lang.T("carry you on their back") : Lang.T("carry you in their arms");
-                    GUI.Box(r, Lang.F("{0} offers to {1}", Coop.Player(kv.Key).Name, how), _box);
-                    if (GUI.Button(new Rect(r.x + 40f, r.y + 32f, 140f, 26f), Lang.T("Climb on"))) Answer(kv.Key, true);
-                    if (GUI.Button(new Rect(r.x + 200f, r.y + 32f, 140f, 26f), Lang.T("I'll walk"))) Answer(kv.Key, false);
-                    y += 74f;
+                    int a = UiSkin.Prompt(_box, w, ref y, Lang.F("{0} offers to {1}", Coop.Player(kv.Key).Name, how), Lang.T("Climb on"), Lang.T("I'll walk"));
+                    if (a != 0) Answer(kv.Key, a == 1);
                 }
             }
             finally { GUI.matrix = old; }

@@ -92,7 +92,7 @@ namespace CCoop.Plugin.Sync
             if (_ring == null) _ring = MakeRing(64, 6);
             if (_label == null)
             {
-                _label = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontSize = 13, fontStyle = FontStyle.Bold };
+                _label = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontSize = UI.UiSkin.Small, wordWrap = false };
             }
             float now = Time.unscaledTime;
             _marks.RemoveAll(m => now - m.At > Lifetime);
