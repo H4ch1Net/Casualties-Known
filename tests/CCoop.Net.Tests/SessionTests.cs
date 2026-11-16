@@ -165,6 +165,72 @@ namespace CCoop.Net.Tests
         }
 
         [Fact]
+        public void Client_ignores_a_stray_connection_closing()
+        {
+            // A connection the client isn't using (an older attempt) closing must not end
+            // the session: in a playtest it ended a joined player's session 15 s in.
+            var hub = new LoopbackHub();
+            var host = NetSession.CreateHost(hub.Host, Registry(), Cfg("Host"));
+            var link = hub.Connect();
+            var a = NetSession.CreateClient(link, Registry(), Cfg("Alice"));
+            Pump(host, a);
+            string ended = null;
+            a.Ended += r => ended = r;
+
+            link.RaiseStrayDisconnect(7, "closed by the other side");
+            Pump(host, a);
+
+            Assert.Null(ended);
+            Assert.Equal(SessionState.Established, a.State);
+            Assert.Equal(2, host.PeerCount);
+        }
+
+        [Fact]
+        public void The_same_player_joining_again_replaces_their_older_connection()
+        {
+            var hub = new LoopbackHub();
+            var host = NetSession.CreateHost(hub.Host, Registry(), Cfg("Host"));
+            var first = hub.Connect();
+            first.Identity = "steam:42";
+            var a = NetSession.CreateClient(first, Registry(), Cfg("Alice"));
+            Pump(host, a);
+            var left = new List<string>();
+            host.PeerLeftEvent += (p, r) => left.Add(r);
+
+            var second = hub.Connect();
+            second.Identity = "steam:42";
+            var again = NetSession.CreateClient(second, Registry(), Cfg("Alice"));
+            Pump(host, a, again);
+
+            Assert.Equal(SessionState.Established, again.State);
+            Assert.Equal(SessionState.Ended, a.State);
+            Assert.Contains("joined again", left);
+            Assert.Equal(2, host.PeerCount);  // the host and Alice once
+        }
+
+        [Fact]
+        public void An_older_attempt_still_waiting_is_closed_when_the_same_player_gets_in()
+        {
+            var hub = new LoopbackHub();
+            var host = NetSession.CreateHost(hub.Host, Registry(), Cfg("Host"));
+            var stale = hub.Connect();  // connected, but never says hello
+            stale.Identity = "steam:42";
+            string staleClosed = null;
+            stale.Disconnected += (c, r) => staleClosed = r;
+            Pump(host);
+
+            var link = hub.Connect();
+            link.Identity = "steam:42";
+            var a = NetSession.CreateClient(link, Registry(), Cfg("Alice"));
+            Pump(host, a);
+            stale.Poll();
+
+            Assert.Equal(SessionState.Established, a.State);
+            Assert.Equal("replaced by a newer connection", staleClosed);
+            Assert.Equal(2, host.PeerCount);
+        }
+
+        [Fact]
         public void Directed_message_reaches_only_its_target()
         {
             var hub = new LoopbackHub();

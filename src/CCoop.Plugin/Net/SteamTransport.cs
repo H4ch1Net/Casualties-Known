@@ -13,7 +13,11 @@ namespace CCoop.Plugin.Net
     /// Valve, addressed by Steam id, no ports to forward. Connection-oriented, so peers
     /// get proper connect and disconnect events.
     ///
-    /// Callbacks are dispatched by the game's own <c>SteamAPI.RunCallbacks</c>.
+    /// Callbacks are dispatched by the game's own <c>SteamAPI.RunCallbacks</c>. The status
+    /// callback is global: it reports every connection in the process, so each transport
+    /// only acts on the connections it opened itself or accepted on its own listen socket.
+    /// An older connection (a previous attempt that wasn't closed yet) must never be taken
+    /// for this one, or its closing ends a healthy session.
     /// </summary>
     internal sealed class SteamTransport : ITransport
     {
@@ -126,14 +130,28 @@ namespace CCoop.Plugin.Net
                             Error?.Invoke("could not accept a connection: " + r);
                             return;
                         }
-                        Track(conn);
+                        int incoming = Track(conn);
+                        Log.Info("[steam] incoming connection " + incoming + " from " + Remote(cb));
                     }
                     break;
 
                 case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected:
                 {
+                    if (!_idByHandle.ContainsKey(conn.m_HSteamNetConnection))
+                    {
+                        // Not ours: another attempt's connection, or one on someone else's socket.
+                        if (!_isHost || cb.m_info.m_hListenSocket != _listen)
+                        {
+                            Log.Info("[steam] ignored a connection to " + Remote(cb) + " this session didn't open");
+                            break;
+                        }
+                    }
                     int id = Track(conn);
-                    if (_announced.Add(id)) Connected?.Invoke(id);
+                    if (_announced.Add(id))
+                    {
+                        if (!_isHost) Log.Info("[steam] connection " + id + " to the host is up");
+                        Connected?.Invoke(id);
+                    }
                     break;
                 }
 
@@ -143,9 +161,10 @@ namespace CCoop.Plugin.Net
                     string reason = cb.m_info.m_eState == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer
                         ? "closed by the other side"
                         : "connection problem (code " + cb.m_info.m_eEndReason + ")";
-                    SteamNetworkingSockets.CloseConnection(conn, 0, "", false);
                     if (_idByHandle.TryGetValue(conn.m_HSteamNetConnection, out var id))
                     {
+                        SteamNetworkingSockets.CloseConnection(conn, 0, "", false);
+                        Log.Info("[steam] connection " + id + " with " + Remote(cb) + " closed: " + reason + " (end " + cb.m_info.m_eEndReason + ")");
                         _idByHandle.Remove(conn.m_HSteamNetConnection);
                         _connById.Remove(id);
                         bool wasUp = _announced.Remove(id);
@@ -154,6 +173,12 @@ namespace CCoop.Plugin.Net
                     break;
                 }
             }
+        }
+
+        private static string Remote(SteamNetConnectionStatusChangedCallback_t cb)
+        {
+            try { return cb.m_info.m_identityRemote.GetSteamID64().ToString(); }
+            catch { return "?"; }
         }
 
         public void Poll()

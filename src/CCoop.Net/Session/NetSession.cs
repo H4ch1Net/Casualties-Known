@@ -336,6 +336,7 @@ namespace CCoop.Net.Session
                 foreach (var c in expired)
                 {
                     _pendingSince.Remove(c);
+                    Log?.Invoke("connection " + c + " sent no hello in 15 s; closing it");
                     _transport.Disconnect(c, "handshake timed out");
                 }
 
@@ -390,19 +391,38 @@ namespace CCoop.Net.Session
         {
             if (!IsHost)
             {
+                // Only the connection to the host matters: another one closing (an older
+                // attempt the transport still knew of) must not end this session.
+                if (_hostConnection >= 0 && connection != _hostConnection)
+                {
+                    Log?.Invoke("ignored connection " + connection + " closing (" + reason + "); the host is on connection " + _hostConnection);
+                    return;
+                }
                 End(State == SessionState.Established ? "lost connection to the host: " + reason : reason);
                 return;
             }
-            _pendingSince.Remove(connection);
-            if (!_peerByConnection.TryGetValue(connection, out var id)) return;
-            _peerByConnection.Remove(connection);
+            bool wasPending = _pendingSince.Remove(connection);
+            if (!_peerByConnection.TryGetValue(connection, out var id))
+            {
+                if (wasPending) Log?.Invoke("connection " + connection + " closed before its hello (" + reason + ")");
+                return;
+            }
+            DropPeer(id, reason, false);
+        }
+
+        /// <summary>Host: a peer is gone; everyone hears it. <paramref name="close"/> also closes its connection.</summary>
+        private void DropPeer(byte id, string reason, bool close)
+        {
+            if (!_connectionByPeer.TryGetValue(id, out var connection)) return;
             _connectionByPeer.Remove(id);
+            _peerByConnection.Remove(connection);
             if (_peers.TryGetValue(id, out var peer))
             {
                 _peers.Remove(id);
                 Broadcast(new PeerLeft { Id = id, Reason = reason });
                 PeerLeftEvent?.Invoke(peer, reason);
             }
+            if (close) _transport.Disconnect(connection, reason);
         }
 
         private void OnReceived(int connection, byte[] data, int offset, int count)
@@ -511,10 +531,11 @@ namespace CCoop.Net.Session
                 reason = "Your game version differs from the host's. Both players must be on the same Steam build.";
             else if (!string.IsNullOrEmpty(_config.Password) && hello.Password != _config.Password)
                 reason = "Wrong password.";
-            else if (_peers.Count >= Math.Min(_config.MaxPlayers, MaxPeers))
-                reason = "The session is full.";
             else if (_config.ExtraAdmission != null)
                 reason = _config.ExtraAdmission(hello, _transport.RemoteAddress(connection));
+            if (reason == null) DropOlderConnections(connection);
+            if (reason == null && _peers.Count >= Math.Min(_config.MaxPlayers, MaxPeers))
+                reason = "The session is full.";
 
             byte id = 0;
             if (reason == null && !TryAllocate(out id)) reason = "The session is full.";
@@ -543,6 +564,30 @@ namespace CCoop.Net.Session
             _connectionByPeer[id] = connection;
             Log?.Invoke(name + " joined as peer " + id);
             PeerJoinedEvent?.Invoke(peer);
+        }
+
+        /// <summary>
+        /// The same player joining again (same Steam id; over LAN the address includes the
+        /// port, so never two players): their older connection is stale. A peer still on it
+        /// is replaced, and an older attempt still waiting for its hello is closed.
+        /// </summary>
+        private void DropOlderConnections(int connection)
+        {
+            string address = _transport.RemoteAddress(connection) ?? "";
+            if (address.Length == 0) return;
+            foreach (var p in new List<PeerInfo>(_peers.Values))
+                if (p.Id != HostId && p.Address == address && _connectionByPeer.TryGetValue(p.Id, out var old) && old != connection)
+                {
+                    Log?.Invoke(p.Name + " joined again; their older connection " + old + " is closed");
+                    DropPeer(p.Id, "joined again", true);
+                }
+            foreach (var c in new List<int>(_pendingSince.Keys))
+                if (c != connection && _transport.RemoteAddress(c) == address)
+                {
+                    _pendingSince.Remove(c);
+                    Log?.Invoke("connection " + c + " is an older attempt by the same player; closing it");
+                    _transport.Disconnect(c, "replaced by a newer connection");
+                }
         }
 
         private string Sanitize(string name, byte id)

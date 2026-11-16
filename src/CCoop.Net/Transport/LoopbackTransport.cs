@@ -126,7 +126,19 @@ namespace CCoop.Net.Transport
         public void Disconnect(int connection, string reason) => _hub.Drop(this, connection, reason);
         public int RoundTripMs(int connection) => 0;
         public float LinkQuality(int connection) => 1f;
-        public string RemoteAddress(int connection) => "loopback:" + connection;
+
+        public string RemoteAddress(int connection)
+        {
+            if (!IsHostEnd) return "loopback:host";
+            var c = _hub.ClientFor(connection);
+            return c != null && !string.IsNullOrEmpty(c.Identity) ? c.Identity : "loopback:" + connection;
+        }
+
+        /// <summary>Tests: who this client is as the host sees it (a Steam id, say). Default: one per connection.</summary>
+        public string Identity { get; set; }
+
+        /// <summary>Tests: this transport reports some other connection of its own closing (one the session isn't on).</summary>
+        public void RaiseStrayDisconnect(int connection, string reason) => Enqueue(() => RaiseDisconnected(connection, reason));
 
         public void Shutdown()
         {

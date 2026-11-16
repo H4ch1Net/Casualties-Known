@@ -79,8 +79,9 @@ namespace CCoop.Plugin.Runtime
             Missing.Clear();
             foreach (var (type, member, feature) in Members)
             {
-                bool found = AccessTools.Field(type, member) != null || AccessTools.Property(type, member) != null ||
-                             AccessTools.Method(type, member) != null;
+                // Plain reflection: Harmony's lookups log a warning for each kind they don't find.
+                bool found = type.GetMember(member, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static |
+                                                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic).Length > 0;
                 if (!found) Missing.Add(feature + " (" + type.Name + "." + member + ")");
             }
             if (Missing.Count == 0) Log.Info("game check: all " + Members.Length + " game members found");

@@ -264,14 +264,27 @@ namespace CCoop.Plugin.Runtime
 
         private void Begin(NetSession session, string kind)
         {
+            var older = Coop.Session;
             Coop.Reset();
             Coop.Session = session;
             TransportKind = kind;
+            // Only the current session drives the game: an older one ending later (its
+            // connection timing out) must not tear down this one.
+            bool Current() => ReferenceEquals(Coop.Session, session);
             session.Log += s => Log.Info("[net] " + s);
-            session.Established += OnEstablished;
-            session.Ended += OnEnded;
-            session.PeerJoinedEvent += OnPeerJoined;
-            session.PeerLeftEvent += OnPeerLeft;
+            session.Established += () => { if (Current()) OnEstablished(); };
+            session.Ended += r =>
+            {
+                if (Current()) OnEnded(r);
+                else Log.Info("[session] an older session ended: " + r);
+            };
+            session.PeerJoinedEvent += p => { if (Current()) OnPeerJoined(p); };
+            session.PeerLeftEvent += (p, r) => { if (Current()) OnPeerLeft(p, r); };
+            if (older != null && !ReferenceEquals(older, session))
+            {
+                Log.Warn("[session] a session was still open; closing it");
+                try { older.Dispose(); } catch { /* best effort */ }
+            }
 
             foreach (var m in _modules) Safe(() => m.Attach(session), m, "attach");
             try { CCoop.CCoopApi.Attach(session); }
