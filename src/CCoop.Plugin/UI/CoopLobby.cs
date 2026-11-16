@@ -27,6 +27,9 @@ namespace CCoop.Plugin.UI
 
         internal static void DevClose() => _open = false;
 
+        /// <summary>Screenshots: scroll the settings side down by <paramref name="y"/>.</summary>
+        internal static void DevScroll(float y) => _lobbyScroll = new Vector2(0f, y);
+
         internal static void DevSelectLobbyTab(int tab)
         {
             _open = true;
@@ -402,7 +405,59 @@ namespace CCoop.Plugin.UI
                 cfg.ShowArrows.Value = GameRows.Toggle(Lang.T("Teammate arrows"), cfg.ShowArrows.Value, Lang.T("Arrows at the screen edge to teammates out of sight."));
             cfg.ReduceFlashes.Value = GameRows.Toggle(Lang.T("Reduce flashes and shaking"), cfg.ReduceFlashes.Value);
             cfg.ColorBlindColors.Value = GameRows.Toggle(Lang.T("Colour-blind safe colours"), cfg.ColorBlindColors.Value);
+            cfg.Tips.Value = GameRows.Toggle(Lang.T("Key hints when a run starts"), cfg.Tips.Value,
+                Lang.T("The first run after you start the game shows the co-op keys on the game's alert line."));
+            Controls();
             MilestoneList();
+        }
+
+        // ------------------------------------------------------------------ controls
+
+        /// <summary>The co-op keys, to change like the game's own (click, then press the key), and the ones that can't be changed.</summary>
+        private static void Controls()
+        {
+            var cfg = CoopPlugin.Instance;
+            GameRows.Header(Lang.T("Controls"));
+            KeyRow("k.menu", Lang.T("Co-op menu"), cfg.MenuKey, null);
+            KeyRow("k.chat", Lang.T("Chat"), cfg.ChatKey, HostRules.Current.Radios
+                ? Lang.T("Opens the chat box. Tab in it switches between saying it out loud and the radio.")
+                : Lang.T("Opens the chat box."));
+            if (VoiceSync.Available && cfg.VoiceMode.Value == "PushToTalk") KeyRow("k.voice", Lang.T("Push to talk"), cfg.VoiceKey, null);
+            KeyRow("k.gesture", Lang.T("Gesture wheel"), cfg.GestureKey,
+                Lang.T("Hold it, move the mouse onto a gesture and let go. A quick tap leaves the wheel open for a click."));
+            KeyRow("k.catch", Lang.T("Catch"), cfg.CatchKey,
+                Lang.T("Hold it under a teammate who's falling: you soften their landing, but a long fall hurts your arms."));
+            GameRows.Info(Lang.T("Ping"), UiSkin.KeyName(KeyCode.Mouse2), Lang.T("Marks the spot under the mouse for everyone."));
+            GameRows.Info(Lang.T("Teammate's menu"), UiSkin.KeyName(KeyBindsBlockPatch.Raw("iteminteract")),
+                Lang.T("Point at a teammate and press the game's interact key: carry, drag, give, ask for, treat."));
+        }
+
+        private static void KeyRow(string id, string label, BepInEx.Configuration.ConfigEntry<KeyCode> entry, string tip)
+        {
+            var key = GameRows.Key(id, label, entry.Value, tip);
+            if (key != entry.Value) entry.Value = key;
+            string clash = Clash(entry, key);
+            if (clash == null && DevClash != null && DevClash.Value.Item1 == id) clash = DevClash.Value.Item2;
+            if (clash != null) GameRows.Note(clash, UiSkin.Amber);
+        }
+
+        /// <summary>Screenshots: a clash note under one key row, without touching the player's keys.</summary>
+        internal static (string, string)? DevClash;
+
+        /// <summary>What else answers to <paramref name="key"/>: another co-op key, or one of the game's.</summary>
+        private static string Clash(BepInEx.Configuration.ConfigEntry<KeyCode> entry, KeyCode key)
+        {
+            if (key == KeyCode.None) return null;
+            var cfg = CoopPlugin.Instance;
+            var mine = new (BepInEx.Configuration.ConfigEntry<KeyCode>, string)[]
+            {
+                (cfg.MenuKey, Lang.T("Co-op menu")), (cfg.ChatKey, Lang.T("Chat")), (cfg.GestureKey, Lang.T("Gesture wheel")),
+                (cfg.CatchKey, Lang.T("Catch")), (cfg.VoiceMode.Value == "PushToTalk" ? cfg.VoiceKey : null, Lang.T("Push to talk")),
+            };
+            foreach (var (other, name) in mine)
+                if (other != null && other != entry && other.Value == key) return Lang.F("{0} is also the key for: {1}.", UiSkin.KeyName(key), name);
+            string game = Chat.GameAction(key);
+            return game != null ? Lang.F("The game uses {0} too: {1}.", UiSkin.KeyName(key), game) : null;
         }
 
         // ------------------------------------------------------------------ facts (terminal style)

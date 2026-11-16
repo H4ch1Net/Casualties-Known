@@ -110,7 +110,7 @@ Everyone sets off together, as soon as the whole team is in.
 = 
 
 # Sync/AuditFixes.cs
-Saving is off in co-op. Press Continue to descend together, or leave from the co-op menu (F1).
+Saving is off in co-op. Press Continue to descend together, or leave from the co-op menu ({0}).
 = 
 
 # Sync/CarrySync.cs
@@ -178,7 +178,7 @@ dead
 = 
 radio
 = 
-Radio:
+Radio (Tab: say):
 = 
 Say (Tab: radio):
 = 
@@ -848,6 +848,42 @@ Reduce flashes and shaking
 = 
 Colour-blind safe colours
 = 
+Key hints when a run starts
+= 
+The first run after you start the game shows the co-op keys on the game's alert line.
+= 
+Controls
+= 
+Co-op menu
+= 
+Chat
+= 
+Opens the chat box. Tab in it switches between saying it out loud and the radio.
+= 
+Opens the chat box.
+= 
+Push to talk
+= 
+Gesture wheel
+= 
+Hold it, move the mouse onto a gesture and let go. A quick tap leaves the wheel open for a click.
+= 
+Catch
+= 
+Hold it under a teammate who's falling: you soften their landing, but a long fall hurts your arms.
+= 
+Ping
+= 
+Marks the spot under the mouse for everyone.
+= 
+Teammate's menu
+= 
+Point at a teammate and press the game's interact key: carry, drag, give, ask for, treat.
+= 
+{0} is also the key for: {1}.
+= 
+The game uses {0} too: {1}.
+= 
 STEAM
 = 
 ready
@@ -906,11 +942,11 @@ Leave session
 = 
 
 # UI/CoopWindow.cs
-Co-op · 1 player  (F1)
+Co-op · 1 player  ({0})
 = 
-Co-op · {0} players  (F1)
+Co-op · {0} players  ({1})
 = 
-Co-op  (F1)
+Co-op  ({0})
 = 
 Steam isn't running: host under LAN / IP.
 = 
@@ -1123,6 +1159,16 @@ Changed from normal:
 Waiting for the host's run settings...
 = 
 
+# UI/RunTips.cs
+Right-click a teammate to carry, drag, give or treat them.
+= 
+Point at a teammate and press {0} to carry, drag, give or treat them.
+= 
+Middle click pings a spot. Hold {0} for gestures, {1} to chat.
+= 
+All the co-op keys are in the co-op menu ({0}), under Options.
+= 
+
 # UI/TeamReceipt.cs
 Your teammates are still playing. Stay on this screen until they finish: leaving ends the run for everyone.
 = 
@@ -1254,5 +1300,19 @@ Help carry
 = 
 
 # UI/UiSkin.cs
+not set
+= 
+Enter
+= 
+Num Enter
+= 
+Left click
+= 
+Right click
+= 
+Middle click
+= 
+Mouse {0}
+= 
 Rules (change them any time)
 = 

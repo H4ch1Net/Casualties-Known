@@ -104,6 +104,34 @@ namespace CCoop.Plugin.UI
             return style;
         }
 
+        /// <summary>A key as people call it: "Enter", "Right click", "1" rather than Return, Mouse1, Alpha1.</summary>
+        internal static string KeyName(KeyCode key)
+        {
+            switch (key)
+            {
+                case KeyCode.None: return Lang.T("not set");
+                case KeyCode.Return: return Lang.T("Enter");
+                case KeyCode.KeypadEnter: return Lang.T("Num Enter");
+                case KeyCode.Mouse0: return Lang.T("Left click");
+                case KeyCode.Mouse1: return Lang.T("Right click");
+                case KeyCode.Mouse2: return Lang.T("Middle click");
+                case KeyCode.Escape: return "Esc";
+                case KeyCode.BackQuote: return "`";
+            }
+            string s = key.ToString();
+            if (s.StartsWith("Alpha") && s.Length == 6) return s.Substring(5);
+            if (s.StartsWith("Keypad") && s.Length == 7) return "Num " + s.Substring(6);
+            if (s.StartsWith("Mouse")) return Lang.F("Mouse {0}", s.Substring(5));
+            // LeftShift -> Left Shift
+            var b = new System.Text.StringBuilder(s.Length + 4);
+            for (int i = 0; i < s.Length; i++)
+            {
+                if (i > 0 && char.IsUpper(s[i]) && !char.IsUpper(s[i - 1])) b.Append(' ');
+                b.Append(s[i]);
+            }
+            return b.ToString();
+        }
+
         /// <summary>Whether Retro Gaming has a glyph for every character of <paramref name="text"/>.</summary>
         internal static bool PixelCovers(string text)
         {

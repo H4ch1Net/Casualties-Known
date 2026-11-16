@@ -115,6 +115,25 @@ namespace CCoop.Plugin.Sync
             return Bound.Contains(key);
         }
 
+        /// <summary>The name the game's settings give the action bound to <paramref name="key"/>, or null if none is.</summary>
+        internal static string GameAction(KeyCode key)
+        {
+            if (key == KeyCode.None) return null;
+            try
+            {
+                var binds = HarmonyLib.Traverse.Create(typeof(KeyBinds)).Field("cachedBinds").GetValue<Dictionary<string, KeyCode>>();
+                if (binds == null) return null;
+                foreach (var b in binds)
+                {
+                    if (b.Value != key) continue;
+                    string name = Locale.GetOther("gameset" + b.Key);
+                    return string.IsNullOrEmpty(name) || name == "gameset" + b.Key ? b.Key : name;
+                }
+            }
+            catch { /* can't tell */ }
+            return null;
+        }
+
         private static bool ConsoleOpen() => InputBlock.ConsoleOpen;
 
         private static void Open()
@@ -353,7 +372,7 @@ namespace CCoop.Plugin.Sync
                     if (Time.frameCount == _openedFrame && _openedBy != KeyCode.Return) _draft = "";
                     // "Say:" then the field, both clear of the game's buttons on the left.
                     if (_radio && !Radio.Usable) _radio = false;
-                    string say = _radio ? Lang.T("Radio:") : Radio.Usable ? Lang.T("Say (Tab: radio):") : Lang.T("Say:");
+                    string say = _radio ? Lang.T("Radio (Tab: say):") : Radio.Usable ? Lang.T("Say (Tab: radio):") : Lang.T("Say:");
                     float sw = _style.CalcSize(new GUIContent(say)).x;
                     var sayColor = _style.normal.textColor;
                     if (_radio) _style.normal.textColor = RadioColor;

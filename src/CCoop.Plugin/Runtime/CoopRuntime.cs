@@ -97,6 +97,7 @@ namespace CCoop.Plugin.Runtime
             Add(new TeamReceipt());
             Add(new ExplosionSync());
             Add(new SteamMoments());
+            Add(new RunTips());
             Add(new DevHarness());
 
             StartCoroutine(UpdateCheck.Run());

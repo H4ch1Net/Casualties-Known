@@ -32,7 +32,7 @@ namespace CCoop.Plugin.UI
 
 
         /// <summary>One of the window's text fields has the keyboard (so V, Enter etc. are text, not commands).</summary>
-        internal static bool TypingInField => _open && _lastFocus.StartsWith("ccoop_");
+        internal static bool TypingInField => _open && (_lastFocus.StartsWith("ccoop_") || GameRows.Binding);
         internal static void Show() => _open = true;
 
         internal static bool IsOpen => _open;
@@ -49,7 +49,7 @@ namespace CCoop.Plugin.UI
 
         internal static void HandleHotkeys(CoopRuntime rt)
         {
-            if (!CoopPlugin.Ready) return;
+            if (!CoopPlugin.Ready || GameRows.Binding) return;  // the key pressed is a key row's new key
             if (Input.GetKeyDown(CoopPlugin.Instance.MenuKey.Value) || (_open && !TypingInField && Input.GetKeyDown(KeyCode.Escape)))
             {
                 _open = !_open;
@@ -102,7 +102,8 @@ namespace CCoop.Plugin.UI
                 if (!_open && GameInfo.OnMainMenu && !MenuWalkie.Shown)
                 {
                     int n = Coop.InSession ? Coop.Session.PeerCount : 0;
-                    string label = n > 0 ? (n == 1 ? Lang.T("Co-op · 1 player  (F1)") : Lang.F("Co-op · {0} players  (F1)", n)) : Lang.T("Co-op  (F1)");
+                    string key = UiSkin.KeyName(CoopPlugin.Instance.MenuKey.Value);
+                    string label = n > 0 ? (n == 1 ? Lang.F("Co-op · 1 player  ({0})", key) : Lang.F("Co-op · {0} players  ({1})", n, key)) : Lang.F("Co-op  ({0})", key);
                     var size = GUI.skin.button.CalcSize(new GUIContent(label));
                     var r = new Rect(12, 12, Mathf.Max(150f, size.x + 12f), 34);
                     UiMouse.Claim(r);

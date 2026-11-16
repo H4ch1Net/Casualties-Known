@@ -13,7 +13,7 @@ namespace CCoop.Plugin.Runtime
     {
         public const string Guid = "ccoop.casualtiescoop";
         public const string Name = "CasualtiesCoop";
-        public const string Version = "2.1.7";
+        public const string Version = "2.1.8";
 
         internal static CoopPlugin Instance { get; private set; }
 
@@ -52,6 +52,7 @@ namespace CCoop.Plugin.Runtime
         internal ConfigEntry<bool> ShowArrows;
         internal ConfigEntry<bool> ReduceFlashes;
         internal ConfigEntry<bool> ColorBlindColors;
+        internal ConfigEntry<bool> Tips;
         internal ConfigEntry<float> UiScale;
         internal ConfigEntry<bool> SteamTimeline;
         internal ConfigEntry<bool> AllowSpeedUp;
@@ -132,6 +133,8 @@ namespace CCoop.Plugin.Runtime
                 "Softer co-op screen effects: no screen flashes or shakes from the mod (a teammate dying nearby, a revival), no pulsing in the spectator view, and still ping markers.");
             Language = Config.Bind("UI", "Language", "auto",
                 "The mod's language: auto follows the game's language; or a code such as EN or zh-CN. Translations are lang/<code>.txt beside the mod.");
+            Tips = Config.Bind("UI", "KeyHints", true,
+                "The first co-op run after the game starts shows the co-op keys on the game's alert line.");
             ColorBlindColors = Config.Bind("UI", "ColorBlindColors", false,
                 "Player colours (pings, arrows, gestures) from a palette that stays distinct with common colour blindness.");
             VoiceMode = Config.Bind("Voice", "Mode", "PushToTalk",

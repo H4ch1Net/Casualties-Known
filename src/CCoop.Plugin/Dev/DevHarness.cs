@@ -304,7 +304,7 @@ namespace CCoop.Plugin.Dev
             if (_runShotAt < 0f) { _runShotAt = now + 6f; return; }  // let everyone set off
             if (now < _runShotAt) return;
             string[] names = { "run-1-menu", "run-2-askfor", "run-3-health", "run-4-pause", "run-5-radio", "run-6-alert", "run-7-chatlog",
-                               "run-8-prompts", "run-9-captions", "run-10-wheel", "run-11-marks", "run-12-receipt", "run-13-lobby" };
+                               "run-8-prompts", "run-9-captions", "run-10-wheel", "run-11-marks", "run-12-receipt", "run-13-talk", "run-14-lobby" };
             int step = _runShot / 2;
             if (step >= names.Length)
             {
@@ -365,7 +365,14 @@ namespace CCoop.Plugin.Dev
                     UI.TeammateArrows.DevOffset = Vector2.zero;
                     UI.TeamReceipt.DevShow(true);
                     break;
-                case 12: UI.TeamReceipt.DevShow(false); UI.CoopWindow.DevSelectLobbyTab(1); break;
+                case 12:
+                    // The teammate's name and words next to the game's own speech, to compare.
+                    UI.TeamReceipt.DevShow(false);
+                    try { GameInfo.LocalBody?.talker?.Talk("ok coming", null, true); } catch { /* no talker */ }
+                    mate.Say("over here, found a canteen");
+                    CoopRuntime.Notice(UI.Lang.F("Middle click pings a spot. Hold {0} for gestures, {1} to chat.", "H", "Enter"));
+                    break;
+                case 13: UI.CoopWindow.DevSelectLobbyTab(1); break;
             }
             _runShot++;
             _runShotAt = now + 2.5f;
@@ -387,12 +394,15 @@ namespace CCoop.Plugin.Dev
             }
             if (now < _shotAt) return;
             // Even steps set a screen up; odd steps capture it on a later frame.
-            string[] names = { "1-host", "2-find", "3-lan", "4-password", "5-online", "6-online-150", "7-rules", "8-options", "9-dropdown", "10-tooltip" };
+            string[] names = { "1-host", "2-find", "3-lan", "4-password", "5-online", "6-online-150", "7-rules", "8-options", "9-dropdown", "10-tooltip", "11-controls" };
             int step = _shotStage / 2;
             if (step >= names.Length)
             {
                 UI.CoopWindow.DevScale = 0f;
                 UI.GameTooltip.DevShow(null, null, null);
+                UI.GameRows.DevBind(null);
+                UI.CoopWindow.DevClash = null;
+                UI.CoopWindow.DevScroll(0f);
                 Coop.Runtime.PasswordPrompt = null;
                 Log.Info("DEV shots saved to " + _shots);
                 _shotStage = 99;
@@ -422,6 +432,14 @@ namespace CCoop.Plugin.Dev
                 case 9:
                     UI.GameRows.DevOpen(null);
                     UI.GameTooltip.DevShow(UI.Lang.T("Radios"), UI.Lang.T("Everyone has a radio. Press Tab in the chat box to talk on it: it reaches the whole layer, but it crackles more the farther away and the more rock in between. You need to be awake to use it."), new Vector2(1150f, 640f));
+                    break;
+                case 10:
+                    // The keys, one of them waiting for its new key.
+                    UI.GameTooltip.DevShow(null, null, null);
+                    UI.CoopWindow.DevSelectLobbyTab(2);
+                    UI.CoopWindow.DevScroll(160f);
+                    UI.GameRows.DevBind("k.gesture");
+                    UI.CoopWindow.DevClash = ("k.catch", UI.Lang.F("The game uses {0} too: {1}.", "J", "Throw"));
                     break;
             }
             _shotStage++;

@@ -33,7 +33,7 @@ namespace CCoop.Plugin.Sync
         private static bool Prefix()
         {
             if (!Coop.InSession) return true;
-            CoopRuntime.Notice(Lang.T("Saving is off in co-op. Press Continue to descend together, or leave from the co-op menu (F1)."));
+            CoopRuntime.Notice(Lang.F("Saving is off in co-op. Press Continue to descend together, or leave from the co-op menu ({0}).", UI.UiSkin.KeyName(CoopPlugin.Instance.MenuKey.Value)));
             return false;
         }
     }

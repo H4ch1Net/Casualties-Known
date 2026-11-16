@@ -168,6 +168,84 @@ namespace CCoop.Plugin.UI
             return v;
         }
 
+        // ---- key rows, as the game's own keybind settings: click the box, press the new key
+
+        private static string _binding;
+        private static int _bindingSeen;
+        private static KeyCode[] _keys;
+        private static GUIStyle _keyText;
+
+        /// <summary>
+        /// A key row is waiting for its new key. Meanwhile no co-op key acts and the game's
+        /// keys are held, so the key pressed only lands in the row.
+        /// </summary>
+        internal static bool Binding => _binding != null && Time.frameCount - _bindingSeen <= 2;
+
+        /// <summary>Screenshots: a key row shown waiting for its key (or none).</summary>
+        internal static void DevBind(string id)
+        {
+            _binding = id;
+            _bindingSeen = Time.frameCount;
+        }
+
+        /// <summary>A key setting: the key in an outlined box on the right; click it, then press the new key (Esc keeps the old one).</summary>
+        internal static KeyCode Key(string id, string label, KeyCode value, string tip = null)
+        {
+            var r = Row(label, tip);
+            Styles();
+            if (_keyText == null) _keyText = new GUIStyle(_dropText) { alignment = TextAnchor.MiddleCenter };
+            bool waiting = _binding == id && GUI.enabled;
+            if (waiting) _bindingSeen = Time.frameCount;
+            string shown = waiting ? "..." : UiSkin.KeyName(value);
+            float w = Mathf.Clamp(_keyText.CalcSize(new GUIContent(shown)).x + 28f, 120f, 300f);
+            var box = new Rect(r.xMax - w - 10f, r.center.y - 15f, w, 30f);
+            var e = Event.current;
+            if (e.type == EventType.Repaint)
+            {
+                var c = GUI.enabled ? Color.white : new Color(1f, 1f, 1f, 0.4f);
+                if (waiting) Fill(box, new Color(1f, 1f, 1f, 0.14f));
+                Box(box, c);
+                var old = GUI.color;
+                GUI.color = c;
+                GUI.Label(box, shown, UiSkin.Fit(_keyText, shown));
+                GUI.color = old;
+                if (GUI.enabled && Over(r)) Fill(r, new Color(1f, 1f, 1f, 0.04f));
+            }
+            if (waiting && e.type == EventType.Layout)
+            {
+                // Read like the game reads it (any key or button), but never the two main
+                // mouse buttons: those swing and interact.
+                if (Input.GetKeyDown(KeyCode.Escape)) _binding = null;
+                else
+                {
+                    if (_keys == null) _keys = (KeyCode[])System.Enum.GetValues(typeof(KeyCode));
+                    foreach (var k in _keys)
+                        if (k != KeyCode.None && k != KeyCode.Mouse0 && k != KeyCode.Mouse1 && Input.GetKeyDown(k))
+                        {
+                            value = k;
+                            _binding = null;
+                            Click();
+                            break;
+                        }
+                }
+            }
+            if (RowButton(r)) { _binding = waiting ? null : id; Click(); }
+            return value;
+        }
+
+        /// <summary>A short line under the row above it (a warning, say).</summary>
+        internal static void Note(string text, Color color)
+        {
+            Styles();
+            var st = UiSkin.Fit(_dropText, text);
+            var r = GUILayoutUtility.GetRect(10f, 24f, GUILayout.ExpandWidth(true));
+            if (Event.current.type != EventType.Repaint) return;
+            var old = GUI.color;
+            GUI.color = color;
+            GUI.Label(new Rect(r.x + 10f, r.y - 4f, r.width - 20f, r.height), text, st);
+            GUI.color = old;
+        }
+
         /// <summary>A row with a label; returns the rect on its right for the caller's own control (a text field, say).</summary>
         internal static Rect Slot(string label, string tip, float width = 320f)
         {

@@ -353,7 +353,8 @@ namespace CCoop.Plugin.Sync
                 {
                     var t = UI.GameText.Template;
                     _nameText.gameObject.SetActive(true);
-                    _nameText.fontSize = (t != null ? t.fontSize : 8f) * 0.85f;
+                    // The game's own speech size: any smaller and the world's coarse pixels eat the letters.
+                    _nameText.fontSize = t != null ? t.fontSize : 8f;
                     string state = !rec.Alive ? UI.Lang.T("dead") : rec.Conscious ? "" : rec.Sleeping ? UI.Lang.T("asleep") : UI.Lang.T("out cold");
                     var voice = Coop.Get<VoiceSync>();
                     string label = rec.Name + (state.Length > 0 ? " (" + state + ")" : "") + (voice != null && voice.IsTalking(_id) ? " ((o))" : "");
