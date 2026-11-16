@@ -10,7 +10,7 @@ Version 2 is a rewrite. Version 1 targeted the demo and is kept under `legacy/v1
 
 ### Install
 
-**The easy way (Windows):** unzip `CasualtiesCoop-2.1.5.zip` anywhere, then right-click `install.ps1` and choose **Run with PowerShell** (or run `powershell -ExecutionPolicy Bypass -File install.ps1`). It finds the game, installs BepInEx 5 if you don't have it yet, and copies the mod in.
+**The easy way (Windows):** unzip `CasualtiesCoop-2.1.6.zip` anywhere, then right-click `install.ps1` and choose **Run with PowerShell** (or run `powershell -ExecutionPolicy Bypass -File install.ps1`). It finds the game, installs BepInEx 5 if you don't have it yet, and copies the mod in.
 
 **Updating:** run the installer from the new download the same way. It replaces an older CasualtiesCoop (your settings are kept) and removes any other copy of a co-op mod it finds under `BepInEx/plugins` (the first co-op mod in `plugins/CCoop`, a second copy, loose files); other mods are left alone. It won't replace a newer version unless you add `-Force` (`--force` on Linux). If a second copy is still there when the game starts, the co-op lobby says so in red.
 
@@ -19,7 +19,7 @@ Version 2 is a rewrite. Version 1 targeted the demo and is kept under `legacy/v1
 **By hand:**
 
 1. Install [BepInEx 5.4.23.x x64](https://github.com/BepInEx/BepInEx/releases) into the game folder (`steamapps/common/Casualties Unknown`).
-2. Unzip `CasualtiesCoop-2.1.5.zip` into the game folder, which gives you `BepInEx/plugins/CasualtiesCoop/`.
+2. Unzip `CasualtiesCoop-2.1.6.zip` into the game folder, which gives you `BepInEx/plugins/CasualtiesCoop/`.
 
 Everyone in the session needs the same mod version and the same game build (a player with another version is told which version the host has when joining).
 
@@ -56,8 +56,8 @@ The **LAN / IP** tab hosts on port 7777 and joins by address (with the host's pa
 
 | | |
 |---|---|
-| **Text chat** | **Enter** (or **T** if your game doesn't use T). Your character says the line out loud, slurred if they're hurt or have a broken jaw, and it shows above their head. Speech carries like a voice, as in Barotrauma: clear up close, losing more and more letters with distance ("H-lp -e"), twice as fast through rock, and not heard at all past the voice range. A brain-damaged reader sees it garbled. The dead chat only with the dead, anywhere. Hover text on the mod's screens is drawn as the game's own hover label (same font, sizes, colours and place by the mouse). |
-| **Radio** | Like Barotrauma's headsets: with the host's **Radios** rule (on by default) everyone has a radio. In the chat box, **Tab** switches between saying a line and radioing it: the others hear it clearly anywhere on the layer (in green, with a blip), while people nearby still hear your voice, fading with distance. You need to be awake and alive to use it. (The game has no radio item outside its tutorial, so there's nothing to carry.) |
+| **Text chat** | **Enter** (or **T** if your game doesn't use T). Your character says the line out loud, slurred if their jaw is broken, and it shows above their head. A voice is clear up close and fades with distance: within 40% of the voice range every word comes through, then more and more letters are lost ("H-lp -e"), and past the range nothing arrives. A wall muffles it (it costs a few metres plus some of its thickness) rather than cutting it off. Knocked out or asleep, you can still type, but it comes out as a mumble heard only close by. Your hearing loss (gunfire, blasts) and a damaged brain garble what you hear. The dead chat only with the dead, anywhere. |
+| **Radio** | Like Barotrauma's headsets: with the host's **Radios** rule (on by default) everyone has a radio. In the chat box, **Tab** switches between saying a line and radioing it. A radioed line reaches every teammate who's awake, anywhere on the layer (in green, with a blip), but it always crackles: the static grows with the distance and with the rock in between, never quite to silence. So talking is clean when you're close, and the radio is how you reach someone far off. You need to be awake to use it. The game has no radio item outside its tutorial, so there's nothing to carry. |
 | **Voice** | Hold **V** (or set an open mic in the co-op window, with a threshold so it only sends when you speak). Nearby players hear you, quieter with distance and muffled through rock. A broken jaw, being under water or brain damage changes how you sound. Each teammate's volume can be set (or muted) in the player list. The dead hear only each other. Needs Steam. |
 | **Ping** | **Middle mouse** marks a spot everyone sees for a few seconds. |
 | **Look** | The co-op window, prompts and notices use the game's own look: its Retro Gaming pixel font, black panels and dark buttons with a one-pixel white frame, the chosen option inverted. Teammates' names, their words above their heads and the chat log are in the game's own amber speech text, typed out at the game's pace with its letter sounds. Text the pixel font can't write (Chinese, Japanese, Korean, Cyrillic, unusual Steam names) uses Unifont, the game's other pixel font. All of it is borrowed from the game when it runs; the mod ships none of its files. On the main menu, co-op is a walkie-talkie by the sleeping bag, painted for the mod in the menu's style (`art/walkie.png`, made by `art/walkie-paint.py`). It opens the co-op lobby: a full-screen menu laid out like the game's own, with the players as their characters' portraits, open places as the grey outlines of locked characters, the session in the game's bracketed terminal style, and the settings beside it. |

@@ -44,7 +44,8 @@ namespace CCoop.Plugin.Sync
             s.On<PlayerAttack>((o, m) => Remote(o)?.PlayAttack(m));
             s.On<PlayerTalk>((o, m) =>
             {
-                string heard = Hearing.Heard(o, m.Text);
+                // Someone who's out can only mumble: it carries half as far.
+                string heard = Hearing.Heard(o, m.Text, Coop.Player(o).Conscious ? 1f : 0.5f);
                 if (heard != null) Remote(o)?.Say(heard);
             });
             s.Established += () => _nextProfile = 0;

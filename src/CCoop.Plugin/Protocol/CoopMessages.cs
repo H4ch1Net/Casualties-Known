@@ -284,7 +284,7 @@ namespace CCoop.Plugin.Protocol
     /// <summary>A chat line: plain (menus), spoken by the character, or a ghost's (dead, heard only by the dead).</summary>
     internal sealed class ChatLine : IMessage
     {
-        public const byte Plain = 0, Spoken = 1, Ghost = 2, Radio = 3;
+        public const byte Plain = 0, Spoken = 1, Ghost = 2, Radio = 3, Mumble = 4;
 
         public string Text = "";
         public byte Kind;

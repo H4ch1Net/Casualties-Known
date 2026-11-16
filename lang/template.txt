@@ -172,8 +172,6 @@ I'll walk
 = 
 
 # Sync/Chat.cs
-You can't speak while unconscious.
-= 
 dead
 = 
 radio

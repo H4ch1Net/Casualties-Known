@@ -212,8 +212,11 @@ namespace CCoop.Plugin.Sync
             if (inLayer && !body.alive) kind = ChatLine.Ghost;
             else if (inLayer && !body.conscious)
             {
-                Add(Lang.T("You can't speak while unconscious."), new Color(1f, 0.6f, 0.5f));
-                return;
+                // Out cold or asleep: what comes out is a mumble, heard only close by. The game
+                // won't speak for a body that's out, so the words over the head are sent here.
+                kind = ChatLine.Mumble;
+                text = Hearing.Mumble(text, body.sleeping);
+                Coop.Get<PlayerSync>()?.AnnounceTalk(text);
             }
             else if (inLayer)
             {
@@ -239,17 +242,18 @@ namespace CCoop.Plugin.Sync
             }
             if (m.Kind == ChatLine.Radio && Radio.Usable)
             {
+                // Anywhere on the layer, through the static.
                 RadioHeard++;
                 Radio.Blip();
-                Show(origin, m);
+                Show(origin, new ChatLine { Text = Hearing.OverRadio(origin, m.Text), Kind = ChatLine.Radio });
                 return;
             }
-            if (m.Kind == ChatLine.Spoken || m.Kind == ChatLine.Radio)
+            if (m.Kind == ChatLine.Spoken || m.Kind == ChatLine.Radio || m.Kind == ChatLine.Mumble)
             {
-                // Said out loud: what reaches you depends on how far they are (Barotrauma's way).
-                string heard = Hearing.Heard(origin, m.Text);
+                // Said out loud: what reaches you depends on the distance, walls and your ears.
+                string heard = Hearing.Heard(origin, m.Text, m.Kind == ChatLine.Mumble ? 0.5f : 1f);
                 if (heard == null) return;
-                m = new ChatLine { Text = heard, Kind = ChatLine.Spoken };
+                m = new ChatLine { Text = heard, Kind = m.Kind == ChatLine.Mumble ? ChatLine.Mumble : ChatLine.Spoken };
             }
             Show(origin, m);
         }
@@ -258,7 +262,8 @@ namespace CCoop.Plugin.Sync
         {
             string name = Coop.Player(origin).Name;
             if (string.IsNullOrEmpty(name)) name = "?";
-            var color = m.Kind == ChatLine.Ghost ? new Color(0.7f, 0.75f, 0.9f) : m.Kind == ChatLine.Radio ? RadioColor : Color.white;
+            var color = m.Kind == ChatLine.Ghost ? new Color(0.7f, 0.75f, 0.9f) : m.Kind == ChatLine.Radio ? RadioColor
+                      : m.Kind == ChatLine.Mumble ? new Color(0.75f, 0.75f, 0.75f) : Color.white;
             string text = origin == Coop.LocalId ? m.Text : ConditionFx.AsRead(m.Text, name);
             string tag = m.Kind == ChatLine.Ghost ? "(" + Lang.T("dead") + ") " : m.Kind == ChatLine.Radio ? "(" + Lang.T("radio") + ") " : "";
             Add(tag + name + ": " + text, color);
