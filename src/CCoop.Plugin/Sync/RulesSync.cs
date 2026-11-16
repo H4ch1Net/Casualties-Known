@@ -31,7 +31,7 @@ namespace CCoop.Plugin.Sync
         /// <summary>0: enemies as the run settings say; 1: tougher with more players; 2: much tougher.</summary>
         public byte DangerScale;
 
-        /// <summary>Everyone has a radio: what they say into it reaches the others anywhere on the layer.</summary>
+        /// <summary>Everyone has a radio: what they say into it reaches the others anywhere on the layer, through static.</summary>
         public bool Radios = true;
 
         /// <summary>Off: nobody gets tired, and nobody can nap (sleeping pills still work).</summary>

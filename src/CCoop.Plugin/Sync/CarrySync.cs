@@ -51,12 +51,18 @@ namespace CCoop.Plugin.Sync
         // Offers to carry someone awake: sent (target -> mode) and received (carrier -> mode).
         private readonly Dictionary<byte, KeyValuePair<CarryMode, float>> _offered = new Dictionary<byte, KeyValuePair<CarryMode, float>>();
         private readonly Dictionary<byte, KeyValuePair<CarryMode, float>> _offers = new Dictionary<byte, KeyValuePair<CarryMode, float>>();
-        private static GUIStyle _box;
 
         /// <summary>Self-test: say yes to the next offer to carry us.</summary>
         internal static bool DevAutoAccept;
 
         internal void DevGetDown() => GetDown("got down");
+
+        /// <summary>Screenshots: an offer from <paramref name="from"/> to carry us (or none).</summary>
+        internal void DevOffer(byte from, bool on)
+        {
+            if (on) _offers[from] = new KeyValuePair<CarryMode, float>(CarryMode.Back, Time.unscaledTime);
+            else _offers.Remove(from);
+        }
 
         internal bool Carrying(byte id) => _carrying == id;
         internal int CarryingId => _carrying;
@@ -492,34 +498,28 @@ namespace CCoop.Plugin.Sync
             {
                 string key = "Space";
                 try { key = KeyBinds.GetBind("jump").ToString(); } catch { /* default */ }
-                UI.Overlay.Bottom(Lang.F("{0} is carrying you", Coop.Player((byte)_carriedBy).Name), Lang.F("Press {0} to get down.", key), 2);
+                UI.Overlay.Bottom(Lang.F("{0} is carrying you", Coop.Player((byte)_carriedBy).Name), Lang.F("Press {0} to get down.", key));
                 return;
             }
             if (_carrying < 0) return;
             string cost = _mode == CarryMode.Drag ? Lang.T("Slow going, and no jumping.")
                 : _mode == CarryMode.Back ? Lang.T("They weigh on you: you can't jump as high.")
                 : Lang.T("Both arms full: slower, and only small hops.");
-            UI.Overlay.Bottom(Verb(_mode) + " " + Coop.Player((byte)_carrying).Name, cost + " " + Lang.T("Right-click them to put them down."), 2);
+            UI.Overlay.Bottom(Verb(_mode) + " " + Coop.Player((byte)_carrying).Name, cost + " " + Lang.T("Right-click them to put them down."));
         }
 
         private void DrawOffers()
         {
-            if (_box == null) _box = new GUIStyle(GUI.skin.box) { fontSize = UiSkin.Body, alignment = TextAnchor.UpperCenter };
-            float k = CoopWindow.Scale;
-            var old = GUI.matrix;
-            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(k, k, 1f));
-            try
+            float now = Time.unscaledTime;
+            foreach (var kv in new List<KeyValuePair<byte, KeyValuePair<CarryMode, float>>>(_offers))
             {
-                float w = Screen.width / k;
-                float y = 100f;
-                foreach (var kv in new List<KeyValuePair<byte, KeyValuePair<CarryMode, float>>>(_offers))
-                {
-                    string how = kv.Value.Key == CarryMode.Drag ? Lang.T("drag you along") : kv.Value.Key == CarryMode.Back ? Lang.T("carry you on their back") : Lang.T("carry you in their arms");
-                    int a = UiSkin.Prompt(_box, w, ref y, Lang.F("{0} offers to {1}", Coop.Player(kv.Key).Name, how), Lang.T("Climb on"), Lang.T("I'll walk"));
-                    if (a != 0) Answer(kv.Key, a == 1);
-                }
+                var mode = kv.Value.Key;
+                string how = mode == CarryMode.Drag ? Lang.T("drag you along") : mode == CarryMode.Back ? Lang.T("carry you on their back") : Lang.T("carry you in their arms");
+                float left = 1f - (now - kv.Value.Value) / OfferLifetime;
+                int a = UiSkin.Prompt(Lang.F("{0} offers to {1}", Coop.Player(kv.Key).Name, how),
+                    mode == CarryMode.Drag ? Lang.T("Go ahead") : Lang.T("Climb on"), Lang.T("I'll walk"), left);
+                if (a != 0) Answer(kv.Key, a == 1);
             }
-            finally { GUI.matrix = old; }
         }
     }
 }

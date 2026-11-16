@@ -376,7 +376,7 @@ namespace CCoop.Plugin.UI
             cfg.Sleep.Value = GameRows.Toggle(Lang.T("Sleep"), cfg.Sleep.Value,
                 Lang.T("Off: nobody gets tired and nobody can nap. Sleeping pills still work."));
             cfg.Radios.Value = GameRows.Toggle(Lang.T("Radios"), cfg.Radios.Value,
-                Lang.T("Everyone has a radio. Press Tab in the chat box to talk on it: the others hear you clearly, anywhere on the layer."));
+                Lang.T("Everyone has a radio. Press Tab in the chat box to talk on it: it reaches the whole layer, but it crackles more the farther away and the more rock in between. You need to be awake to use it."));
             float voice = GameRows.Slider(Lang.T("Voices carry"), cfg.VoiceRangePercent.Value, 25f, 100f, cfg.VoiceRangePercent.Value + "%",
                 Lang.T("How far voices and speech are heard."));
             int pct = Mathf.RoundToInt(voice / 5f) * 5;

@@ -289,11 +289,13 @@ namespace CCoop.Plugin.Sync
         // ------------------------------------------------------------------ overlay
 
         /// <summary>Dev: "voters/needed" as this machine sees it.</summary>
+        internal static ExitStatus DevFake;
+
         internal string Describe() => _status == null ? "none" : _status.Voters.Count + "/" + _status.Needed + (_status.Pod ? " pod" : "");
 
         internal override void Gui()
         {
-            var st = _status;
+            var st = DevFake ?? _status;
             if (st == null || st.Voters.Count == 0 || !Coop.WorldLive) return;
             bool mine = _local != Vote.None;
             string top, bottom;
@@ -307,10 +309,10 @@ namespace CCoop.Plugin.Sync
                 top = mine ? Lang.F("Waiting at the exit: {0} of {1} needed", st.Voters.Count, st.Needed)
                            : st.Voters.Count == 1 ? Lang.F("{0} is waiting at the exit ({1} of {2} needed)", Names(st.Voters), st.Voters.Count, st.Needed)
                            : Lang.F("{0} are waiting at the exit ({1} of {2} needed)", Names(st.Voters), st.Voters.Count, st.Needed);
-                bottom = mine ? Lang.T("Walk away from the exit to cancel.") : Lang.T("Head down and continue at the exit to go with them. The rest are brought along.");
+                bottom = mine ? Lang.T("Walk away from the exit to cancel.") : Lang.T("Join them at the exit. Once enough are there, everyone goes down.");
             }
             if (!string.IsNullOrEmpty(st.Loading)) bottom = Lang.F("Waiting for {0} to finish loading this layer.", st.Loading);
-            Overlay.Bottom(top, bottom, 1);
+            Overlay.Bottom(top, bottom);
         }
 
         private static string Names(List<byte> ids)

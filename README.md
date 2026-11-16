@@ -10,7 +10,7 @@ Version 2 is a rewrite. Version 1 targeted the demo and is kept under `legacy/v1
 
 ### Install
 
-**The easy way (Windows):** unzip `CasualtiesCoop-2.1.6.zip` anywhere, then right-click `install.ps1` and choose **Run with PowerShell** (or run `powershell -ExecutionPolicy Bypass -File install.ps1`). It finds the game, installs BepInEx 5 if you don't have it yet, and copies the mod in.
+**The easy way (Windows):** unzip `CasualtiesCoop-2.1.7.zip` anywhere, then right-click `install.ps1` and choose **Run with PowerShell** (or run `powershell -ExecutionPolicy Bypass -File install.ps1`). It finds the game, installs BepInEx 5 if you don't have it yet, and copies the mod in.
 
 **Updating:** run the installer from the new download the same way. It replaces an older CasualtiesCoop (your settings are kept) and removes any other copy of a co-op mod it finds under `BepInEx/plugins` (the first co-op mod in `plugins/CCoop`, a second copy, loose files); other mods are left alone. It won't replace a newer version unless you add `-Force` (`--force` on Linux). If a second copy is still there when the game starts, the co-op lobby says so in red.
 
@@ -19,7 +19,7 @@ Version 2 is a rewrite. Version 1 targeted the demo and is kept under `legacy/v1
 **By hand:**
 
 1. Install [BepInEx 5.4.23.x x64](https://github.com/BepInEx/BepInEx/releases) into the game folder (`steamapps/common/Casualties Unknown`).
-2. Unzip `CasualtiesCoop-2.1.6.zip` into the game folder, which gives you `BepInEx/plugins/CasualtiesCoop/`.
+2. Unzip `CasualtiesCoop-2.1.7.zip` into the game folder, which gives you `BepInEx/plugins/CasualtiesCoop/`.
 
 Everyone in the session needs the same mod version and the same game build (a player with another version is told which version the host has when joining).
 
@@ -218,7 +218,7 @@ This starts two game instances. The first hosts, the second joins `127.0.0.1`, a
 
 `-Steam` makes the first instance host an invite-only Steam lobby instead, which requires the Steam client to be running. `-Minimized` starts the copies minimised, out of the way. `-Offline` keeps them on the menu, out of any session.
 
-Screens for review, without touching the mouse: `CCOOP_SHOTS=<folder>` with `-Count 1 -Offline` saves every page of the co-op lobby, and `CCOOP_RUNSHOTS=<folder>` with `-Count 2 -Auto` saves the host's in-run screens (the right-click menu, the health panel, the pause menu, radio chat, an alert, the lobby in a run).
+Screens for review, without touching the mouse: `CCOOP_SHOTS=<folder>` with `-Count 1 -Offline` saves every page of the co-op lobby, and `CCOOP_RUNSHOTS=<folder>` with `-Count 2 -Auto` saves the host's in-run screens (the right-click menu, the health panel, the pause menu, radio chat, an alert, the chat log, carry and item prompts, stacked captions, the gesture wheel, pings and arrows, the team summary, the lobby in a run).
 
 The launcher lets several copies run by handing Doorstop a copy of `CasualtiesUnknown_Data\boot.config` without the `single-instance=` line (in `%TEMP%`). No game file is modified.
 

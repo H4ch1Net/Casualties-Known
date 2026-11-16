@@ -186,6 +186,9 @@ namespace CCoop.Plugin.Sync
         }
 
         internal static void DevOpen() => Open();
+
+        /// <summary>Screenshots: a line in the log as if <paramref name="origin"/> said it.</summary>
+        internal static void DevLine(byte origin, string text, byte kind) => Show(origin, new ChatLine { Text = text, Kind = kind });
         internal static void DevRadioMode(bool on) => _radio = on;
 
         /// <summary>Radio lines this player heard through a radio (self-test).</summary>

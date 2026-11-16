@@ -274,10 +274,15 @@ namespace CCoop.Plugin.UI
         }
 
         /// <summary>On the menu: your character, as the game's character screen describes it.</summary>
+        private static Vector2 _charScroll;
+
         private static void YourCharacter(CoopRuntime rt, NetSession s)
         {
             CharacterPick.Ensure();
             int c = CharacterPick.Current;
+            // The character's sheet scrolls when the panel is short (a big UI scale, the Deck):
+            // what's under it (your name, messages) always stays in view.
+            _charScroll = GUILayout.BeginScrollView(_charScroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.ExpandHeight(true));
             GUILayout.Label(CharacterPick.Name(c), UiSkin.Fit(_charName, CharacterPick.Name(c)));
             var st = CharacterPick.Stats(c);
             if (st != null && st.Length >= 3) GUILayout.Label("[STR] " + st[0] + "   [RES] " + st[1] + "   [INT] " + st[2], _tag);
@@ -286,7 +291,8 @@ namespace CCoop.Plugin.UI
             if (notes.Length > 0) GUILayout.Label(notes, UiSkin.Fit(_charText, notes));
             string quirks = CharacterPick.Text(c, "quirks");
             if (quirks.Length > 0) { GUILayout.Space(4); GUILayout.Label(quirks, UiSkin.Fit(_charText, quirks)); }
-            GUILayout.FlexibleSpace();
+            GUILayout.EndScrollView();
+            GUILayout.Space(6);
             if (s == null)
             {
                 // Your name, for the others (set before hosting or joining).

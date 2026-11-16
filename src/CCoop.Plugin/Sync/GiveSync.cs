@@ -46,10 +46,19 @@ namespace CCoop.Plugin.Sync
         private readonly Dictionary<byte, KeyValuePair<string, float>> _asked = new Dictionary<byte, KeyValuePair<string, float>>();
 
         internal static int AsksSent, AsksGiven, AsksRefused;
-        private static GUIStyle _box;
 
         /// <summary>Dev: accept every offer at once.</summary>
         internal static bool DevAutoAccept;
+
+        /// <summary>Screenshots: <paramref name="from"/> offers us an item and asks for one (or neither).</summary>
+        internal void DevPrompts(byte from, bool on)
+        {
+            _incoming.Clear();
+            _asks.Clear();
+            if (!on) return;
+            _incoming.Add(new Incoming { Token = 0, From = from, ItemId = "bandage", At = Time.unscaledTime - 6f });
+            _asks.Add(new Ask { From = from, Slot = 255, ItemId = "canteen", At = Time.unscaledTime });
+        }
 
         internal override void Attach(NetSession s)
         {
@@ -256,28 +265,19 @@ namespace CCoop.Plugin.Sync
             foreach (var o in _incoming.ToArray())
                 if (now - o.At > OfferLifetime) Answer(o, false);
             if (_incoming.Count == 0 && _asks.Count == 0) return;
-            if (_box == null) _box = new GUIStyle(GUI.skin.box) { fontSize = UI.UiSkin.Body, alignment = TextAnchor.UpperCenter };
-
-            float k = UI.CoopWindow.Scale;
-            var old = GUI.matrix;
-            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(k, k, 1f));
-            try
+            foreach (var o in _incoming.ToArray())
             {
-                float w = Screen.width / k;
-                float y = 170f;
-                foreach (var o in _incoming.ToArray())
-                {
-                    int a = UI.UiSkin.Prompt(_box, w, ref y, Lang.F("{0} offers you {1}", Coop.Player(o.From).Name, Medic.Pretty(o.ItemId)), Lang.T("Take it"), Lang.T("No thanks"));
-                    if (a != 0) Answer(o, a == 1);
-                }
-                foreach (var a in _asks.ToArray())
-                {
-                    int ans = UI.UiSkin.Prompt(_box, w, ref y, Lang.F("{0} asks for your {1}", Coop.Player(a.From).Name, Medic.Pretty(a.ItemId)), Lang.T("Give it"), Lang.T("Keep it"));
-                    if (ans == 1) GiveAsked(a);
-                    else if (ans == 2) Refuse(a);
-                }
+                int a = UI.UiSkin.Prompt(Lang.F("{0} offers you {1}", Coop.Player(o.From).Name, Medic.Pretty(o.ItemId)), Lang.T("Take it"), Lang.T("No thanks"),
+                    1f - (now - o.At) / OfferLifetime);
+                if (a != 0) Answer(o, a == 1);
             }
-            finally { GUI.matrix = old; }
+            foreach (var a in _asks.ToArray())
+            {
+                int ans = UI.UiSkin.Prompt(Lang.F("{0} asks for your {1}", Coop.Player(a.From).Name, Medic.Pretty(a.ItemId)), Lang.T("Give it"), Lang.T("Keep it"),
+                    1f - (now - a.At) / OfferLifetime);
+                if (ans == 1) GiveAsked(a);
+                else if (ans == 2) Refuse(a);
+            }
         }
     }
 }

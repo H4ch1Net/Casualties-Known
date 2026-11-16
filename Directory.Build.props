@@ -9,9 +9,9 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <AssemblyVersion>2.1.6.0</AssemblyVersion>
-    <FileVersion>2.1.6.0</FileVersion>
-    <Version>2.1.6</Version>
+    <AssemblyVersion>2.1.7.0</AssemblyVersion>
+    <FileVersion>2.1.7.0</FileVersion>
+    <Version>2.1.7</Version>
     <Authors>CasualtiesCoop contributors</Authors>
 
     <!-- Deterministic, reproducible builds -->

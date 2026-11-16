@@ -5,8 +5,9 @@ using UnityEngine;
 namespace CCoop.Plugin.UI
 {
     /// <summary>
-    /// A small warning in the corner while a client's link to the host is poor, so lag
-    /// is explained instead of mysterious. Hidden while the connection is fine.
+    /// A small warning at the top of the screen while a client's link to the host is poor,
+    /// so lag is explained instead of mysterious. Hidden while the connection is fine. (Not
+    /// in the corner: the game's depth meter is there.)
     /// </summary>
     internal static class ConnectionBadge
     {
@@ -54,11 +55,23 @@ namespace CCoop.Plugin.UI
                 _style = new GUIStyle(GUI.skin.box) { fontSize = UiSkin.Small, alignment = TextAnchor.MiddleCenter, wordWrap = true };
                 _style.normal.textColor = Color.white;
             }
+            float k = CoopWindow.Scale;
+            var oldMatrix = GUI.matrix;
             var old = GUI.color;
-            GUI.color = tint;
-            float h = _style.CalcHeight(new GUIContent(text), 320f);
-            GUI.Box(new Rect(Screen.width - 330, 8, 320, Mathf.Max(26f, h)), text, _style);
-            GUI.color = old;
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(k, k, 1f));
+            try
+            {
+                var style = UiSkin.Fit(_style, text);
+                float w = Mathf.Min(style.CalcSize(new GUIContent(text)).x + 20f, 520f);
+                float h = style.CalcHeight(new GUIContent(text), w);
+                GUI.color = tint;
+                GUI.Box(new Rect(Screen.width / k / 2f - w / 2f, 8f, w, Mathf.Max(26f, h)), text, style);
+            }
+            finally
+            {
+                GUI.color = old;
+                GUI.matrix = oldMatrix;
+            }
         }
     }
 }

@@ -160,7 +160,9 @@ namespace CCoop.Plugin.UI
         {
             var r = Row(label, tip, RowH + 26f);
             var bar = new Rect(r.x + 10f, r.y + RowH - 6f, r.width - 90f, 18f);
-            float v = GUI.HorizontalSlider(InView || GUIUtility.hotControl != 0 ? bar : new Rect(bar.x, bar.y, 0f, 0f), value, min, max, _track, _thumb);
+            // Always drawn; only out of the list's view does it ignore the mouse.
+            bool live = InView || GUIUtility.hotControl != 0 || Event.current.type == EventType.Repaint || Event.current.type == EventType.Layout;
+            float v = GUI.HorizontalSlider(live ? bar : new Rect(bar.x, bar.y, 0f, 0f), value, min, max, _track, _thumb);
             if (Event.current.type == EventType.Repaint)
                 GUI.Label(new Rect(bar.xMax + 6f, bar.y - 6f, 70f, 30f), shown, _value);
             return v;

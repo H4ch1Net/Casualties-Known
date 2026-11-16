@@ -195,7 +195,7 @@ namespace CCoop.Plugin.Sync
                 bottom = Lang.F("Everyone sets off together. Up to {0} s more · {1} to go ahead without them", Mathf.CeilToInt(Mathf.Max(0f, _shownLeft)), key);
             }
             else bottom = Lang.T("Everyone sets off together, as soon as the whole team is in.");
-            Overlay.Bottom(top, bottom, 1);
+            Overlay.Bottom(top, bottom);
         }
     }
 }

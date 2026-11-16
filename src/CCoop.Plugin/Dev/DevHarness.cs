@@ -303,7 +303,8 @@ namespace CCoop.Plugin.Dev
             float now = Time.realtimeSinceStartup;
             if (_runShotAt < 0f) { _runShotAt = now + 6f; return; }  // let everyone set off
             if (now < _runShotAt) return;
-            string[] names = { "run-1-menu", "run-2-askfor", "run-3-health", "run-4-pause", "run-5-radio", "run-6-alert", "run-7-lobby" };
+            string[] names = { "run-1-menu", "run-2-askfor", "run-3-health", "run-4-pause", "run-5-radio", "run-6-alert", "run-7-chatlog",
+                               "run-8-prompts", "run-9-captions", "run-10-wheel", "run-11-marks", "run-12-receipt", "run-13-lobby" };
             int step = _runShot / 2;
             if (step >= names.Length)
             {
@@ -327,7 +328,44 @@ namespace CCoop.Plugin.Dev
                 case 3: UI.TeammatePanel.DevMenu(-1, 0); PauseHandler.TogglePause(); break;
                 case 4: PauseHandler.TogglePause(); Chat.DevOpen(); Chat.DevRadioMode(true); break;
                 case 5: Chat.DevClose(); Chat.DevRadioMode(false); CoopRuntime.Notice("Teammate treated your forearm"); break;
-                case 6: UI.CoopWindow.DevSelectLobbyTab(1); break;
+                case 6:
+                    Chat.DevLine(mate.Id, "over here, found a canteen", Protocol.ChatLine.Spoken);
+                    Chat.DevLine(mate.Id, "heading to the ex#t n~w", Protocol.ChatLine.Radio);
+                    Chat.DevLine(mate.Id, "*mumbles* mhn... hm nmh...", Protocol.ChatLine.Mumble);
+                    Chat.DevLine(Coop.LocalId, "ok coming", Protocol.ChatLine.Spoken);
+                    break;
+                case 7:
+                    Coop.Get<CarrySync>()?.DevOffer(mate.Id, true);
+                    Coop.Get<GiveSync>()?.DevPrompts(mate.Id, true);
+                    break;
+                case 8:
+                    Coop.Get<CarrySync>()?.DevOffer(mate.Id, false);
+                    Coop.Get<GiveSync>()?.DevPrompts(mate.Id, false);
+                    var vote = new Protocol.ExitStatus { Needed = 2, Living = 2 };
+                    vote.Voters.Add(mate.Id);
+                    ExitVote.DevFake = vote;
+                    TeamMotion.DevLegUp(mate.Id, 5f);
+                    CoopRuntime.Notice(Coop.Player(mate.Id).Name + " is waiting at the exit");
+                    break;
+                case 9:
+                    ExitVote.DevFake = null;
+                    TeamMotion.DevLegUp(mate.Id, 0f);
+                    Coop.Get<GestureSync>()?.DevWheel(true);
+                    break;
+                case 10:
+                {
+                    Coop.Get<GestureSync>()?.DevWheel(false);
+                    var me = GameInfo.LocalBody != null ? (Vector2)GameInfo.LocalBody.transform.position : Coop.Player(mate.Id).Position;
+                    Coop.Get<PingSync>()?.DevMark(mate.Id, me + new Vector2(4f, 3f));
+                    Coop.Get<PingSync>()?.DevMark(Coop.LocalId, me + new Vector2(90f, -8f));
+                    UI.TeammateArrows.DevOffset = new Vector2(-70f, 12f);
+                    break;
+                }
+                case 11:
+                    UI.TeammateArrows.DevOffset = Vector2.zero;
+                    UI.TeamReceipt.DevShow(true);
+                    break;
+                case 12: UI.TeamReceipt.DevShow(false); UI.CoopWindow.DevSelectLobbyTab(1); break;
             }
             _runShot++;
             _runShotAt = now + 2.5f;
@@ -383,7 +421,7 @@ namespace CCoop.Plugin.Dev
                 case 8: UI.CoopWindow.DevSelectLobbyTab(1); UI.GameRows.DevOpen("respawn"); break;
                 case 9:
                     UI.GameRows.DevOpen(null);
-                    UI.GameTooltip.DevShow(UI.Lang.T("Radios"), UI.Lang.T("Everyone has a radio. Press Tab in the chat box to talk on it: the others hear you clearly, anywhere on the layer."), new Vector2(1150f, 640f));
+                    UI.GameTooltip.DevShow(UI.Lang.T("Radios"), UI.Lang.T("Everyone has a radio. Press Tab in the chat box to talk on it: it reaches the whole layer, but it crackles more the farther away and the more rock in between. You need to be awake to use it."), new Vector2(1150f, 640f));
                     break;
             }
             _shotStage++;

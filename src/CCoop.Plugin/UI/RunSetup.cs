@@ -109,7 +109,7 @@ namespace CCoop.Plugin.UI
                     Fill(r, new Color(1f, 1f, 1f, 0.05f));
                     if (!custom && _art != null && i < _art.Count && _art[i] != null) DrawSprite(new Rect(r.x + 4f, r.y + 4f, r.width - 8f, r.height - 34f), _art[i]);
                     else if (custom) GUI.Label(new Rect(r.x, r.y, r.width, r.height - 30f), "...", _cardName);
-                    GUI.Label(new Rect(r.x + 2f, r.yMax - 32f, r.width - 4f, 30f), name, UiSkin.Fit(_cardName, name));
+                    GUI.Label(new Rect(r.x + 2f, r.yMax - 32f, r.width - 4f, 30f), name, UiSkin.FitWidth(_cardName, name, r.width - 8f));
                     Border(r, on ? Selected : new Color(1f, 1f, 1f, 0.5f), on ? 3f : 1f);
                     if (editable && !custom && r.Contains(Event.current.mousePosition)) Fill(r, new Color(1f, 1f, 1f, 0.06f));
                 }

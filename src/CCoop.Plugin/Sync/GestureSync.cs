@@ -150,6 +150,17 @@ namespace CCoop.Plugin.Sync
             return Mathf.RoundToInt(angle / (360f / Wheel.Length)) % Wheel.Length;
         }
 
+        /// <summary>Screenshots: the wheel open in the middle of the screen (or shut).</summary>
+        internal void DevWheel(bool open)
+        {
+            if (!open) { CloseWheel(); return; }
+            _wheelOpen = true;
+            _sticky = true;
+            _choice = -1;
+            _openedAt = Time.unscaledTime;
+            _wheelCentre = new Vector2(Screen.width / 2f, Screen.height / 2f);
+        }
+
         /// <summary>Dev: perform a gesture by its wheel label.</summary>
         internal void DevDo(string label)
         {
@@ -331,13 +342,16 @@ namespace CCoop.Plugin.Sync
                 var old = GUI.color;
                 GUI.color = new Color(c.r, c.g, c.b, alpha * 0.9f);
                 float len = Vector2.Distance(ga, gb);
-                float phase = (now * 60f) % 14f;
-                for (float t = phase; t < len; t += 14f)
+                float gap = 14f * CoopWindow.Scale;
+                var dot = PixelMarks.Size(PixelMarks.Dot);
+                float phase = (now * 60f * CoopWindow.Scale) % gap;
+                for (float t = phase; t < len; t += gap)
                 {
                     var q = Vector2.Lerp(ga, gb, t / len);
-                    GUI.DrawTexture(new Rect(q.x - 2.5f, q.y - 2.5f, 5f, 5f), Texture2D.whiteTexture);
+                    GUI.DrawTexture(new Rect(Mathf.Round(q.x - dot.x / 2f), Mathf.Round(q.y - dot.y / 2f), dot.x, dot.y), PixelMarks.Dot);
                 }
-                GUI.DrawTexture(new Rect(gb.x - 6f, gb.y - 6f, 12f, 12f), Texture2D.whiteTexture);
+                var end = PixelMarks.Size(PixelMarks.Ring);
+                GUI.DrawTexture(new Rect(Mathf.Round(gb.x - end.x / 2f), Mathf.Round(gb.y - end.y / 2f), end.x, end.y), PixelMarks.Ring);
                 GUI.color = old;
             }
         }

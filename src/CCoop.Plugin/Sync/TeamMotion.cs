@@ -39,6 +39,13 @@ namespace CCoop.Plugin.Sync
         private static float _legUpUntil;
         private static byte _legUpFrom;
 
+        /// <summary>Screenshots: <paramref name="from"/> is giving us a leg-up for a while.</summary>
+        internal static void DevLegUp(byte from, float seconds)
+        {
+            _legUpFrom = from;
+            _legUpUntil = Time.unscaledTime + seconds;
+        }
+
         // ---- pull (helped side)
         private Climbable _rope;
         private float _ropeUntil;
@@ -528,9 +535,9 @@ namespace CCoop.Plugin.Sync
         internal override void Gui()
         {
             if (Time.unscaledTime < _legUpUntil)
-                UI.Overlay.Bottom(Lang.F("{0} is giving you a leg-up", Coop.Player(_legUpFrom).Name), Lang.T("Jump next to them to go higher."), 1);
+                UI.Overlay.Bottom(Lang.F("{0} is giving you a leg-up", Coop.Player(_legUpFrom).Name), Lang.T("Jump next to them to go higher."));
             if (_liftingFor >= 0)
-                UI.Overlay.Bottom(Lang.F("Helping {0} carry", Coop.Player((byte)_liftingFor).Name), Lang.T("You take half the weight. Stay close and keep your hand free."), 2);
+                UI.Overlay.Bottom(Lang.F("Helping {0} carry", Coop.Player((byte)_liftingFor).Name), Lang.T("You take half the weight. Stay close and keep your hand free."));
         }
     }
 

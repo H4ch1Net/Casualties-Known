@@ -13,7 +13,7 @@ namespace CCoop.Plugin.Runtime
     {
         public const string Guid = "ccoop.casualtiescoop";
         public const string Name = "CasualtiesCoop";
-        public const string Version = "2.1.6";
+        public const string Version = "2.1.7";
 
         internal static CoopPlugin Instance { get; private set; }
 
@@ -118,7 +118,7 @@ namespace CCoop.Plugin.Runtime
             Sleep = Config.Bind("Host", "Sleep", true,
                 "Off: nobody gets tired and nobody can nap (sleeping pills still work).");
             Radios = Config.Bind("Host", "Radios", true,
-                "Everyone has a radio (Tab in the chat box): what they say into it reaches the others clearly, anywhere on the layer.");
+                "Everyone has a radio (Tab in the chat box): it reaches the whole layer, crackling with distance and rock. Off: only talking out loud.");
             LastAddress = Config.Bind("Join", "LastAddress", "127.0.0.1", "Last address joined over LAN/IP.");
             MenuKey = Config.Bind("Controls", "MenuKey", KeyCode.F1, "Opens the co-op menu.");
             ChatKey = Config.Bind("Controls", "ChatKey", KeyCode.Return, "Opens chat while in a session.");

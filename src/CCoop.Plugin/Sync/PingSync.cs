@@ -25,8 +25,6 @@ namespace CCoop.Plugin.Sync
 
         private readonly List<Mark> _marks = new List<Mark>();
         private float _nextAllowed;
-        private static Texture2D _ring;
-        private static GUIStyle _label;
 
         internal static readonly Color[] Palette =
         {
@@ -74,6 +72,9 @@ namespace CCoop.Plugin.Sync
             Add(Coop.LocalId, at);
         }
 
+        /// <summary>Screenshots: a mark as if <paramref name="owner"/> placed it (not sent).</summary>
+        internal void DevMark(byte owner, Vector2 at) => Add(owner, at);
+
         private void Add(byte owner, Vector2 at)
         {
             if (!Coop.WorldLive) return;
@@ -89,14 +90,12 @@ namespace CCoop.Plugin.Sync
             if (_marks.Count == 0 || !Coop.WorldLive || ConditionFx.Blind) return;
             var cam = Camera.main;
             if (cam == null) return;
-            if (_ring == null) _ring = MakeRing(64, 6);
-            if (_label == null)
-            {
-                _label = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontSize = UI.UiSkin.Small, wordWrap = false };
-            }
             float now = Time.unscaledTime;
             _marks.RemoveAll(m => now - m.At > Lifetime);
 
+            var ring = UI.PixelMarks.Ring;
+            var size = UI.PixelMarks.Size(ring);
+            float px = UI.PixelMarks.Px;
             Vector2 me = GameInfo.LocalBody != null ? (Vector2)GameInfo.LocalBody.transform.position : (Vector2)cam.transform.position;
             foreach (var m in _marks)
             {
@@ -106,61 +105,30 @@ namespace CCoop.Plugin.Sync
                 Vector3 sp = cam.WorldToScreenPoint(m.Position);
                 float x = sp.x, y = Screen.height - sp.y;
                 bool onScreen = sp.z > 0 && x >= 0 && x <= Screen.width && y >= 0 && y <= Screen.height;
-                string name = m.Owner == Coop.LocalId ? "You" : Coop.Player(m.Owner).Name;
+                string name = m.Owner == Coop.LocalId ? UI.Lang.T("You") : Coop.Player(m.Owner).Name;
 
                 var old = GUI.color;
-                if (onScreen)
+                if (!onScreen)
                 {
-                    float pulse = ConditionFx.Reduced ? 1f : 1f + Mathf.Sin(age * 6f) * 0.12f;
-                    float size = 34f * pulse;
-                    GUI.color = new Color(color.r, color.g, color.b, fade);
-                    GUI.DrawTexture(new Rect(x - size / 2f, y - size / 2f, size, size), _ring);
-                    if (age < 0.6f)
-                    {
-                        float burst = 34f + age * 160f;
-                        GUI.color = new Color(color.r, color.g, color.b, (0.6f - age) * fade);
-                        GUI.DrawTexture(new Rect(x - burst / 2f, y - burst / 2f, burst, burst), _ring);
-                    }
-                    Label(new Rect(x - 100f, y + 20f, 200f, 20f), name, color, fade);
+                    // Pinned to the screen edge, toward the mark, with how far it is.
+                    x = Mathf.Clamp(sp.z > 0 ? x : Screen.width - x, UI.PixelMarks.EdgeLeft, Screen.width - UI.PixelMarks.EdgeRight);
+                    y = Mathf.Clamp(sp.z > 0 ? y : Screen.height - y, UI.PixelMarks.EdgeTop, Screen.height - UI.PixelMarks.EdgeBottom);
+                    name += " · " + Mathf.RoundToInt(Vector2.Distance(me, m.Position)) + " m";
                 }
-                else
+                // A blink rather than a throb: pixel art doesn't scale smoothly.
+                float blink = ConditionFx.Reduced || age > 1.2f || Mathf.Repeat(age, 0.3f) < 0.18f ? 1f : 0.35f;
+                GUI.color = new Color(color.r, color.g, color.b, fade * blink);
+                GUI.DrawTexture(new Rect(Mathf.Round(x - size.x / 2f), Mathf.Round(y - size.y / 2f), size.x, size.y), ring);
+                if (onScreen && age < 0.6f && !ConditionFx.Reduced)
                 {
-                    // Pinned to the screen edge, toward the mark.
-                    float cx = Mathf.Clamp(sp.z > 0 ? x : Screen.width - x, 30f, Screen.width - 30f);
-                    float cy = Mathf.Clamp(sp.z > 0 ? y : Screen.height - y, 30f, Screen.height - 50f);
-                    GUI.color = new Color(color.r, color.g, color.b, fade);
-                    GUI.DrawTexture(new Rect(cx - 12f, cy - 12f, 24f, 24f), _ring);
-                    int dist = Mathf.RoundToInt(Vector2.Distance(me, m.Position));
-                    Label(new Rect(cx - 100f, cy + 13f, 200f, 20f), name + " · " + dist + " m", color, fade);
+                    // A ring that grows out of it, in whole pixel steps.
+                    float step = Mathf.Floor(1f + age * 5f) * px * ring.width;
+                    GUI.color = new Color(color.r, color.g, color.b, (0.6f - age) * fade);
+                    GUI.DrawTexture(new Rect(Mathf.Round(x - step / 2f), Mathf.Round(y - step / 2f), step, step), ring);
                 }
                 GUI.color = old;
+                UI.PixelMarks.Label(new Vector2(x, y + size.y / 2f + 2f), name, color, fade);
             }
-        }
-
-        private static void Label(Rect r, string text, Color color, float alpha)
-        {
-            var old = GUI.color;
-            GUI.color = Color.white;
-            _label.normal.textColor = new Color(0f, 0f, 0f, alpha * 0.8f);
-            GUI.Label(new Rect(r.x + 1f, r.y + 1f, r.width, r.height), text, _label);
-            _label.normal.textColor = new Color(color.r, color.g, color.b, alpha);
-            GUI.Label(r, text, _label);
-            GUI.color = old;
-        }
-
-        private static Texture2D MakeRing(int size, int thickness)
-        {
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
-            float c = (size - 1) / 2f, outer = size / 2f - 1f, inner = outer - thickness;
-            for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
-                {
-                    float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c));
-                    float a = Mathf.Clamp01(outer - d + 0.5f) * Mathf.Clamp01(d - inner + 0.5f);
-                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
-                }
-            tex.Apply();
-            return tex;
         }
     }
 }

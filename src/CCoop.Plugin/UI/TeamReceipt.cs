@@ -27,7 +27,8 @@ namespace CCoop.Plugin.UI
 
         private static readonly Dictionary<byte, Fate> Fates = new Dictionary<byte, Fate>();
         private static float _showFrom = -1f;
-        private static GUIStyle _style;
+        private static GUIStyle _style, _title;
+        private static float _copiedAt = -1f;
 
         internal override void Detach()
         {
@@ -56,6 +57,13 @@ namespace CCoop.Plugin.UI
         }
 
         /// <summary>This player is on the game's end screen (an ending or death).</summary>
+
+        /// <summary>Screenshots: the team summary now (or hidden).</summary>
+        internal static void DevShow(bool on)
+        {
+            Refresh();
+            _showFrom = on ? Time.unscaledTime - 2f : -1f;
+        }
 
         /// <summary>This player reached an ending (not death) and is on the end screen.</summary>
         internal static bool ReachedEnding { get; private set; }
@@ -125,19 +133,42 @@ namespace CCoop.Plugin.UI
         internal override void Gui()
         {
             if (_showFrom < 0f || Time.unscaledTime < _showFrom || Fates.Count < 2) return;
-            if (_style == null) _style = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Body, wordWrap = true };
+            if (_style == null)
+            {
+                _style = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Body, wordWrap = true };
+                _title = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Head, wordWrap = true };
+            }
             float a = Mathf.Clamp01((Time.unscaledTime - _showFrom) / 1.5f);
+            float k = CoopWindow.Scale;
+            var oldMatrix = GUI.matrix;
             var old = GUI.color;
-            GUI.color = new Color(1f, 1f, 1f, a);
-            float w = 400f, h = 78f + 24f * Fates.Count;
-            var r = new Rect(Screen.width - w - 24f, 24f, w, h);
-            GUI.Box(r, GUIContent.none);
-            GUILayout.BeginArea(new Rect(r.x + 10f, r.y + 8f, r.width - 20f, r.height - 12f));
-            GUILayout.Label(Lang.T("Your team"), _style);
-            foreach (var f in Fates.Values) GUILayout.Label(Line(f), _style);
-            if (GUILayout.Button(Lang.T("Copy run summary"), GUILayout.Width(150))) GUIUtility.systemCopyBuffer = Summary();
-            GUILayout.EndArea();
-            GUI.color = old;
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(k, k, 1f));
+            try
+            {
+                GUI.color = new Color(1f, 1f, 1f, a);
+                const float w = 480f;
+                float h = 24f + _title.CalcHeight(new GUIContent(Lang.T("Your team")), w - 20f) + 40f;
+                foreach (var f in Fates.Values) h += UiSkin.Fit(_style, Line(f)).CalcHeight(new GUIContent(Line(f)), w - 20f) + 4f;
+                var r = new Rect(Screen.width / k - w - 56f, 24f, w, h);  // clear of the depth meter
+                UiMouse.Claim(r);
+                GUI.Box(r, GUIContent.none);
+                GUILayout.BeginArea(new Rect(r.x + 10f, r.y + 8f, r.width - 20f, r.height - 12f));
+                GUILayout.Label(Lang.T("Your team"), _title);
+                foreach (var f in Fates.Values) GUILayout.Label(Line(f), UiSkin.Fit(_style, Line(f)));
+                GUILayout.Space(4f);
+                string copy = _copiedAt > 0f && Time.unscaledTime - _copiedAt < 2f ? Lang.T("Copied") : Lang.T("Copy run summary");
+                if (GUILayout.Button(copy, GUILayout.ExpandWidth(false)))
+                {
+                    GUIUtility.systemCopyBuffer = Summary();
+                    _copiedAt = Time.unscaledTime;
+                }
+                GUILayout.EndArea();
+            }
+            finally
+            {
+                GUI.color = old;
+                GUI.matrix = oldMatrix;
+            }
         }
     }
 

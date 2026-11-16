@@ -166,6 +166,8 @@ carry you in their arms
 = 
 {0} offers to {1}
 = 
+Go ahead
+= 
 Climb on
 = 
 I'll walk
@@ -236,7 +238,7 @@ Waiting at the exit: {0} of {1} needed
 = 
 Walk away from the exit to cancel.
 = 
-Head down and continue at the exit to go with them. The rest are brought along.
+Join them at the exit. Once enough are there, everyone goes down.
 = 
 Waiting for {0} to finish loading this layer.
 = 
@@ -1030,7 +1032,7 @@ Shots and blows hurt teammates.
 = 
 Off: nobody gets tired and nobody can nap. Sleeping pills still work.
 = 
-Everyone has a radio. Press Tab in the chat box to talk on it: the others hear you clearly, anywhere on the layer.
+Everyone has a radio. Press Tab in the chat box to talk on it: it reaches the whole layer, but it crackles more the farther away and the more rock in between. You need to be awake to use it.
 = 
 How far voices and speech are heard.
 = 
@@ -1141,6 +1143,8 @@ alive on layer {0}
 CasualtiesCoop run · team of {0}
 = 
 Your team
+= 
+Copied
 = 
 Copy run summary
 = 

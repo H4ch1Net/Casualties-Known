@@ -179,11 +179,24 @@ namespace CCoop.Plugin.Sync
                 _mic.normal.textColor = Color.white;
             }
             bool speaking = CanSpeak();
+            string text = speaking ? (Mode == "Open" ? Lang.T("Open mic") : Lang.T("Talking")) : Lang.T("You can't speak while unconscious");
+            float k = UI.CoopWindow.Scale;
+            var oldMatrix = GUI.matrix;
             var old = GUI.color;
-            GUI.color = speaking ? new Color(0.6f, 1f, 0.6f) : new Color(1f, 0.6f, 0.5f);
-            GUI.Box(new Rect(Screen.width - 230, Screen.height - 120, 220, 26),
-                    speaking ? (Mode == "Open" ? Lang.T("Open mic") : Lang.T("Talking")) : Lang.T("You can't speak while unconscious"), _mic);
-            GUI.color = old;
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(k, k, 1f));
+            try
+            {
+                // Bottom right, above the game's time controls.
+                var style = UI.UiSkin.Fit(_mic, text);
+                float w = Mathf.Max(120f, style.CalcSize(new GUIContent(text)).x + 20f);
+                GUI.color = speaking ? new Color(0.6f, 1f, 0.6f) : new Color(1f, 0.6f, 0.5f);
+                GUI.Box(new Rect(Screen.width / k - w - 10f, Screen.height / k - 92f, w, 26f), text, style);
+            }
+            finally
+            {
+                GUI.color = old;
+                GUI.matrix = oldMatrix;
+            }
         }
 
         // ------------------------------------------------------------------ receiving

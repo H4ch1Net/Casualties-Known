@@ -77,12 +77,41 @@ namespace CCoop.Plugin.UI
             return w;
         }
 
+        private static readonly Dictionary<long, GUIStyle> Smaller = new Dictionary<long, GUIStyle>();
+
+        /// <summary>
+        /// <see cref="Fit"/>, and a size or few smaller if that's what it takes for
+        /// <paramref name="text"/> to fit on one line in <paramref name="width"/> (a short
+        /// label in a narrow box, at a big UI scale or in a wordier language).
+        /// </summary>
+        internal static GUIStyle FitWidth(GUIStyle s, string text, float width)
+        {
+            var style = Fit(s, text);
+            if (style == null || string.IsNullOrEmpty(text)) return style;
+            var content = new GUIContent(text);
+            if (style.CalcSize(content).x <= width) return style;
+            int floor = Mathf.Max(10, style.fontSize - 6);
+            for (int size = style.fontSize - 1; size >= floor; size--)
+            {
+                long key = ((long)style.GetHashCode() << 8) | (uint)size;
+                if (!Smaller.TryGetValue(key, out var small))
+                {
+                    small = new GUIStyle(style) { fontSize = size };
+                    Smaller[key] = small;
+                }
+                if (small.CalcSize(content).x <= width || size == floor) return small;
+            }
+            return style;
+        }
+
         /// <summary>Whether Retro Gaming has a glyph for every character of <paramref name="text"/>.</summary>
         internal static bool PixelCovers(string text)
         {
             foreach (char c in text)
             {
-                if (c < 0x7F) continue;
+                // Latin-1 is all there. (The game's font asset only knows the glyphs its own
+                // text has used, so it would wrongly say no to "·" or "é".)
+                if (c < 0x100) continue;
                 if (!Covered.TryGetValue(c, out bool ok))
                 {
                     ok = HasGlyph(c);
@@ -116,22 +145,49 @@ namespace CCoop.Plugin.UI
             return c < 0x180;  // Latin-1 and Latin Extended-A
         }
 
+        private static GUIStyle _promptBox;
+        private static int _promptPass = -1;
+        private static float _promptY;
+
         /// <summary>
-        /// A yes / no prompt centred at the top of the screen, as wide as its question:
-        /// returns 1 for yes, 2 for no, 0 while unanswered. <paramref name="y"/> moves past it.
+        /// A yes / no prompt at the top centre of the screen, as wide as its question, in the
+        /// overlay's scale. Every prompt of a frame shares one column (carry offers, items
+        /// offered or asked for), so they queue instead of overlapping. A bar along the
+        /// bottom runs down with <paramref name="left"/> (1 to 0), the time left to answer.
+        /// Returns 1 for yes, 2 for no, 0 while unanswered.
         /// </summary>
-        internal static int Prompt(GUIStyle box, float screenW, ref float y, string question, string yes, string no)
+        internal static int Prompt(string question, string yes, string no, float left)
         {
-            var style = Fit(box, question);
-            float w = Mathf.Clamp(style.CalcSize(new GUIContent(question)).x + 32f, 380f, screenW - 40f);
-            var r = new Rect(screenW / 2f - w / 2f, y, w, 68f);
-            UiMouse.Claim(r);
-            GUI.Box(r, question, style);
-            int answer = 0;
-            if (GUI.Button(new Rect(r.center.x - 150f, r.y + 34f, 140f, 26f), yes)) answer = 1;
-            if (GUI.Button(new Rect(r.center.x + 10f, r.y + 34f, 140f, 26f), no)) answer = 2;
-            y += 76f;
-            return answer;
+            if (_promptBox == null) _promptBox = new GUIStyle(GUI.skin.box) { fontSize = Body, alignment = TextAnchor.UpperCenter };
+            int pass = Time.frameCount * 32 + (int)Event.current.type;
+            if (pass != _promptPass) { _promptPass = pass; _promptY = 100f; }
+
+            float k = CoopWindow.Scale;
+            var old = GUI.matrix;
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(k, k, 1f));
+            try
+            {
+                float screenW = Screen.width / k;
+                var style = Fit(_promptBox, question);
+                float bw = Mathf.Max(140f, Mathf.Max(GUI.skin.button.CalcSize(new GUIContent(yes)).x, GUI.skin.button.CalcSize(new GUIContent(no)).x) + 16f);
+                float w = Mathf.Clamp(Mathf.Max(style.CalcSize(new GUIContent(question)).x + 32f, bw * 2f + 40f), 380f, screenW - 40f);
+                var r = new Rect(screenW / 2f - w / 2f, _promptY, w, 70f);
+                _promptY += 78f;
+                UiMouse.Claim(r);
+                GUI.Box(r, question, style);
+                if (Event.current.type == EventType.Repaint && left > 0f)
+                {
+                    var c = GUI.color;
+                    GUI.color = new Color(1f, 1f, 1f, 0.45f);
+                    GUI.DrawTexture(new Rect(r.x + 4f, r.yMax - 6f, (r.width - 8f) * Mathf.Clamp01(left), 2f), Texture2D.whiteTexture);
+                    GUI.color = c;
+                }
+                int answer = 0;
+                if (GUI.Button(new Rect(r.center.x - bw - 10f, r.y + 34f, bw, 26f), yes)) answer = 1;
+                if (GUI.Button(new Rect(r.center.x + 10f, r.y + 34f, bw, 26f), no)) answer = 2;
+                return answer;
+            }
+            finally { GUI.matrix = old; }
         }
 
         // ------------------------------------------------------------------ building
@@ -141,6 +197,8 @@ namespace CCoop.Plugin.UI
             _built = true;
             _builtFor = Lang.Code;
             WideTwins.Clear();
+            Smaller.Clear();
+            _promptBox = null;
             var pixel = GameLook.Pixel;
             if (pixel == null) { Skin = null; return; }
             try
