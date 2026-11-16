@@ -1963,6 +1963,15 @@ namespace CCoop.Plugin.Dev
                      " blocks " + (ts != null ? ts.Sent + "/" + ts.Applied : "-"));
             var cs = Coop.Get<CreatureSync>();
             if (cs != null) Log.Info("VERIFY " + tag + " creatures " + cs.Describe());
+            // Ropes and vines: how many can be climbed, and how far in all (the same on both sides).
+            int ropes = 0, flat = 0;
+            float ropeLength = 0f;
+            foreach (var c in UnityEngine.Object.FindObjectsOfType<Climbable>())
+            {
+                if (c == null || c.gameObject.name.StartsWith("CCoop", StringComparison.Ordinal)) continue;
+                if (c.totalLength > 0.01f) { ropes++; ropeLength += c.totalLength; } else flat++;
+            }
+            Log.Info("VERIFY " + tag + " ropes " + ropes + " climbable, " + flat + " flat, length " + ropeLength.ToString("F1"));
             Log.Info("VERIFY " + tag + " items " + ItemsFingerprint() + " crystals " + CrystalsFingerprint());
             Log.Info("VERIFY " + tag + " life " + LifeLine());
             Log.Info("VERIFY " + tag + " team " + TeamLine());

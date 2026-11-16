@@ -52,7 +52,6 @@ namespace CCoop.Plugin.UI
         private static bool _oracleLooked;
 
         /// <summary>The overlay is drawn in the game's style (its fonts were found).</summary>
-        internal static bool GameStyled => Skin != null;
 
         /// <summary>Call at the start of every OnGUI that draws mod UI.</summary>
         internal static void Apply()

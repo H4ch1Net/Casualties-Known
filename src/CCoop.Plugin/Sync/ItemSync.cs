@@ -78,6 +78,8 @@ namespace CCoop.Plugin.Sync
             if (!EntityRegistry.TryGet(m.Id, out var go) || go.transform.parent != null)
             {
                 Session.SendTo(origin, new ItemTaken { Id = m.Id, Taker = origin, Slot = m.Slot, Granted = false });
+                // Gone from the floor here: the asker's copy is a ghost, so it goes too.
+                WorldNet.SendToWorldPeer(origin, new EntityDespawn { Id = m.Id, Broken = false });
                 return;
             }
             EntityRegistry.Remove(m.Id);

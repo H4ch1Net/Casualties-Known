@@ -26,6 +26,7 @@ namespace CCoop.Plugin.UI
         private int _open = -1;
         private int _limb = -1;
         private int _hoverLimb = -1;
+        private int _hoverNext = -1;
         private float _nextCpr;
         private Rect _rect = new Rect(0, 80, 10, 10);
         private static GUIStyle _small, _warn, _rowSel, _status, _limbTitle, _item, _menuWindow, _menuNote;
@@ -66,6 +67,8 @@ namespace CCoop.Plugin.UI
             if (p == null || p._hovered < 0 || p._menu == p._hovered || UiMouse.Over || !Coop.WorldLive) return false;
             var id = (byte)p._hovered;
             string desc = "<sprite index=20>" + Lang.T("Interact");
+            string heavy = TeamMotion.HeavyHeld(id, out _);
+            if (heavy != null) desc += "\n" + Lang.F("Carrying a heavy {0}: you can help", Medic.Pretty(heavy));
             var v = Coop.Get<VitalsSync>()?.Of(id);
             if (v != null)
             {
@@ -206,7 +209,6 @@ namespace CCoop.Plugin.UI
         private void Body(byte id)
         {
             var v = Coop.Get<VitalsSync>()?.Of(id);
-            var puppet = Coop.Get<PlayerSync>()?.Find(id);
             if (v == null)
             {
                 GUILayout.Label(Lang.T("They're not on this layer."), _small);
@@ -231,15 +233,21 @@ namespace CCoop.Plugin.UI
                 var r = new Rect(row.x + Mathf.Round((row.width - fw) / 2f), row.y, fw, fh);
                 if (Event.current.type == EventType.Repaint) GUI.DrawTexture(row, _inset);
                 TeammateView.Draw(r);
-                _limb = TeammateView.Selected;
-                _hoverLimb = TeammateView.Hovered;
+                // Taken in at Layout only: IMGUI needs the same controls in Layout and Repaint,
+                // and the hover (which adds the limb's lines) changes in between.
+                if (Event.current.type == EventType.Layout)
+                {
+                    _limb = TeammateView.Selected;
+                    _hoverLimb = TeammateView.Hovered;
+                }
             }
             else if (BodyFigure.Ready)
             {
                 float fh = Mathf.Min(BodyFigure.HeightFor(PanelWidth), FigureMaxHeight);
                 var r = GUILayoutUtility.GetRect(PanelWidth, fh, GUILayout.Width(PanelWidth), GUILayout.Height(fh));
                 int hover = BodyFigure.Draw(r, v, Coop.Player(id).Character, _limb);
-                if (Event.current.type == EventType.Repaint) _hoverLimb = hover;
+                if (Event.current.type == EventType.Repaint) _hoverNext = hover;
+                if (Event.current.type == EventType.Layout) _hoverLimb = _hoverNext;
                 if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && r.Contains(Event.current.mousePosition))
                 {
                     _limb = _hoverLimb >= 0 && _hoverLimb != _limb ? _hoverLimb : -1;

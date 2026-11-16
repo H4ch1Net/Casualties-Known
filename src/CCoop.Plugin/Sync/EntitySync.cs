@@ -202,8 +202,12 @@ namespace CCoop.Plugin.Sync
             _nextVanishScan = Time.unscaledTime + 1f;
             if (!WorldAccess.Settled || WorldAccess.Regenerating) return;
             _dead.Clear();
+            _stowed.Clear();
             foreach (var kv in EntityRegistry.All)
+            {
                 if (kv.Value == null) _dead.Add(kv.Key);
+                else if (Stowed(kv.Value)) _stowed.Add(kv.Key);
+            }
             foreach (var id in _dead)
             {
                 EntityRegistry.Remove(id);
@@ -211,6 +215,29 @@ namespace CCoop.Plugin.Sync
                 if (Coop.IsHost) WorldNet.Publish(new EntityDespawn { Id = id, Broken = false });
                 else WorldNet.Publish(new EntityGone { Id = id });
             }
+            // Off the floor some other way than a pickup (dragged into a bag or a crate, worn
+            // from the ground, stowed by a pickup with full hands): gone from the floor for
+            // everyone, or the others keep a copy nobody can take.
+            foreach (var id in _stowed)
+            {
+                Log.Info("[item] " + id + " went into a bag or onto a body here; taking it off everyone's floor");
+                if (Coop.IsHost) Coop.Get<ItemSync>()?.HostPickedUp(id, 255);
+                else
+                {
+                    EntityRegistry.Remove(id);
+                    WorldNet.Publish(new EntityGone { Id = id });
+                }
+            }
+        }
+
+        private readonly List<uint> _stowed = new List<uint>();
+
+        /// <summary>A shared floor item now inside a container or on a body (its own Container doesn't count).</summary>
+        private static bool Stowed(GameObject go)
+        {
+            var parent = go.transform.parent;
+            if (parent == null || go.GetComponent<Item>() == null) return false;
+            return parent.GetComponentInParent<Container>() != null || parent.GetComponentInParent<Body>() != null;
         }
 
         private static void OnGone(byte origin, EntityGone m)
@@ -321,10 +348,12 @@ namespace CCoop.Plugin.Sync
                 if (EntityRegistry.TryGetId(go, out _)) continue;
                 bool item = go.GetComponent<Item>() != null;
                 bool building = go.GetComponent<BuildingEntity>() != null;
-                if (!item && !building) continue;
+                // A rope a player put up (from their own item, so on one machine only).
+                bool climb = go.GetComponent<Climbable>() != null;
+                if (!item && !building && !climb) continue;
                 // Creatures and props appearing on their own come from spawners that
                 // run on every peer; only the host's count.
-                if (building && !item && !Coop.IsHost) continue;
+                if (building && !item && !climb && !Coop.IsHost) continue;
                 PublishSpawn(go);
             }
             _spawnQueue.Clear();
@@ -354,6 +383,7 @@ namespace CCoop.Plugin.Sync
                 Spin = rb != null ? rb.angularVelocity : 0f,
                 Fresh = go.GetComponent<FreshItemDrop>() != null,
                 State = item != null ? ItemCodec.Encode(item) : new byte[0],
+                Extra = EntityState.Capture(go) ?? new byte[0],
             });
             Spawned++;
             return id;
@@ -381,6 +411,7 @@ namespace CCoop.Plugin.Sync
                 Log.Warn("[entity] could not create '" + m.Key + "' from a peer");
                 return;
             }
+            if (m.Extra.Length > 0) EntityState.Apply(go, m.Extra);
             var rb = go.GetComponent<Rigidbody2D>();
             if (rb != null)
             {

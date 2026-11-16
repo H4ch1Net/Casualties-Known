@@ -12,6 +12,9 @@ namespace CCoop.Plugin.Runtime
         public byte Id;
         public string Name = "";
         public int Character;
+
+        /// <summary>Their intelligence skill, or -1 when unknown (not in a layer).</summary>
+        public int Intellect = -1;
         public ulong SteamId;
 
         /// <summary>Epoch of the layer snapshot this peer was sent (host-side), 0 = none.</summary>

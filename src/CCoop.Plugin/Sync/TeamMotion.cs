@@ -28,12 +28,12 @@ namespace CCoop.Plugin.Sync
     {
         private const float LegUpWindow = 5f;
         private const float LegUpMult = 1.75f;
-        internal const float LegUpReach = 1.8f;
-        internal const float PullReach = 5f;
+        internal const float LegUpReach = 2.4f;
+        internal const float PullReach = 7f;
         private const float SnapDuration = 180f;
         private const float SnapCooldown = 90f;
         internal const float HeavyItem = 4f;
-        internal const float LiftReach = 2.5f;
+        internal const float LiftReach = 3.5f;
 
         // ---- leg-up (helped side)
         private static float _legUpUntil;
@@ -68,6 +68,7 @@ namespace CCoop.Plugin.Sync
         {
             DropRope();
             _helpers.Clear();
+            _heavyTold.Clear();
             _liftingFor = -1;
             LiftLoad = 0f;
             SnapBoost = 0f;
@@ -92,12 +93,7 @@ namespace CCoop.Plugin.Sync
 
         private static RemotePlayer Puppet(byte id) => Coop.Get<PlayerSync>()?.Find(id);
 
-        private static float DistanceTo(byte id)
-        {
-            var me = GameInfo.LocalBody;
-            var at = Puppet(id)?.ShownAt;
-            return me == null || !at.HasValue ? float.MaxValue : Vector2.Distance(me.transform.position, at.Value);
-        }
+        private static float DistanceTo(byte id) => Medic.Gap(id);
 
         private static void Say(string line)
         {
@@ -200,7 +196,9 @@ namespace CCoop.Plugin.Sync
             foreach (var itemId in held)
             {
                 if (string.IsNullOrEmpty(itemId)) continue;
-                var info = Item.GetItem(itemId);
+                ItemInfo info = null;
+                try { info = Item.GetItem(itemId); }
+                catch { /* not an item the game knows */ }
                 if (info != null && info.weight >= HeavyItem && info.weight > weight) { weight = info.weight; best = itemId; }
             }
             return best;
@@ -398,11 +396,32 @@ namespace CCoop.Plugin.Sync
 
         // ================================================================== every frame
 
+        private readonly Dictionary<byte, string> _heavyTold = new Dictionary<byte, string>();
+        private float _heavyCheck;
+
+        /// <summary>A teammate nearby picks up something heavy: say how to help (it's not obvious).</summary>
+        private void HeavyHints(float now)
+        {
+            if (now < _heavyCheck) return;
+            _heavyCheck = now + 0.5f;
+            var ps = Coop.Get<PlayerSync>();
+            if (ps == null) return;
+            foreach (var r in ps.Remotes)
+            {
+                string heavy = HeavyHeld(r.Id, out _);
+                if (heavy == null || !r.Visible || Medic.Gap(r.Id) > 15f) continue;
+                if (_heavyTold.TryGetValue(r.Id, out var told) && told == heavy) continue;
+                _heavyTold[r.Id] = heavy;
+                CoopRuntime.Notice(Lang.F("{0} picked up a heavy {1}. Right-click them to help carry it.", Coop.Player(r.Id).Name, Medic.Pretty(heavy)));
+            }
+        }
+
         internal override void Tick()
         {
             var body = GameInfo.LocalBody;
             if (!Coop.WorldLive || body == null) return;
             float now = Time.unscaledTime;
+            HeavyHints(now);
 
             if (_rope != null)
             {

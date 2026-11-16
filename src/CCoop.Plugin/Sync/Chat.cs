@@ -45,6 +45,7 @@ namespace CCoop.Plugin.Sync
         {
             Close();
             Lines.Clear();
+            foreach (var t in Shown) if (t != null) t.gameObject.SetActive(false);
         }
 
         // ------------------------------------------------------------------ input

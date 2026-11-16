@@ -275,7 +275,9 @@ namespace CCoop.Plugin.Net
                 }
                 catch { /* the host just won't hear */ }
                 Leave();
-                done?.Invoke(false, info, UI.Lang.F("{0} has CasualtiesCoop {1} and you have {2}. You both need the same version.", info.Host, info.ModVersion, CoopPlugin.Version));
+                done?.Invoke(false, info, info.ModVersion != CoopPlugin.Version
+                    ? UI.Lang.F("{0} has CasualtiesCoop {1} and you have {2}. You both need the same version.", info.Host, info.ModVersion, CoopPlugin.Version)
+                    : UI.Lang.F("{0}'s game is a different version from yours. Update the game on both PCs.", info.Host));
                 return;
             }
             SetPresence(info.Players);

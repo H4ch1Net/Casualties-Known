@@ -51,6 +51,8 @@ namespace CCoop.Plugin.Sync
         /// <summary>Every item seen on them, by slot (hands, back, belt...); empty slots are null.</summary>
         internal string[] Kit => _shownKit;
 
+        internal int LimbCount => Visible && _rig.Limbs != null ? _rig.Limbs.Length : 0;
+
         internal Vector2? LimbPosition(int i) =>
             Visible && _rig.Limbs != null && i >= 0 && i < _rig.Limbs.Length && _rig.Limbs[i] != null ? (Vector2)_rig.Limbs[i].position : (Vector2?)null;
 

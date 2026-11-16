@@ -10,6 +10,8 @@ Steam didn't answer. Check your connection and try again
 = 
 {0} has CasualtiesCoop {1} and you have {2}. You both need the same version.
 = 
+{0}'s game is a different version from yours. Update the game on both PCs.
+= 
 that session has ended, or the invite is from an older one. Ask your friend to host again and send a new invite (or look under Find games)
 = 
 the session is full
@@ -32,7 +34,7 @@ Invite accepted. It opens when you're back on the main menu.
 = 
 {0} couldn't join: they have version {1}, you have {2}
 = 
-{0} couldn't join: they have version {1}, you have {2}. Send them this version.
+{0} couldn't join: your game versions differ (update the game on both PCs)
 = 
 You are banned from this host's sessions.
 = 
@@ -586,6 +588,8 @@ enemies much tougher with more players
 = 
 no radios
 = 
+no sleep
+= 
 Host rules: {0}
 = 
 Rules now: {0}
@@ -679,6 +683,8 @@ You couldn't take {0}'s hand
 You caught {0}
 = 
 {0} landed on you
+= 
+{0} picked up a heavy {1}. Right-click them to help carry it.
 = 
 {0} caught you
 = 
@@ -809,6 +815,8 @@ Spawn apart
 Friendly fire
 = 
 Radios
+= 
+Sleep
 = 
 Voices carry
 = 
@@ -1022,6 +1030,8 @@ Each player starts a layer somewhere else instead of together.
 = 
 Shots and blows hurt teammates.
 = 
+Off: nobody gets tired and nobody can nap. Sleeping pills still work.
+= 
 Everyone has a radio. Press Tab in the chat box to talk on it: the others hear you clearly, anywhere on the layer.
 = 
 How far voices and speech are heard.
@@ -1143,6 +1153,8 @@ down
 
 # UI/TeammatePanel.cs
 Interact
+= 
+Carrying a heavy {0}: you can help
 = 
 ok
 = 

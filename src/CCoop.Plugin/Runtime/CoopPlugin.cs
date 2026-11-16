@@ -13,7 +13,7 @@ namespace CCoop.Plugin.Runtime
     {
         public const string Guid = "ccoop.casualtiescoop";
         public const string Name = "CasualtiesCoop";
-        public const string Version = "2.1.4";
+        public const string Version = "2.1.5";
 
         internal static CoopPlugin Instance { get; private set; }
 
@@ -56,6 +56,7 @@ namespace CCoop.Plugin.Runtime
         internal ConfigEntry<bool> SteamTimeline;
         internal ConfigEntry<bool> AllowSpeedUp;
         internal ConfigEntry<bool> Radios;
+        internal ConfigEntry<bool> Sleep;
         internal ConfigEntry<KeyCode> MenuKey;
         internal ConfigEntry<KeyCode> ChatKey;
         internal ConfigEntry<KeyCode> AltChatKey;
@@ -114,6 +115,8 @@ namespace CCoop.Plugin.Runtime
             Port = Config.Bind("Host", "Port", 7777, "UDP port for LAN/IP hosting.");
             AllowSpeedUp = Config.Bind("Host", "AllowSpeedUp", true,
                 "Whether players may fast-forward time. Time is shared, so this is decided by the host.");
+            Sleep = Config.Bind("Host", "Sleep", true,
+                "Off: nobody gets tired and nobody can nap (sleeping pills still work).");
             Radios = Config.Bind("Host", "Radios", true,
                 "Everyone has a radio (Tab in the chat box): what they say into it reaches the others clearly, anywhere on the layer.");
             LastAddress = Config.Bind("Join", "LastAddress", "127.0.0.1", "Last address joined over LAN/IP.");

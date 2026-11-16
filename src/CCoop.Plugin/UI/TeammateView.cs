@@ -63,7 +63,6 @@ namespace CCoop.Plugin.UI
         internal static int Hovered = -1;
 
         /// <summary>The figure is up.</summary>
-        internal static bool Showing => _view != null && _view.gameObject.activeSelf;
 
         /// <summary>Width over height of the drawn figure, to lay out the panel.</summary>
         internal static float Aspect => _view != null ? _view._aspect : 0.6f;

@@ -16,7 +16,6 @@ namespace CCoop.Plugin.Runtime
         private static ManualLogSource _source;
         private static StreamWriter _file;
         private static readonly object Lock = new object();
-        private static readonly Queue<string> Recent = new Queue<string>();
 
         internal static string FilePath { get; private set; }
         internal static bool Verbose;
@@ -57,21 +56,10 @@ namespace CCoop.Plugin.Runtime
             Write("DEBUG", s);
         }
 
-        /// <summary>The last few lines, newest last, for the in-game panel.</summary>
-        internal static string[] Tail()
-        {
-            lock (Lock) return Recent.ToArray();
-        }
-
         private static void Write(string level, string msg)
         {
             lock (Lock)
             {
-                if (level != "DEBUG")
-                {
-                    Recent.Enqueue(DateTime.Now.ToString("HH:mm:ss") + " " + msg);
-                    while (Recent.Count > 12) Recent.Dequeue();
-                }
                 if (_file == null) return;
                 try { _file.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " " + level + " " + msg); }
                 catch { /* logging must never throw into game code */ }

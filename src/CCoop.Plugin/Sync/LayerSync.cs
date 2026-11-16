@@ -89,6 +89,7 @@ namespace CCoop.Plugin.Sync
             if (go.name.StartsWith("CCoop", StringComparison.Ordinal)) return false;
             if (go.GetComponent<BuildingEntity>() != null) return true;
             if (go.GetComponent<CaveTickSpawner>() != null) return true;  // a trap, though it looks like an effect
+            if (go.GetComponent<Climbable>() != null && go.transform.parent == null) return true;  // ropes and vines
             var item = go.GetComponent<Item>();
             if (item != null) return go.transform.parent == null;
             if (!go.name.Contains("(Clone)")) return false;

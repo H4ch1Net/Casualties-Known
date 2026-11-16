@@ -39,7 +39,6 @@ namespace CCoop.Plugin.Sync
         internal static int Opened, TimedOut, Skipped;
 
         /// <summary>The local player is being held at the arrival point.</summary>
-        internal static bool Holding => Coop.Get<ArrivalGate>()?._holding == true;
 
         internal override void Attach(NetSession s) => s.On<ArrivalStatus>(OnStatus);
 

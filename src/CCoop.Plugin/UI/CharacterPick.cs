@@ -96,7 +96,7 @@ namespace CCoop.Plugin.UI
             {
                 string key = "char" + c + part;
                 string s = Locale.GetOther(key);
-                return s == key ? "" : s;
+                return string.IsNullOrEmpty(s) || s == key ? "" : s;
             }
             catch { return ""; }
         }

@@ -15,15 +15,12 @@ namespace CCoop.Plugin.UI
     /// </summary>
     internal static partial class CoopWindow
     {
-        private const int WindowId = 0x0C00F;
-        private const float Width = 490f;
 
         private static bool _open;
-        private static Rect _rect = new Rect(20, 112, Width, 10);  // below the game's held-item box
         private static string _address;
         private static string _lanPassword = "";
         private static string _promptPassword = "";
-        private static GUIStyle _title, _small, _box, _right, _bad;
+        private static GUIStyle _small, _right, _bad;
 
         private enum Tab { Host, Find, Lan }
         private static Tab _tab = Tab.Host;
@@ -33,7 +30,6 @@ namespace CCoop.Plugin.UI
         private static string _lastFocus = "";
         private static readonly Dictionary<string, Rect> FieldRects = new Dictionary<string, Rect>();
 
-        internal static bool Open => _open;
 
         /// <summary>One of the window's text fields has the keyboard (so V, Enter etc. are text, not commands).</summary>
         internal static bool TypingInField => _open && _lastFocus.StartsWith("ccoop_");
@@ -86,14 +82,12 @@ namespace CCoop.Plugin.UI
 
         private static void Styles()
         {
-            if (_title != null) return;
-            _title = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Head };
+            if (_small != null) return;
             _small = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Small, wordWrap = true };
             _small.normal.textColor = UiSkin.Dim;
             _right = new GUIStyle(_small) { alignment = TextAnchor.MiddleRight, wordWrap = false };
             _bad = new GUIStyle(_small);
             _bad.normal.textColor = UiSkin.Bad;
-            _box = new GUIStyle(GUI.skin.box);
         }
 
         internal static void Draw(CoopRuntime rt)
@@ -144,7 +138,7 @@ namespace CCoop.Plugin.UI
             if (!GameInfo.SteamReady)
                 GameRows.Info(Lang.T("Steam isn't running: host under LAN / IP."), "", Lang.T("Launch the game through Steam to host with invites."), UiSkin.Amber);
             RulesEditor(rt, null);
-            RunPresets.Section(_box, _small);
+            RunPresets.Section();
             SavedRuns();
             Bans();
         }
@@ -379,6 +373,8 @@ namespace CCoop.Plugin.UI
             cfg.HostNameTags.Value = GameRows.Toggle(Lang.T("Name tags"), cfg.HostNameTags.Value, Lang.T("Names above teammates."));
             cfg.SpawnApart.Value = GameRows.Toggle(Lang.T("Spawn apart"), cfg.SpawnApart.Value, Lang.T("Each player starts a layer somewhere else instead of together."));
             cfg.FriendlyFire.Value = GameRows.Toggle(Lang.T("Friendly fire"), cfg.FriendlyFire.Value, Lang.T("Shots and blows hurt teammates."));
+            cfg.Sleep.Value = GameRows.Toggle(Lang.T("Sleep"), cfg.Sleep.Value,
+                Lang.T("Off: nobody gets tired and nobody can nap. Sleeping pills still work."));
             cfg.Radios.Value = GameRows.Toggle(Lang.T("Radios"), cfg.Radios.Value,
                 Lang.T("Everyone has a radio. Press Tab in the chat box to talk on it: the others hear you clearly, anywhere on the layer."));
             float voice = GameRows.Slider(Lang.T("Voices carry"), cfg.VoiceRangePercent.Value, 25f, 100f, cfg.VoiceRangePercent.Value + "%",
@@ -431,7 +427,7 @@ namespace CCoop.Plugin.UI
         {
             GUI.SetNextControlName("ccoop_" + id);
             string v = secret ? GUILayout.PasswordField(value ?? "", '*', max) : GUILayout.TextField(value ?? "", max);
-            if (Event.current.type == EventType.Repaint) FieldRects[id] = GUILayoutUtility.GetLastRect();
+            if (Event.current.type == EventType.Repaint) FieldRects[id] = GUIUtility.GUIToScreenRect(GUILayoutUtility.GetLastRect());
             return v;
         }
 
@@ -440,7 +436,7 @@ namespace CCoop.Plugin.UI
         {
             GUI.SetNextControlName("ccoop_" + id);
             string v = secret ? GUI.PasswordField(r, value ?? "", '*', max) : GUI.TextField(r, value ?? "", max);
-            if (Event.current.type == EventType.Repaint) FieldRects[id] = r;
+            if (Event.current.type == EventType.Repaint) FieldRects[id] = GUIUtility.GUIToScreenRect(r);
             return v;
         }
 
@@ -451,9 +447,8 @@ namespace CCoop.Plugin.UI
             if (focus == _lastFocus) return;
             _lastFocus = focus;
             if (!focus.StartsWith("ccoop_") || !SteamServices.OnScreenKeyboard) return;
-            if (!FieldRects.TryGetValue(focus.Substring(6), out var local)) return;
-            float k = Scale;
-            SteamServices.ShowKeyboard(new Rect((_rect.x + local.x) * k, (_rect.y + local.y) * k, local.width * k, local.height * k));
+            if (!FieldRects.TryGetValue(focus.Substring(6), out var screen)) return;
+            SteamServices.ShowKeyboard(screen);
         }
     }
 

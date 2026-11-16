@@ -85,11 +85,6 @@ namespace CCoop.Plugin.World
             KeyById.Remove(id);
         }
 
-        internal static void Forget(GameObject go)
-        {
-            if (TryGetId(go, out var id)) Remove(id);
-        }
-
         /// <summary>Drops entries whose objects Unity has destroyed.</summary>
         internal static int Prune()
         {

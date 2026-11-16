@@ -20,7 +20,7 @@ namespace CCoop.Plugin.UI
         private const float Bar = 58f;
         private const float AddW = 64f;
         private static Vector2 _lobbyScroll;
-        private static GUIStyle _bigName, _tag, _value, _slotNote, _heading, _tabStyle, _tipStyle, _arrow, _charName, _charText;
+        private static GUIStyle _bigName, _tag, _value, _slotNote, _heading, _tabStyle, _arrow, _charName, _charText;
 
         private enum LobbyTab { Run, Rules, Options }
         private static LobbyTab _lobbyTab = LobbyTab.Run;
@@ -45,8 +45,6 @@ namespace CCoop.Plugin.UI
             _slotNote = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Small, alignment = TextAnchor.MiddleCenter, wordWrap = true };
             _slotNote.normal.textColor = UiSkin.Dim;
             _tabStyle = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Big, alignment = TextAnchor.MiddleCenter, wordWrap = false };
-            _tipStyle = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Small, alignment = TextAnchor.MiddleCenter, wordWrap = true };
-            _tipStyle.normal.textColor = UiSkin.Dim;
             _arrow = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Big, alignment = TextAnchor.MiddleCenter };
             _charName = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Big, wordWrap = true };
             _charText = new GUIStyle(GUI.skin.label) { fontSize = UiSkin.Body, wordWrap = true };
@@ -115,7 +113,6 @@ namespace CCoop.Plugin.UI
             GUILayout.EndArea();
 
             KeyboardForFocusedField();
-            GameRows.EndFrame();
             // Buttons' own hover text, in the game's label.
             if (Event.current.type == EventType.Repaint && !string.IsNullOrEmpty(GUI.tooltip)) GameTooltip.Set(GUI.tooltip);
         }
@@ -362,6 +359,7 @@ namespace CCoop.Plugin.UI
             GameRows.Toggle(Lang.T("Spawn apart"), r.SpawnApart);
             GameRows.Toggle(Lang.T("Friendly fire"), r.FriendlyFire);
             GameRows.Toggle(Lang.T("Radios"), r.Radios);
+            GameRows.Toggle(Lang.T("Sleep"), r.Sleep);
             GameRows.Slider(Lang.T("Voices carry"), r.VoicePercent, 25f, 100f, r.VoicePercent + "%");
             GameRows.Header(Lang.T("Balance"));
             GameRows.Choice("ro.loot", Lang.T("Loot"), Mathf.Clamp(r.LootScale, 0, 1), Lang.All(HostRules.LootNames));
@@ -479,7 +477,7 @@ namespace CCoop.Plugin.UI
                     {
                         RunSetup.Draw(width, PreRunScript.instance != null, PreRunScript.instance != null ? PreRunScript.instance.runSettings : null);
                         GUILayout.Space(8);
-                        RunPresets.Section(_box, _small);
+                        RunPresets.Section();
                     }
                     else RunSetup.Draw(width, false, Coop.Get<RunFlow>()?.HostSettings);
                     break;

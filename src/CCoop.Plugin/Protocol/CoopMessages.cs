@@ -105,11 +105,15 @@ namespace CCoop.Plugin.Protocol
         /// <summary>The sender's frame rate (smoothed, capped at 255): a slow host slows everyone.</summary>
         public byte Fps;
 
+        /// <summary>The sender's intelligence skill (what they can recognize), or 255 when not in a layer.</summary>
+        public byte Intellect = 255;
+
         public void Write(PacketWriter w)
         {
             w.WriteByte(Character);
             w.WriteUInt64(SteamId);
             w.WriteByte(Fps);
+            w.WriteByte(Intellect);
         }
 
         public void Read(ref PacketReader r)
@@ -117,6 +121,7 @@ namespace CCoop.Plugin.Protocol
             Character = r.ReadByte();
             SteamId = r.ReadUInt64();
             Fps = r.ReadByte();
+            Intellect = r.ReadByte();
         }
     }
 
@@ -712,6 +717,8 @@ namespace CCoop.Plugin.Protocol
         public bool Fresh;
         /// <summary>Item state (condition, label, contents...), see ItemCodec.</summary>
         public byte[] State = new byte[0];
+        /// <summary>Other rolled state (a rope's length and climb path...), see EntityState.</summary>
+        public byte[] Extra = new byte[0];
 
         public void Write(PacketWriter w)
         {
@@ -726,6 +733,7 @@ namespace CCoop.Plugin.Protocol
             w.WriteSingle(Spin);
             w.WriteBool(Fresh);
             w.WriteBlob(State);
+            w.WriteBlob(Extra);
         }
 
         public void Read(ref PacketReader r)
@@ -741,6 +749,7 @@ namespace CCoop.Plugin.Protocol
             Spin = r.ReadSingle();
             Fresh = r.ReadBool();
             State = r.ReadBlob();
+            Extra = r.ReadBlob();
         }
     }
 
@@ -1448,6 +1457,7 @@ namespace CCoop.Plugin.Protocol
         public byte LootScale;
         public byte DangerScale;
         public bool Radios = true;
+        public bool Sleep = true;
 
         public void Write(PacketWriter w)
         {
@@ -1464,6 +1474,7 @@ namespace CCoop.Plugin.Protocol
             w.WriteByte(LootScale);
             w.WriteByte(DangerScale);
             w.WriteBool(Radios);
+            w.WriteBool(Sleep);
         }
 
         public void Read(ref PacketReader r)
@@ -1481,6 +1492,7 @@ namespace CCoop.Plugin.Protocol
             LootScale = r.ReadByte();
             DangerScale = r.ReadByte();
             Radios = r.ReadBool();
+            Sleep = r.ReadBool();
         }
     }
 

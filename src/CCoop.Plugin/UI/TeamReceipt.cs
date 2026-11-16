@@ -56,7 +56,6 @@ namespace CCoop.Plugin.UI
         }
 
         /// <summary>This player is on the game's end screen (an ending or death).</summary>
-        internal static bool EndScreenUp => _showFrom >= 0f;
 
         /// <summary>This player reached an ending (not death) and is on the end screen.</summary>
         internal static bool ReachedEnding { get; private set; }

@@ -21,6 +21,7 @@ namespace CCoop.Plugin.World
     {
         private const byte SectionCrystal = 1;
         private const byte SectionTrader = 2;
+        private const byte SectionClimbable = 3;
         private const byte SectionEnd = 0;
 
         private static readonly AccessTools.FieldRef<CrystalBehaviour, List<CrystalEffect>> Effects =
@@ -29,37 +30,70 @@ namespace CCoop.Plugin.World
         /// <summary>Extra state for one object, or null when it has none worth sending.</summary>
         internal static byte[] Capture(GameObject go)
         {
+            var w = new PacketWriter(256);
+            bool any = false;
+
             var trader = go.GetComponent<TraderScript>();
             if (trader != null)
             {
-                var tw = new PacketWriter(256);
-                tw.WriteByte(SectionTrader);
+                w.WriteByte(SectionTrader);
                 var section = new PacketWriter(256);
                 Sync.TraderSync.Write(section, trader);
-                tw.WriteBlob(section.ToArray());
-                tw.WriteByte(SectionEnd);
-                return tw.ToArray();
+                w.WriteBlob(section.ToArray());
+                any = true;
             }
 
             var crystal = go.GetComponent<CrystalBehaviour>();
-            if (crystal == null) return null;
-            var effects = Effects(crystal);
-            if (effects == null) return null;
-
-            var w = new PacketWriter(128);
-            w.WriteByte(SectionCrystal);
-            var c = crystal.sprite != null ? crystal.sprite.color : Color.white;
-            w.WriteSingle(c.r); w.WriteSingle(c.g); w.WriteSingle(c.b); w.WriteSingle(c.a);
-            w.WriteSingle(crystal.light != null ? crystal.light.intensity : 1f);
-            w.WriteUInt16((ushort)effects.Count);
-            foreach (var e in effects)
+            var effects = crystal != null ? Effects(crystal) : null;
+            if (effects != null)
             {
-                w.WriteString(e.GetType().FullName);
-                FieldState.Write(w, e, typeof(CrystalEffect));
+                w.WriteByte(SectionCrystal);
+                var c = crystal.sprite != null ? crystal.sprite.color : Color.white;
+                w.WriteSingle(c.r); w.WriteSingle(c.g); w.WriteSingle(c.b); w.WriteSingle(c.a);
+                w.WriteSingle(crystal.light != null ? crystal.light.intensity : 1f);
+                w.WriteUInt16((ushort)effects.Count);
+                foreach (var e in effects)
+                {
+                    w.WriteString(e.GetType().FullName);
+                    FieldState.Write(w, e, typeof(CrystalEffect));
+                }
+                var heater = go.GetComponent<Heater>();
+                w.WriteBool(heater != null);
+                if (heater != null) FieldState.Write(w, heater, typeof(MonoBehaviour));
+                any = true;
             }
-            var heater = go.GetComponent<Heater>();
-            w.WriteBool(heater != null);
-            if (heater != null) FieldState.Write(w, heater, typeof(MonoBehaviour));
+
+            // Ropes and vines: the game works out where they hang (a raycast to the ground)
+            // and stretches the sprite to fit when it makes them. A copy from the prefab
+            // has no climb path and the prefab's size: one block nobody can climb.
+            var climb = go.GetComponent<Climbable>();
+            if (climb != null && climb.points != null && climb.points.Count >= 2)
+            {
+                w.WriteByte(SectionClimbable);
+                int n = Mathf.Min(climb.points.Count, 64);
+                w.WriteUInt16((ushort)n);
+                for (int i = 0; i < n; i++) { w.WriteSingle(climb.points[i].x); w.WriteSingle(climb.points[i].y); }
+                w.WriteSingle(climb.downwardsVelocity);
+                var sr = go.GetComponent<SpriteRenderer>();
+                w.WriteBool(sr != null);
+                if (sr != null)
+                {
+                    w.WriteSingle(sr.size.x); w.WriteSingle(sr.size.y);
+                    var c = sr.color;
+                    w.WriteSingle(c.r); w.WriteSingle(c.g); w.WriteSingle(c.b); w.WriteSingle(c.a);
+                    w.WriteBool(sr.flipX);
+                }
+                bool child = go.transform.childCount > 0;
+                w.WriteBool(child);
+                if (child)
+                {
+                    var ls = go.transform.GetChild(0).localScale;
+                    w.WriteSingle(ls.x); w.WriteSingle(ls.y); w.WriteSingle(ls.z);
+                }
+                any = true;
+            }
+
+            if (!any) return null;
             w.WriteByte(SectionEnd);
             return w.ToArray();
         }
@@ -72,34 +106,77 @@ namespace CCoop.Plugin.World
         internal static void Apply(GameObject go, byte[] data)
         {
             var crystal = go.GetComponent<CrystalBehaviour>();
-            if (data == null || data.Length == 0)
+            bool crystalSeen = false;
+            if (data != null && data.Length > 0)
+            {
+                var r = new PacketReader(data, 0, data.Length);
+                while (!r.Failed && r.Remaining > 0)
+                {
+                    byte section = r.ReadByte();
+                    if (section == SectionEnd) break;
+                    if (section == SectionTrader)
+                    {
+                        var bytes = r.ReadBlob();
+                        // Start rolls a fresh stock after this; the host's goes in after Start.
+                        if (!r.Failed) Sync.TraderSync.Stash(go, bytes);
+                        continue;
+                    }
+                    if (section == SectionCrystal) { ApplyCrystal(go, crystal, ref r); crystalSeen = true; continue; }
+                    if (section == SectionClimbable) { ApplyClimbable(go, ref r); continue; }
+                    r.Fail();
+                }
+            }
+            if (crystal != null && !crystalSeen)
             {
                 // The host's crystal rolled no effects and removed its behaviour; do the same,
                 // or this copy's empty effect list would throw on the first touch.
-                if (crystal != null)
-                {
-                    var usable = go.GetComponent<UsableObject>();
-                    if (usable != null) UnityEngine.Object.Destroy(usable);
-                    UnityEngine.Object.Destroy(crystal);
-                }
-                return;
+                var usable = go.GetComponent<UsableObject>();
+                if (usable != null) UnityEngine.Object.Destroy(usable);
+                UnityEngine.Object.Destroy(crystal);
             }
+        }
 
-            var r = new PacketReader(data, 0, data.Length);
-            while (!r.Failed && r.Remaining > 0)
+        private static void ApplyClimbable(GameObject go, ref PacketReader r)
+        {
+            int n = r.ReadCount(64);
+            var points = new List<Vector2>(n);
+            for (int i = 0; i < n && !r.Failed; i++) points.Add(new Vector2(r.ReadSingle(), r.ReadSingle()));
+            float down = r.ReadSingle();
+            bool hasSprite = r.ReadBool();
+            Vector2 size = default;
+            Color color = Color.white;
+            bool flip = false;
+            if (hasSprite)
             {
-                byte section = r.ReadByte();
-                if (section == SectionEnd) break;
-                if (section == SectionTrader)
-                {
-                    var bytes = r.ReadBlob();
-                    // Start rolls a fresh stock after this; the host's goes in after Start.
-                    if (!r.Failed) Sync.TraderSync.Stash(go, bytes);
-                    continue;
-                }
-                if (section != SectionCrystal) { r.Fail(); break; }
-                ApplyCrystal(go, crystal, ref r);
+                size = new Vector2(r.ReadSingle(), r.ReadSingle());
+                color = new Color(r.ReadSingle(), r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
+                flip = r.ReadBool();
             }
+            bool hasChild = r.ReadBool();
+            Vector3 childScale = Vector3.one;
+            if (hasChild) childScale = new Vector3(r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
+            if (r.Failed) return;
+            try
+            {
+                var climb = go.GetComponent<Climbable>();
+                if (climb != null && points.Count >= 2)
+                {
+                    climb.autoSet = false;
+                    climb.localPoints = false;  // the host's points are in world space
+                    climb.points = points;
+                    climb.downwardsVelocity = down;
+                    climb.CalculateTotalLength();
+                }
+                var sr = go.GetComponent<SpriteRenderer>();
+                if (hasSprite && sr != null)
+                {
+                    sr.size = size;
+                    sr.color = color;
+                    sr.flipX = flip;
+                }
+                if (hasChild && go.transform.childCount > 0) go.transform.GetChild(0).localScale = childScale;
+            }
+            catch (Exception e) { Log.Debug("climbable state: " + e.Message); }
         }
 
         private static void ApplyCrystal(GameObject go, CrystalBehaviour crystal, ref PacketReader r)

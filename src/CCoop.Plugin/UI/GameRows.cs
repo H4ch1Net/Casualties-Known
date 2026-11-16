@@ -8,7 +8,7 @@ namespace CCoop.Plugin.UI
     /// left, the control on the right (an outlined box to tick, an outlined slider with its
     /// value, a dropdown box with a "v"), thin lines between rows and a darker band for
     /// each section's heading. Explanations aren't printed: hovering a row puts its
-    /// explanation in <see cref="Tip"/>, which the screen shows in one place.
+    /// explanation in the game's own hover label (see GameTooltip).
     /// </summary>
     internal static class GameRows
     {
@@ -16,7 +16,6 @@ namespace CCoop.Plugin.UI
 
         private static GUIStyle _label, _header, _value, _dropText, _option, _track, _thumb;
         private static string _openDrop;
-        private static string _tip, _tipNext;
 
         internal static void DevOpen(string key) => _openDrop = key;
 
@@ -33,17 +32,6 @@ namespace CCoop.Plugin.UI
 
         /// <summary>An invisible button over the whole row (nowhere, when the mouse is outside the list).</summary>
         private static bool RowButton(Rect r) => GUI.Button(InView ? r : new Rect(0f, 0f, 0f, 0f), GUIContent.none, GUIStyle.none);
-
-        /// <summary>The explanation of the row under the mouse (last frame's), or null.</summary>
-        internal static string Tip => _tip;
-
-        /// <summary>Call once per frame after all rows are drawn.</summary>
-        internal static void EndFrame()
-        {
-            if (Event.current.type != EventType.Repaint) return;
-            _tip = _tipNext;
-            _tipNext = null;
-        }
 
         private static void Styles()
         {
@@ -105,7 +93,7 @@ namespace CCoop.Plugin.UI
             {
                 GUI.Label(new Rect(r.x + 10f, r.y, r.width * 0.62f, Mathf.Min(height, RowH)), label, UiSkin.Fit(_label, label));
                 Fill(new Rect(r.x, r.yMax - 1f, r.width, 1f), new Color(1f, 1f, 1f, 0.22f));
-                if (!string.IsNullOrEmpty(tip) && Over(r)) { _tipNext = tip; GameTooltip.Set(label, tip); }
+                if (!string.IsNullOrEmpty(tip) && Over(r)) GameTooltip.Set(label, tip);
             }
             return r;
         }

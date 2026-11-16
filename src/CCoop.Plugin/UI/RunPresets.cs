@@ -265,7 +265,7 @@ namespace CCoop.Plugin.UI
         /// with Use (and Delete for your own); then saving the current settings under a name,
         /// and sharing them as a line of text.
         /// </summary>
-        internal static void Section(GUIStyle box, GUIStyle small)
+        internal static void Section()
         {
             if (!CanApply) return;
             string match = Matching();

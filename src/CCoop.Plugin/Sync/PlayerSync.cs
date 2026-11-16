@@ -28,6 +28,7 @@ namespace CCoop.Plugin.Sync
         private readonly Dictionary<byte, RemotePlayer> _remotes = new Dictionary<byte, RemotePlayer>();
         private float _nextState, _nextSlow, _nextProfile;
         private uint _seq;
+        private int _sentIntellect = -2;
         private int _sentCharacter = -1;
 
         internal IEnumerable<RemotePlayer> Remotes => _remotes.Values;
@@ -54,6 +55,7 @@ namespace CCoop.Plugin.Sync
             foreach (var r in _remotes.Values) r.Dispose();
             _remotes.Clear();
             _sentCharacter = -1;
+            _sentIntellect = -2;
             _relayCount.Clear();
         }
 
@@ -89,6 +91,7 @@ namespace CCoop.Plugin.Sync
             var rec = Coop.Player(origin);
             rec.Character = m.Character;
             rec.Fps = m.Fps;
+            rec.Intellect = m.Intellect == 255 ? -1 : m.Intellect;
 
             // Over Steam the host knows each client's real Steam id from the connection
             // itself. A client claiming another id is lying (or broken) and is removed, so
@@ -161,13 +164,24 @@ namespace CCoop.Plugin.Sync
             if (Time.unscaledDeltaTime > 0f) LocalFps = Mathf.Lerp(LocalFps <= 0f ? 60f : LocalFps, 1f / Time.unscaledDeltaTime, 0.02f);
             Coop.Player(Coop.LocalId).Fps = Mathf.RoundToInt(LocalFps);
             int character = body != null ? body.charType : PreRunScript.characterSelected;
-            if (now >= _nextProfile || character != _sentCharacter)
+            int intellect = body != null && body.skills != null && Coop.WorldLive ? body.skills.INT : -1;
+            if (now >= _nextProfile || character != _sentCharacter || intellect != _sentIntellect)
             {
                 _nextProfile = now + 10f;
+                if (intellect != _sentIntellect && intellect >= 0)
+                    Log.Info("[player] playing " + GameInfo.CharacterName(character) + " (character " + character + "), intelligence " + intellect);
                 _sentCharacter = character;
+                _sentIntellect = intellect;
                 Coop.Player(Coop.LocalId).Character = character;
+                Coop.Player(Coop.LocalId).Intellect = intellect;
                 Coop.Player(Coop.LocalId).SteamId = GameInfo.SteamId;
-                Session.Broadcast(new PlayerProfile { Character = (byte)Mathf.Clamp(character, 0, 255), SteamId = GameInfo.SteamId, Fps = (byte)Mathf.Clamp(Mathf.RoundToInt(LocalFps), 0, 255) });
+                Session.Broadcast(new PlayerProfile
+                {
+                    Character = (byte)Mathf.Clamp(character, 0, 255),
+                    SteamId = GameInfo.SteamId,
+                    Fps = (byte)Mathf.Clamp(Mathf.RoundToInt(LocalFps), 0, 255),
+                    Intellect = intellect < 0 ? (byte)255 : (byte)Mathf.Clamp(intellect, 0, 254),
+                });
             }
 
             if (now >= _nextState)

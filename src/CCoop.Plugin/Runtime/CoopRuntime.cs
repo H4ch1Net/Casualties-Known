@@ -111,8 +111,10 @@ namespace CCoop.Plugin.Runtime
             };
             Lobby.MemberRefused += (name, version, why) =>
             {
-                Notice(Lang.F("{0} couldn't join: they have version {1}, you have {2}", name, version, CoopPlugin.Version));
-                LastMessage = Lang.Pack("{0} couldn't join: they have version {1}, you have {2}. Send them this version.", name, version, CoopPlugin.Version);
+                if (version != CoopPlugin.Version)
+                    Notice(Lang.F("{0} couldn't join: they have version {1}, you have {2}", name, version, CoopPlugin.Version));
+                else
+                    Notice(Lang.F("{0} couldn't join: your game versions differ (update the game on both PCs)", name));
             };
         }
 
@@ -245,8 +247,12 @@ namespace CCoop.Plugin.Runtime
                     LastMessage = Lang.Pack("Could not join: {0}", error);
                     Log.Warn("[steam] could not join: " + error);
                     // Said where it's seen: an invite may have started this with the window shut.
-                    Notice(Lang.F("Could not join: {0}", error));
-                    CoopWindow.Show();
+                    // (Not for the automatic retries after a lost host: those say it once at the end.)
+                    if (_reconnect == null)
+                    {
+                        Notice(Lang.F("Could not join: {0}", error));
+                        CoopWindow.Show();
+                    }
                     return;
                 }
                 ulong owner = info.HostId;
@@ -594,11 +600,14 @@ namespace CCoop.Plugin.Runtime
                 CoopWindow.Draw(this);
                 ConnectionBadge.Draw();
                 Notices.Draw();
-                UiMouse.EndFrame();
             }
             catch (Exception e)
             {
-                Log.Error("gui: " + e.Message);
+                if (Reported.Add("gui" + e.GetType().Name + e.Message)) Log.Error("gui: " + e);
+            }
+            finally
+            {
+                UiMouse.EndFrame();
             }
         }
 

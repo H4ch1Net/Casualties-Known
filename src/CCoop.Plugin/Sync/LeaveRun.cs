@@ -23,7 +23,7 @@ namespace CCoop.Plugin.Sync
 
         private static float _armedAt = -99f;
         private static Sprite _giveUp;
-        private static bool _shownExit;
+        private static UnityEngine.UI.Image _shownOn;  // the pause button (per scene) that has the Exit look
 
         private static bool Applies =>
             Coop.InSession && WorldGeneration.world != null && WorldGeneration.world.biomeOverride != WorldGeneration.OverrideSceneType.Tutorial;
@@ -53,19 +53,19 @@ namespace CCoop.Plugin.Sync
                     var tip = button.GetComponent<UITooltip>();
                     if (!Applies)
                     {
-                        if (_shownExit)
+                        if (ReferenceEquals(_shownOn, button))
                         {
                             // Out of the session: the game's own Give up again.
-                            _shownExit = false;
+                            _shownOn = null;
                             if (_giveUp != null) button.sprite = _giveUp;
                             if (tip != null) tip.skipLocale = false;
                             __instance.ResetQuitPressed();
                         }
                         return;
                     }
-                    if (!_shownExit)
+                    if (!ReferenceEquals(_shownOn, button))
                     {
-                        _shownExit = true;
+                        _shownOn = button;
                         if (_giveUp == null) _giveUp = button.sprite;
                         if (__instance.exitSprite != null) button.sprite = __instance.exitSprite;
                         __instance.timesQuitPressed = 0;

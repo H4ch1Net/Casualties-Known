@@ -27,7 +27,7 @@ namespace CCoop.Plugin.Sync
     /// </summary>
     internal sealed class Medic : CoopModule
     {
-        internal const float Reach = 3f;
+        internal const float Reach = 3.5f;
         internal const float ReviveWindow = 30f;
         private const float ReviveChance = 0.4f;
 
@@ -96,12 +96,32 @@ namespace CCoop.Plugin.Sync
             if (body == null || !Coop.WorldLive) return Lang.T("You need to be in the layer.");
             if (!body.alive) return Lang.T("You're dead.");
             if (!body.conscious) return Lang.T("You're not conscious.");
-            var r = Coop.Get<PlayerSync>()?.Find(patient);
-            var at = r?.ShownAt;
-            if (!at.HasValue) return Lang.T("They're not here.");
-            float d = Vector2.Distance(body.transform.position, at.Value);
+            float d = Gap(patient);
+            if (float.IsInfinity(d)) return Lang.T("They're not here.");
             if (d > reach) return Lang.F("Get closer ({0} m away).", d.ToString("F0"));
             return null;
+        }
+
+        /// <summary>
+        /// How far the local player is from a teammate: between the nearest parts of the two
+        /// bodies, not their roots. A body that's down lies where its limbs are, which can be
+        /// metres from its root, so standing on someone could read "4 m away".
+        /// </summary>
+        internal static float Gap(byte id)
+        {
+            var body = GameInfo.LocalBody;
+            var r = Coop.Get<PlayerSync>()?.Find(id);
+            var root = r?.ShownAt;
+            if (body == null || !root.HasValue) return float.PositiveInfinity;
+            var theirs = new List<Vector2> { root.Value };
+            for (int i = 0; i < r.LimbCount; i++) { var p = r.LimbPosition(i); if (p.HasValue) theirs.Add(p.Value); }
+            var mine = new List<Vector2> { body.transform.position };
+            if (body.limbs != null) foreach (var l in body.limbs) if (l != null && !l.dismembered) mine.Add(l.transform.position);
+            float best = float.PositiveInfinity;
+            foreach (var a in mine)
+                foreach (var b in theirs)
+                    best = Mathf.Min(best, (a - b).sqrMagnitude);
+            return Mathf.Sqrt(best);
         }
 
         /// <summary>Why the held item can't be used on a limb, or null.</summary>

@@ -66,8 +66,6 @@ namespace CCoop.Plugin.Runtime
             catch { /* no Unix side to reach */ }
             return null;
         }
-        public const uint FullGameAppId = 4576490;
-        public const uint DemoAppId = 4576510;
 
         public static readonly string[] CharacterNames = { "Experiment", "Milky", "Dune" };
 

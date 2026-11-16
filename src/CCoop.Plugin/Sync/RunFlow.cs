@@ -370,6 +370,7 @@ namespace CCoop.Plugin.Sync
             {
                 Coop.Epoch = 1;
                 Session.Broadcast(new LayerBegin { Epoch = Coop.Epoch, Depth = WorldGeneration.world.biomeDepth });
+                TileLook.Redraw();  // drawn before the session, from a roll of its own
             }
             Coop.Get<LayerSync>().HostRegisterWorld();
             Coop.SetWorldLive(true);
