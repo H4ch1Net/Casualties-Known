@@ -10,29 +10,52 @@ using UnityEngine;
 namespace CCoop.Plugin.Sync
 {
     /// <summary>
-    /// Gestures. Hold the gesture key for a wheel: wave, come here, wait, thumbs up, no,
-    /// point, help, hug. Most show as the character's own speech bubble ("*waves*" — the
-    /// game never slurs a line in asterisks), so they appear above your head on every
-    /// screen. Point draws a line to the spot for everyone; Help calls out with a marker
-    /// teammates can see from anywhere; Hug lifts both players' mood (the game won't let a
-    /// player who's too low treat wounds) and shares warmth. The game's own bark key is
-    /// heard by everyone too.
+    /// Gestures. Hold the gesture key for a wheel: wave, come here, follow me, point, look
+    /// out, help, hug, thumbs up, yes, no, shrug, wait. The character performs them (see
+    /// GesturePose); one that can't be performed right now (climbing, lying down) shows
+    /// as the character's own speech bubble ("*waves*" — the game never slurs a line in
+    /// asterisks) instead. Point draws a line to the spot for everyone; Look out shouts
+    /// and leaves a warning mark on the spot; Help calls out with a marker teammates can
+    /// see from anywhere; Hug lifts both players' mood (the game won't let a player who's
+    /// too low treat wounds) and shares warmth. The game's own bark key is heard by
+    /// everyone too.
     /// </summary>
     internal sealed class GestureSync : CoopModule
     {
-        private enum Kind : byte { Wave, ComeHere, Wait, ThumbsUp, No, Point, Help, Hug, Bark }
+        // New kinds go at the end: the byte is what travels.
+        private enum Kind : byte { Wave, ComeHere, Wait, ThumbsUp, No, Point, Help, Hug, Bark, Yes, Shrug, LookOut, FollowMe }
 
+        /// <summary>Clockwise from the top: getting about, alarms, the hug, answers.</summary>
         private static readonly (Kind kind, string label, string line)[] Wheel =
         {
             (Kind.Wave, Lang.N("Wave"), Lang.N("*waves*")),
             (Kind.ComeHere, Lang.N("Come here"), Lang.N("*beckons you over*")),
+            (Kind.FollowMe, Lang.N("Follow me"), Lang.N("*waves you along*")),
             (Kind.Point, Lang.N("Point"), Lang.N("*points*")),
+            (Kind.LookOut, Lang.N("Look out!"), Lang.N("Look out!")),
             (Kind.Help, Lang.N("Help!"), Lang.N("Help!")),
             (Kind.Hug, Lang.N("Hug"), null),
-            (Kind.No, Lang.N("No"), Lang.N("*shakes head*")),
-            (Kind.Wait, Lang.N("Wait"), Lang.N("*holds up a hand: wait*")),
             (Kind.ThumbsUp, Lang.N("Thumbs up"), Lang.N("*gives a thumbs up*")),
+            (Kind.Yes, Lang.N("Yes"), Lang.N("*nods*")),
+            (Kind.No, Lang.N("No"), Lang.N("*shakes head*")),
+            (Kind.Shrug, Lang.N("Shrug"), Lang.N("*shrugs*")),
+            (Kind.Wait, Lang.N("Wait"), Lang.N("*holds up a hand: wait*")),
         };
+
+        /// <summary>Said out loud as well as done: these are shouts.</summary>
+        private static bool Shouted(Kind k) => k == Kind.Help || k == Kind.LookOut;
+
+        /// <summary>The key that picks the n-th gesture, as on a hotbar: 1 to 9, 0, - and =.</summary>
+        private static string KeyLabel(int i) => i < 9 ? (i + 1).ToString() : i == 9 ? "0" : i == 10 ? "-" : i == 11 ? "=" : "";
+
+        private static bool KeyDown(int i)
+        {
+            if (i < 9) return Input.GetKeyDown(KeyCode.Alpha1 + i) || Input.GetKeyDown(KeyCode.Keypad1 + i);
+            if (i == 9) return Input.GetKeyDown(KeyCode.Alpha0) || Input.GetKeyDown(KeyCode.Keypad0);
+            if (i == 10) return Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.KeypadMinus);
+            if (i == 11) return Input.GetKeyDown(KeyCode.Equals) || Input.GetKeyDown(KeyCode.KeypadPlus);
+            return false;
+        }
 
         private const float HugReach = 1.8f;
         private const float HugCooldown = 60f;
@@ -109,8 +132,8 @@ namespace CCoop.Plugin.Sync
 
             Vector2 d = (Vector2)Input.mousePosition - _wheelCentre;
             _choice = d.magnitude < 30f * CoopWindow.Scale ? -1 : Sector(d);
-            for (int i = 0; i < Wheel.Length && i < 9; i++)
-                if (Input.GetKeyDown(KeyCode.Alpha1 + i) || Input.GetKeyDown(KeyCode.Keypad1 + i)) { Pick(i); return; }
+            for (int i = 0; i < Wheel.Length; i++)
+                if (KeyDown(i)) { Pick(i); return; }
 
             if (!_sticky)
             {
@@ -144,7 +167,9 @@ namespace CCoop.Plugin.Sync
 
         private static int Sector(Vector2 d)
         {
-            // Sector 0 points straight up, then clockwise.
+            // Sector 0 points straight up, then clockwise, measured on the wheel's oval
+            // (squashed back to a circle) so the mouse picks the box it's heading for.
+            d = new Vector2(d.x / _rx, d.y / _ry);
             float angle = Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg;
             if (angle < 0f) angle += 360f;
             return Mathf.RoundToInt(angle / (360f / Wheel.Length)) % Wheel.Length;
@@ -179,6 +204,10 @@ namespace CCoop.Plugin.Sync
                 case Kind.No: return GesturePose.Pose.No;
                 case Kind.Help: return GesturePose.Pose.Help;
                 case Kind.Hug: return GesturePose.Pose.Hug;
+                case Kind.Yes: return GesturePose.Pose.Yes;
+                case Kind.Shrug: return GesturePose.Pose.Shrug;
+                case Kind.LookOut: return GesturePose.Pose.Point;
+                case Kind.FollowMe: return GesturePose.Pose.FollowMe;
                 default: return GesturePose.Pose.None;
             }
         }
@@ -198,25 +227,28 @@ namespace CCoop.Plugin.Sync
                 msg.Target = target.Id;
                 Hugged(target.Id, body);
             }
-            else if (kind == Kind.Point)
+            else if (kind == Kind.Point || kind == Kind.LookOut || kind == Kind.FollowMe)
             {
+                // At the spot under the mouse (Follow me only turns that way).
                 var cam = Camera.main;
                 if (cam == null) return;
                 Vector2 at = cam.ScreenToWorldPoint(Input.mousePosition);
                 pointAt = at;
                 msg.X = at.x;
                 msg.Y = at.y;
-                _points.Add(new PointLine { Owner = Coop.LocalId, Target = at, At = Time.unscaledTime });
+                if (kind != Kind.FollowMe) _points.Add(new PointLine { Owner = Coop.LocalId, Target = at, At = Time.unscaledTime });
+                if (kind == Kind.LookOut) Coop.Get<PingSync>()?.Warn(Coop.LocalId, at);
             }
             else if (kind == Kind.Help)
             {
                 Coop.Get<PingSync>()?.DevPing(body.transform.position);
             }
 
-            // The body does it; only a call for help is also said out loud.
+            // The body does it; shouts are also said out loud, and a body that can't move
+            // its arms just now (climbing, lying down) says what it would have done.
             var pose = PoseOf(kind);
             if (pose != GesturePose.Pose.None) GesturePose.Play(pose, pointAt);
-            if (line != null && (pose == GesturePose.Pose.None || kind == Kind.Help)) Say(body, Lang.T(line));
+            if (line != null && (pose == GesturePose.Pose.None || Shouted(kind) || !body.standing)) Say(body, Lang.T(line));
             Session.Broadcast(msg);
             Log.Info("[gesture] " + label);
         }
@@ -280,6 +312,11 @@ namespace CCoop.Plugin.Sync
                     break;
                 case Kind.Point:
                     _points.Add(new PointLine { Owner = origin, Target = new Vector2(m.X, m.Y), At = Time.unscaledTime });
+                    break;
+                case Kind.LookOut:
+                    _points.Add(new PointLine { Owner = origin, Target = new Vector2(m.X, m.Y), At = Time.unscaledTime });
+                    Coop.Get<PingSync>()?.Warn(origin, new Vector2(m.X, m.Y));
+                    Log.Info("[gesture] " + Coop.Player(origin).Name + " warns of " + new Vector2(m.X, m.Y).ToString("F1"));
                     break;
                 case Kind.Hug:
                     if (m.Target != Coop.LocalId) return;
@@ -356,6 +393,42 @@ namespace CCoop.Plugin.Sync
             }
         }
 
+        private const float BoxH = 30f, BoxGap = 10f;
+
+        /// <summary>The wheel's half width and half height (scaled units); its boxes sit on this oval.</summary>
+        private static float _rx = 125f, _ry = 125f;
+
+        /// <summary>Where the n-th box sits from the centre: clockwise from the top.</summary>
+        private static Vector2 Spot(int i)
+        {
+            float angle = i * (360f / Wheel.Length) * Mathf.Deg2Rad;
+            return new Vector2(Mathf.Sin(angle) * _rx, -Mathf.Cos(angle) * _ry);
+        }
+
+        /// <summary>
+        /// The smallest oval on which no two boxes overlap: wider first (it's the boxes'
+        /// width that crowds them), taller once it would leave the screen.
+        /// </summary>
+        private static void Oval(float screenW)
+        {
+            float maxRx = Mathf.Max(125f, (screenW - _boxW) / 2f - 12f);
+            for (_ry = 125f; _ry <= 400f; _ry += 10f)
+                for (_rx = _ry; _rx <= maxRx; _rx += 8f)
+                    if (!Crowded()) return;
+            _rx = maxRx;
+        }
+
+        private static bool Crowded()
+        {
+            for (int i = 0; i < Wheel.Length; i++)
+                for (int j = i + 1; j < Wheel.Length; j++)
+                {
+                    var d = Spot(i) - Spot(j);
+                    if (Mathf.Abs(d.x) < _boxW + BoxGap && Mathf.Abs(d.y) < BoxH + BoxGap) return true;
+                }
+            return false;
+        }
+
         private void DrawWheel()
         {
             if (_wheelStyle == null)
@@ -371,31 +444,40 @@ namespace CCoop.Plugin.Sync
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(k, k, 1f));
             try
             {
-                var centre = new Vector2(_wheelCentre.x, Screen.height - _wheelCentre.y) / k;
-                // Every box as wide as the widest label (in the player's language).
-                if (_boxFor != Lang.Code)
+                float sw = Screen.width / k, sh = Screen.height / k;
+                // Every box as wide as the widest label (in the player's language), on an
+                // oval just wide enough that no two boxes touch.
+                if (_boxFor != Lang.Code + sw)
                 {
-                    _boxFor = Lang.Code;
+                    _boxFor = Lang.Code + sw;
                     _boxW = 0f;
                     for (int i = 0; i < Wheel.Length; i++)
-                        _boxW = Mathf.Max(_boxW, _wheelSel.CalcSize(new GUIContent((i + 1) + "  " + Lang.T(Wheel[i].label))).x);
+                        _boxW = Mathf.Max(_boxW, _wheelSel.CalcSize(new GUIContent(KeyLabel(i) + "  " + Lang.T(Wheel[i].label))).x);
                     _boxW += 10f;
+                    Oval(sw);
                 }
-                const float radius = 125f, boxH = 30f;
+                string hint = _sticky ? Lang.T("Click a gesture (or press its key). Esc to close")
+                                      : Lang.T("Move the mouse onto a gesture and let go");
+                var hs = _wheelStyle.CalcSize(new GUIContent(hint));
+
+                // Whole on screen, hint and all (the mouse may be near an edge). The picking
+                // in Tick goes by this same centre.
+                float halfW = _rx + _boxW / 2f + 6f, up = _ry + BoxH / 2f + 6f, down = _ry + BoxH + hs.y + 8f;
+                var centre = new Vector2(_wheelCentre.x, Screen.height - _wheelCentre.y) / k;
+                centre.x = Mathf.Clamp(centre.x, Mathf.Min(halfW, sw / 2f), Mathf.Max(sw - halfW, sw / 2f));
+                centre.y = Mathf.Clamp(centre.y, Mathf.Min(up, sh / 2f), Mathf.Max(sh - down, sh / 2f));
+                _wheelCentre = new Vector2(centre.x * k, Screen.height - centre.y * k);
+
                 var old = GUI.color;
                 for (int i = 0; i < Wheel.Length; i++)
                 {
-                    float angle = i * (360f / Wheel.Length) * Mathf.Deg2Rad;
-                    var at = centre + new Vector2(Mathf.Sin(angle), -Mathf.Cos(angle)) * radius;
-                    var r = new Rect(at.x - _boxW / 2f, at.y - boxH / 2f, _boxW, boxH);
+                    var at = centre + Spot(i);
+                    var r = new Rect(Mathf.Round(at.x - _boxW / 2f), Mathf.Round(at.y - BoxH / 2f), _boxW, BoxH);
                     GUI.color = i == _choice ? Color.white : new Color(1f, 1f, 1f, 0.85f);
-                    GUI.Box(r, (i + 1) + "  " + Lang.T(Wheel[i].label), i == _choice ? _wheelSel : _wheelStyle);
+                    GUI.Box(r, KeyLabel(i) + "  " + Lang.T(Wheel[i].label), i == _choice ? _wheelSel : _wheelStyle);
                 }
                 GUI.color = old;
-                string hint = _sticky ? Lang.T("Click a gesture (or press its number). Esc to close")
-                                      : Lang.T("Move the mouse onto a gesture and let go");
-                var hs = _wheelStyle.CalcSize(new GUIContent(hint));
-                GUI.Box(new Rect(centre.x - hs.x / 2f, centre.y + radius + boxH, hs.x, hs.y + 2f), hint, _wheelStyle);
+                GUI.Box(new Rect(Mathf.Round(centre.x - hs.x / 2f), Mathf.Round(centre.y + _ry + BoxH), hs.x, hs.y + 2f), hint, _wheelStyle);
             }
             finally { GUI.matrix = oldMatrix; }
         }

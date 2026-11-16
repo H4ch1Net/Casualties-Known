@@ -9,7 +9,8 @@ namespace CCoop.Plugin.Sync
     /// <summary>
     /// Middle mouse marks a spot (unused by the game). Everyone on the layer sees a ring
     /// with the player's name for a few seconds, pointed at from the screen edge when it
-    /// is off screen, with a short beep.
+    /// is off screen, with a short beep. The "Look out!" gesture leaves a warning mark
+    /// instead: red, blinking, labelled as a warning, with a higher beep.
     /// </summary>
     internal sealed class PingSync : CoopModule
     {
@@ -21,7 +22,11 @@ namespace CCoop.Plugin.Sync
             public byte Owner;
             public Vector2 Position;
             public float At;
+            public bool Warn;
         }
+
+        /// <summary>A warning's colour: the overlay's red, whatever the player's colour.</summary>
+        private static Color WarnColor => UI.UiSkin.Bad;
 
         private readonly List<Mark> _marks = new List<Mark>();
         private float _nextAllowed;
@@ -73,15 +78,20 @@ namespace CCoop.Plugin.Sync
         }
 
         /// <summary>Screenshots: a mark as if <paramref name="owner"/> placed it (not sent).</summary>
-        internal void DevMark(byte owner, Vector2 at) => Add(owner, at);
+        internal void DevMark(byte owner, Vector2 at, bool warn = false) => Add(owner, at, warn);
 
-        private void Add(byte owner, Vector2 at)
+        /// <summary>A "Look out!" mark (from the gesture, which carries the spot itself).</summary>
+        internal void Warn(byte owner, Vector2 at) => Add(owner, at, true);
+
+        internal int Warnings => _marks.FindAll(m => m.Warn).Count;
+
+        private void Add(byte owner, Vector2 at, bool warn = false)
         {
             if (!Coop.WorldLive) return;
-            if (owner != Coop.LocalId) Log.Info("[ping] " + Coop.Player(owner).Name + " marked " + at.ToString("F1"));
+            if (owner != Coop.LocalId) Log.Info("[ping] " + Coop.Player(owner).Name + (warn ? " warned of " : " marked ") + at.ToString("F1"));
             _marks.RemoveAll(m => m.Owner == owner);  // one mark per player
-            _marks.Add(new Mark { Owner = owner, Position = at, At = Time.unscaledTime });
-            try { PlayerCamera.PlayUISound("scannerbeep", owner == Coop.LocalId ? 1.2f : 1f); }
+            _marks.Add(new Mark { Owner = owner, Position = at, At = Time.unscaledTime, Warn = warn });
+            try { PlayerCamera.PlayUISound("scannerbeep", warn ? 1.7f : owner == Coop.LocalId ? 1.2f : 1f); }
             catch { /* sound is a nicety */ }
         }
 
@@ -94,18 +104,21 @@ namespace CCoop.Plugin.Sync
             _marks.RemoveAll(m => now - m.At > Lifetime);
 
             var ring = UI.PixelMarks.Ring;
-            var size = UI.PixelMarks.Size(ring);
+            var normal = UI.PixelMarks.Size(ring);
+            var big = UI.PixelMarks.Size(ring, true);
             float px = UI.PixelMarks.Px;
             Vector2 me = GameInfo.LocalBody != null ? (Vector2)GameInfo.LocalBody.transform.position : (Vector2)cam.transform.position;
             foreach (var m in _marks)
             {
                 float age = now - m.At;
                 float fade = Mathf.Clamp01((Lifetime - age) / 1.5f);
-                var color = ColorOf(m.Owner);
+                var color = m.Warn ? WarnColor : ColorOf(m.Owner);
+                var size = m.Warn ? big : normal;
                 Vector3 sp = cam.WorldToScreenPoint(m.Position);
                 float x = sp.x, y = Screen.height - sp.y;
                 bool onScreen = sp.z > 0 && x >= 0 && x <= Screen.width && y >= 0 && y <= Screen.height;
                 string name = m.Owner == Coop.LocalId ? UI.Lang.T("You") : Coop.Player(m.Owner).Name;
+                if (m.Warn) name = UI.Lang.F("Look out! ({0})", name);
 
                 var old = GUI.color;
                 if (!onScreen)
@@ -116,7 +129,7 @@ namespace CCoop.Plugin.Sync
                     name += " · " + Mathf.RoundToInt(Vector2.Distance(me, m.Position)) + " m";
                 }
                 // A blink rather than a throb: pixel art doesn't scale smoothly.
-                float blink = ConditionFx.Reduced || age > 1.2f || Mathf.Repeat(age, 0.3f) < 0.18f ? 1f : 0.35f;
+                float blink = ConditionFx.Reduced || age > (m.Warn ? 3.5f : 1.2f) || Mathf.Repeat(age, 0.3f) < 0.18f ? 1f : 0.35f;
                 GUI.color = new Color(color.r, color.g, color.b, fade * blink);
                 GUI.DrawTexture(new Rect(Mathf.Round(x - size.x / 2f), Mathf.Round(y - size.y / 2f), size.x, size.y), ring);
                 if (onScreen && age < 0.6f && !ConditionFx.Reduced)

@@ -6,7 +6,8 @@ namespace CCoop.Plugin.Sync
 {
     /// <summary>
     /// Gestures the character actually performs: a wave, a beckon, pointing, a thumbs up,
-    /// a raised palm, a shaken head, both arms up for help, a hug.
+    /// a raised palm, a shaken head, both arms up for help, a hug, a nod, a shrug, and a
+    /// big "this way" swing of the arm.
     ///
     /// While standing, the game places every limb each frame from a hidden animation rig
     /// (Body.HandleVisuals); limbs aren't physics then. Right after it, a gesture swings
@@ -19,7 +20,7 @@ namespace CCoop.Plugin.Sync
     /// </summary>
     internal static class GesturePose
     {
-        internal enum Pose : byte { None, Wave, Beckon, Point, ThumbsUp, Wait, No, Help, Hug }
+        internal enum Pose : byte { None, Wave, Beckon, Point, ThumbsUp, Wait, No, Help, Hug, Yes, Shrug, FollowMe }
 
         private static Pose _pose;
         private static float _start, _length;
@@ -39,9 +40,9 @@ namespace CCoop.Plugin.Sync
             _pose = pose;
             _start = Time.time;
             _target = target;
-            _length = pose == Pose.Help ? 2.2f : pose == Pose.No ? 1.3f : pose == Pose.ThumbsUp ? 1.4f : 1.8f;
-            // Point at something behind: turn round first, as anyone would.
-            if (pose == Pose.Point && b.standing && (target.x - b.transform.position.x) * (b.isRight ? 1f : -1f) < -0.3f)
+            _length = pose == Pose.Help ? 2.2f : pose == Pose.No || pose == Pose.Yes ? 1.3f : pose == Pose.ThumbsUp ? 1.4f : pose == Pose.Shrug ? 1.5f : 1.8f;
+            // Point at something behind (or lead the way back there): turn round first, as anyone would.
+            if ((pose == Pose.Point || pose == Pose.FollowMe) && b.standing && (target.x - b.transform.position.x) * (b.isRight ? 1f : -1f) < -0.3f)
             {
                 try { b.SwitchDir(); } catch { /* can't turn now */ }
             }
@@ -106,6 +107,30 @@ namespace CCoop.Plugin.Sync
                     Arm(b, Front, w, 78f, 146f, 168f);
                     Arm(b, Back, w, 70f, 140f, 160f);
                     break;
+                case Pose.Yes:
+                    // Two slow nods, down and back up (No is the quick shake).
+                    Head(b, -w * 16f * (0.5f - 0.5f * Mathf.Cos(t * 10f)));
+                    break;
+                case Pose.Shrug:
+                {
+                    // Forearms out to either side, palms up, a little lift as they turn up.
+                    float lift = 8f * Mathf.Sin(Mathf.Clamp01(t / 0.6f) * Mathf.PI);
+                    Arm(b, Front, w, 16f + lift, 98f, 122f);
+                    Arm(b, Back, w, -16f - lift, -98f, -122f);
+                    Head(b, w * 7f);
+                    break;
+                }
+                case Pose.FollowMe:
+                {
+                    // "Move out": the straight arm raised overhead and brought down to point
+                    // ahead, again and again: this way!
+                    float sweep = 0.5f - 0.5f * Mathf.Cos(t * 7f);
+                    float a = 165f - 80f * sweep;
+                    Arm(b, Front, w, a, a + 6f, a + 12f);
+                    b.overrideLookPos = (Vector2)b.transform.position + new Vector2(b.isRight ? 8f : -8f, 1f);
+                    b.overrideLookTime = 0.2f;
+                    break;
+                }
             }
         }
 

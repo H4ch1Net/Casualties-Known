@@ -260,25 +260,39 @@ Come here
 = 
 *beckons you over*
 = 
+Follow me
+= 
+*waves you along*
+= 
 Point
 = 
 *points*
+= 
+Look out!
 = 
 Help!
 = 
 Hug
 = 
+Thumbs up
+= 
+*gives a thumbs up*
+= 
+Yes
+= 
+*nods*
+= 
 No
 = 
 *shakes head*
 = 
+Shrug
+= 
+*shrugs*
+= 
 Wait
 = 
 *holds up a hand: wait*
-= 
-Thumbs up
-= 
-*gives a thumbs up*
 = 
 You can't do that right now.
 = 
@@ -286,7 +300,7 @@ No one close enough to hug.
 = 
 {0} hugged you
 = 
-Click a gesture (or press its number). Esc to close
+Click a gesture (or press its key). Esc to close
 = 
 Move the mouse onto a gesture and let go
 = 
@@ -509,6 +523,10 @@ Deeper together
 Reach 10 new layers with a teammate alive beside you.
 = 
 Co-op milestone: {0}
+= 
+
+# Sync/PingSync.cs
+Look out! ({0})
 = 
 
 # Sync/PlayerSync.cs

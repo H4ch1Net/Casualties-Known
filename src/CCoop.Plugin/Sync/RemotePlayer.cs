@@ -35,6 +35,9 @@ namespace CCoop.Plugin.Sync
 
         internal Vector2 Position => _latest != null ? new Vector2(_latest.X, _latest.Y) : Vector2.zero;
         internal bool Visible => _visible && _rig != null;
+
+        /// <summary>Dev pose shots: teammates out of the picture.</summary>
+        internal static bool DevHidden;
         internal byte Id => _id;
 
         /// <summary>Where the puppet stands, for the spectator camera; null while hidden.</summary>
@@ -109,7 +112,7 @@ namespace CCoop.Plugin.Sync
 
         internal void Update(bool localInWorld, ushort epoch)
         {
-            bool shouldShow = localInWorld && _latest != null && (_latest.Flags & PlayerFlags.InWorld) != 0 &&
+            bool shouldShow = !DevHidden && localInWorld && _latest != null && (_latest.Flags & PlayerFlags.InWorld) != 0 &&
                               _latest.Epoch == epoch && Time.unscaledTime - _buffer[_buffer.Count - 1].Time < 5f;
 
             // The puppet is a scene object; a scene change destroys it under us.
