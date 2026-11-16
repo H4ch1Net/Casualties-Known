@@ -8,6 +8,8 @@
 # Net/SteamLobby.cs
 Steam didn't answer. Check your connection and try again
 = 
+{0} has CasualtiesCoop {1} and you have {2}. You both need the same version.
+= 
 that session has ended, or the invite is from an older one. Ask your friend to host again and send a new invite (or look under Find games)
 = 
 the session is full
@@ -26,6 +28,12 @@ Steam couldn't open the lobby ({0})
 = 
 
 # Runtime/CoopRuntime.cs
+Invite accepted. It opens when you're back on the main menu.
+= 
+{0} couldn't join: they have version {1}, you have {2}
+= 
+{0} couldn't join: they have version {1}, you have {2}. Send them this version.
+= 
 You are banned from this host's sessions.
 = 
 Steam is not running. Start the game from Steam, or use LAN/IP.

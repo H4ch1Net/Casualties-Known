@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using CCoop.Plugin.Runtime;
 using Steamworks;
 
@@ -71,6 +72,12 @@ namespace CCoop.Plugin.Net
         private Callback<GameLobbyJoinRequested_t> _joinRequested;
         private Callback<GameRichPresenceJoinRequested_t> _richJoin;
         private Callback<LobbyDataUpdate_t> _dataUpdate;
+        private Callback<LobbyChatMsg_t> _chat;
+
+        /// <summary>Host: someone tried to join and couldn't (name, their mod version, why).</summary>
+        internal event Action<string, string, string> MemberRefused;
+
+        private const string RefusedTag = "ccoop:refused:";
 
         private Action<bool, string> _createDone;
         private Action<bool, LobbyInfo, string> _joinDone;
@@ -102,6 +109,7 @@ namespace CCoop.Plugin.Net
                 if (id != 0) JoinRequested?.Invoke(id);
             });
             _dataUpdate = Callback<LobbyDataUpdate_t>.Create(OnDataUpdate);
+            _chat = Callback<LobbyChatMsg_t>.Create(OnChat);
             Initialized = true;
         }
 
@@ -259,8 +267,15 @@ namespace CCoop.Plugin.Net
             var why = info.Incompatible;
             if (why != null)
             {
+                // Tell the host before leaving, so they know why nobody arrived.
+                try
+                {
+                    var bytes = Encoding.UTF8.GetBytes(RefusedTag + CoopPlugin.Version + ":" + why);
+                    SteamMatchmaking.SendLobbyChatMsg(Lobby, bytes, bytes.Length);
+                }
+                catch { /* the host just won't hear */ }
                 Leave();
-                done?.Invoke(false, info, "the host runs " + why + ". Update to match");
+                done?.Invoke(false, info, UI.Lang.F("{0} has CasualtiesCoop {1} and you have {2}. You both need the same version.", info.Host, info.ModVersion, CoopPlugin.Version));
                 return;
             }
             SetPresence(info.Players);
@@ -309,6 +324,28 @@ namespace CCoop.Plugin.Net
                 SteamFriends.SetRichPresence("steam_player_group_size", Math.Max(1, players).ToString());
             }
             catch { /* presence is cosmetic */ }
+        }
+
+        /// <summary>Host: a lobby chat line from a player who couldn't join.</summary>
+        private void OnChat(LobbyChatMsg_t r)
+        {
+            if (!IsOwner || r.m_ulSteamIDLobby != Lobby.m_SteamID) return;
+            try
+            {
+                var data = new byte[512];
+                int n = SteamMatchmaking.GetLobbyChatEntry(Lobby, (int)r.m_iChatID, out var user, data, data.Length, out _);
+                if (n <= 0) return;
+                string text = Encoding.UTF8.GetString(data, 0, n).TrimEnd('\0');
+                if (!text.StartsWith(RefusedTag, StringComparison.Ordinal)) return;
+                string rest = text.Substring(RefusedTag.Length);
+                int colon = rest.IndexOf(':');
+                string version = colon > 0 ? rest.Substring(0, colon) : rest;
+                string why = colon > 0 ? rest.Substring(colon + 1) : "";
+                string name = SteamFriends.GetFriendPersonaName(user);
+                Log.Info("[steam] " + name + " couldn't join: they have " + version + " (" + why + ")");
+                MemberRefused?.Invoke(name, version, why);
+            }
+            catch (Exception e) { Log.Debug("lobby chat: " + e.Message); }
         }
 
         internal void Leave()

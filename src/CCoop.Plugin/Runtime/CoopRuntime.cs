@@ -106,6 +106,13 @@ namespace CCoop.Plugin.Runtime
             {
                 Log.Info("[steam] join requested for lobby " + id);
                 _pendingJoinLobby = id;
+                if (GameInfo.InRunScene && Coop.Session == null)
+                    Notice(Lang.T("Invite accepted. It opens when you're back on the main menu."));
+            };
+            Lobby.MemberRefused += (name, version, why) =>
+            {
+                Notice(Lang.F("{0} couldn't join: they have version {1}, you have {2}", name, version, CoopPlugin.Version));
+                LastMessage = Lang.Pack("{0} couldn't join: they have version {1}, you have {2}. Send them this version.", name, version, CoopPlugin.Version);
             };
         }
 
@@ -233,7 +240,15 @@ namespace CCoop.Plugin.Runtime
             Lobby.Join(lobby, (ok, info, error) =>
             {
                 Connecting = false;
-                if (!ok) { LastMessage = Lang.Pack("Could not join: {0}", error); Log.Warn("[steam] could not join: " + error); return; }
+                if (!ok)
+                {
+                    LastMessage = Lang.Pack("Could not join: {0}", error);
+                    Log.Warn("[steam] could not join: " + error);
+                    // Said where it's seen: an invite may have started this with the window shut.
+                    Notice(Lang.F("Could not join: {0}", error));
+                    CoopWindow.Show();
+                    return;
+                }
                 ulong owner = info.HostId;
                 if (owner == GameInfo.SteamId) { Lobby.Leave(); LastMessage = Lang.N("That is your own lobby."); return; }
                 if (info.Locked && password == null)
@@ -532,6 +547,8 @@ namespace CCoop.Plugin.Runtime
                 _pendingLaunchLobby = 0;
             }
             if (_pendingJoinLobby == 0) return;
+            // A single-player run in progress: the invite waits for the main menu.
+            if (Coop.Session == null && !GameInfo.OnMainMenu) return;
             ulong id = _pendingJoinLobby;
             _pendingJoinLobby = 0;
             if (Coop.Session != null)
@@ -539,6 +556,8 @@ namespace CCoop.Plugin.Runtime
                 Notice(Lang.T("Leave your current session before joining another."));
                 return;
             }
+            // Joining from Steam (an invite, the friends list): show it's happening.
+            CoopWindow.Show();
             JoinSteamLobby(id);
         }
 
