@@ -364,13 +364,13 @@ namespace CCoop.Plugin.Dev
                 case 9:
                     ExitVote.DevFake = null;
                     TeamMotion.DevLegUp(mate.Id, 0f);
-                    Coop.Get<GestureSync>()?.DevWheel(true);
+                    Coop.Get<GestureSync>()?.DevWheel(true, 2);
                     break;
                 case 10:
                 {
                     Coop.Get<GestureSync>()?.DevWheel(false);
                     var me = GameInfo.LocalBody != null ? (Vector2)GameInfo.LocalBody.transform.position : Coop.Player(mate.Id).Position;
-                    Coop.Get<PingSync>()?.DevMark(mate.Id, me + new Vector2(4f, 3f), true);
+                    Coop.Get<PingSync>()?.DevMark(mate.Id, me + new Vector2(4f, 3f));
                     Coop.Get<PingSync>()?.DevMark(Coop.LocalId, me + new Vector2(90f, -8f));
                     UI.TeammateArrows.DevOffset = new Vector2(-70f, 12f);
                     break;
@@ -678,7 +678,7 @@ namespace CCoop.Plugin.Dev
                     CCoop.CCoopApi.SendToHost(new ApiProbe { Text = "ping from a mod" });
                     ApiSent++;
                     // Gestures while everyone's still on their feet (later stages knock the client out).
-                    Coop.Get<GestureSync>()?.DevDo("Look out!");
+                    Coop.Get<GestureSync>()?.DevDo("Follow me");
                     Coop.Get<GestureSync>()?.DevDo("Yes");
                 }
                 var ids = new List<uint>(EntityRegistry.Ids);
@@ -1464,7 +1464,6 @@ namespace CCoop.Plugin.Dev
                         GameInfo.LocalBody.brainHealth = 100f;
                         WalkOverClient();
                         Coop.Get<GestureSync>()?.DevDo("Hug");
-                        Coop.Get<GestureSync>()?.DevDo("Look out!");
                         var pant = GameInfo.LocalBody.GetComponentInChildren<PantSound>();
                         GameInfo.LocalBody.eatTime = 0f;
                         pant?.Bark();
@@ -1846,7 +1845,7 @@ namespace CCoop.Plugin.Dev
             if (ps != null) foreach (var r in ps.Remotes) warming |= r.Warming;
             return "rules=" + HostRules.Current.Encode() + " chat=" + Chat.Count +
                    " radio=" + (Radio.Usable ? "on" : "off") + "/" + Chat.RadioHeard +
-                   " pings=" + (Coop.Get<PingSync>()?.Count ?? 0) + "/" + (Coop.Get<PingSync>()?.Warnings ?? 0) + " warn" +
+                   " pings=" + (Coop.Get<PingSync>()?.Count ?? 0) +
                    " exit=" + (Coop.Get<ExitVote>()?.Describe() ?? "-") +
                    " threat=" + (cam != null ? cam.threatMusicTime.ToString("F1") : "-") +
                    " warmth=" + warming + " voice=" + VoiceSync.Mode + " fps=" + Mathf.RoundToInt(PlayerSync.LocalFps) +

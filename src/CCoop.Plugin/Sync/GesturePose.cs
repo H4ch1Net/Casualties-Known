@@ -5,9 +5,9 @@ using UnityEngine;
 namespace CCoop.Plugin.Sync
 {
     /// <summary>
-    /// Gestures the character actually performs: a wave, a beckon, pointing, a thumbs up,
-    /// a raised palm, a shaken head, both arms up for help, a hug, a nod, a shrug, and a
-    /// big "this way" swing of the arm.
+    /// Gestures the character actually performs: a wave, a beckon, a thumbs up, a raised
+    /// palm, a shaken head, both arms up for help, a hug, a nod, a shrug, and a big "this
+    /// way" swing of the arm.
     ///
     /// While standing, the game places every limb each frame from a hidden animation rig
     /// (Body.HandleVisuals); limbs aren't physics then. Right after it, a gesture swings
@@ -20,11 +20,10 @@ namespace CCoop.Plugin.Sync
     /// </summary>
     internal static class GesturePose
     {
-        internal enum Pose : byte { None, Wave, Beckon, Point, ThumbsUp, Wait, No, Help, Hug, Yes, Shrug, FollowMe }
+        internal enum Pose : byte { None, Wave, Beckon, ThumbsUp, Wait, No, Help, Hug, Yes, Shrug, FollowMe }
 
         private static Pose _pose;
         private static float _start, _length;
-        private static Vector2 _target;
 
         // Front arm (the main hand) and back arm, upper arm -> forearm -> hand.
         private static readonly int[] Front = { 3, 4, 5 };
@@ -32,17 +31,16 @@ namespace CCoop.Plugin.Sync
 
         internal static bool Active => _pose != Pose.None && Time.time - _start < _length;
 
-        /// <summary>Starts a gesture on the local character (<paramref name="target"/> is where to point).</summary>
+        /// <summary>Starts a gesture on the local character (<paramref name="target"/>: where Follow me leads).</summary>
         internal static void Play(Pose pose, Vector2 target = default)
         {
             var b = GameInfo.LocalBody;
             if (b == null || !b.alive || !b.conscious) return;
             _pose = pose;
             _start = Time.time;
-            _target = target;
             _length = pose == Pose.Help ? 2.2f : pose == Pose.No || pose == Pose.Yes ? 1.3f : pose == Pose.ThumbsUp ? 1.4f : pose == Pose.Shrug ? 1.5f : 1.8f;
-            // Point at something behind (or lead the way back there): turn round first, as anyone would.
-            if ((pose == Pose.Point || pose == Pose.FollowMe) && b.standing && (target.x - b.transform.position.x) * (b.isRight ? 1f : -1f) < -0.3f)
+            // Lead the way back the other way: turn round first, as anyone would.
+            if (pose == Pose.FollowMe && target != default && b.standing && (target.x - b.transform.position.x) * (b.isRight ? 1f : -1f) < -0.3f)
             {
                 try { b.SwitchDir(); } catch { /* can't turn now */ }
             }
@@ -78,16 +76,6 @@ namespace CCoop.Plugin.Sync
                     float curl = 0.5f + 0.5f * Mathf.Sin(t * 9f);
                     Arm(b, Front, w, 82f, 88f + 62f * curl, 96f + 80f * curl);
                     break;
-                case Pose.Point:
-                {
-                    var shoulder = Joint(b.limbs[Front[0]]);
-                    var d = _target - shoulder;
-                    float world = Vector2.SignedAngle(Vector2.down, d.sqrMagnitude > 0.01f ? d : Vector2.right);
-                    ArmWorld(b, Front, w, world, world, world);
-                    b.overrideLookPos = _target;
-                    b.overrideLookTime = 0.2f;
-                    break;
-                }
                 case Pose.ThumbsUp:
                     Arm(b, Front, w, 34f, 118f, 176f);
                     break;

@@ -23,7 +23,7 @@ namespace CCoop.Plugin.UI
         internal static float EdgeBottom => 110f * CoopWindow.Scale;
 
         private static readonly Color Rim = new Color(0f, 0f, 0f, 0.85f);
-        private static Texture2D _arrow, _ring, _dot;
+        private static Texture2D _arrow, _ring;
         private static GUIStyle _label;
 
         /// <summary>A right-pointing triangle, 11 × 13.</summary>
@@ -60,18 +60,6 @@ namespace CCoop.Plugin.UI
                         inside[x, y] = d <= 5.9f && d >= 3.9f;
                     }
                 return _ring = Build(n, n, inside);
-            }
-        }
-
-        /// <summary>A 3 × 3 dot (2 × 2 pixels with its rim), for dotted lines.</summary>
-        internal static Texture2D Dot
-        {
-            get
-            {
-                if (_dot != null) return _dot;
-                var inside = new bool[4, 4];
-                inside[1, 1] = inside[1, 2] = inside[2, 1] = inside[2, 2] = true;
-                return _dot = Build(4, 4, inside);
             }
         }
 

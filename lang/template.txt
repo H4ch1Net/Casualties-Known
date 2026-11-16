@@ -264,12 +264,6 @@ Follow me
 = 
 *waves you along*
 = 
-Point
-= 
-*points*
-= 
-Look out!
-= 
 Help!
 = 
 Hug
@@ -299,10 +293,6 @@ You can't do that right now.
 No one close enough to hug.
 = 
 {0} hugged you
-= 
-Click a gesture (or press its key). Esc to close
-= 
-Move the mouse onto a gesture and let go
 = 
 
 # Sync/GiveSync.cs
@@ -523,10 +513,6 @@ Deeper together
 Reach 10 new layers with a teammate alive beside you.
 = 
 Co-op milestone: {0}
-= 
-
-# Sync/PingSync.cs
-Look out! ({0})
 = 
 
 # Sync/PlayerSync.cs
@@ -1109,6 +1095,14 @@ Kick
 Kicked by the host.
 = 
 Ban
+= 
+
+# UI/GestureWheel.cs
+Gestures
+= 
+Click a gesture (or press its key). Esc to close
+= 
+Move the mouse onto a gesture and let go
 = 
 
 # UI/RunPresets.cs
